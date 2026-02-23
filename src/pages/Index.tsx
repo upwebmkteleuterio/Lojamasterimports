@@ -25,14 +25,14 @@ const Index = () => {
   const isPet = shopType === 'pet';
 
   return (
-    <div className="min-h-screen bg-white font-sans text-gray-900">
+    <div className="min-h-screen bg-white font-sans text-gray-900 pb-20 md:pb-0">
       <Navbar />
       
-      <section className="relative h-[500px] md:h-[650px] w-full overflow-hidden flex items-center">
+      <section className="relative h-[400px] md:h-[650px] w-full overflow-hidden flex items-center">
         <img 
           src={isPet 
             ? "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?q=80&w=2071&auto=format&fit=crop" 
-            : "https://images.unsplash.com/photo-1515562141207-7a18b5ce7142?q=80&w=2070&auto=format&fit=crop"
+            : "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?q=80&w=2070&auto=format&fit=crop" // Imagem de alta qualidade de cosméticos
           }
           className="absolute inset-0 w-full h-full object-cover"
           alt="Hero"
@@ -40,13 +40,13 @@ const Index = () => {
         <div className="absolute inset-0 bg-black/10" />
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-xl text-center md:text-right ml-auto">
-            <h2 className="text-4xl md:text-7xl font-serif font-light text-[#B89C6A] mb-4 drop-shadow-sm">
-              {isPet ? "Cuidado &" : "Sofisticação &"} <br /> Requinte
+            <h2 className="text-3xl md:text-7xl font-serif font-light text-[#B89C6A] mb-4 drop-shadow-sm">
+              {isPet ? "Cuidado &" : "Beleza &"} <br /> Sofisticação
             </h2>
-            <p className="text-lg md:text-2xl text-gray-700 font-light mb-10 tracking-wide italic">
-              {isPet ? "O luxo que seu melhor amigo merece." : "Valorize a joia que você é."}
+            <p className="text-sm md:text-2xl text-gray-700 font-light mb-6 md:mb-10 tracking-wide italic">
+              {isPet ? "O luxo que seu melhor amigo merece." : "O cuidado que sua pele necessita."}
             </p>
-            <Button variant="outline" className="rounded-none border-[#B89C6A] text-[#B89C6A] px-12 py-7 text-sm font-bold tracking-[0.2em] hover:bg-[#B89C6A] hover:text-white transition-all">
+            <Button variant="outline" className="rounded-none border-[#B89C6A] text-[#B89C6A] px-8 md:px-12 py-4 md:py-7 text-[10px] md:text-sm font-bold tracking-[0.2em] hover:bg-[#B89C6A] hover:text-white transition-all bg-white/50 backdrop-blur-sm">
               CONFIRA A COLEÇÃO
             </Button>
           </div>
@@ -54,8 +54,8 @@ const Index = () => {
       </section>
 
       {/* Categorias Grid */}
-      <section className="py-20 container mx-auto px-4">
-        <h2 className="text-2xl md:text-3xl font-serif text-center mb-12 text-gray-800">Escolha por categorias</h2>
+      <section className="py-12 md:py-20 container mx-auto px-4">
+        <h2 className="text-xl md:text-3xl font-serif text-center mb-8 md:mb-12 text-gray-800">Escolha por categorias</h2>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-8">
           {(isPet 
             ? [
@@ -74,29 +74,30 @@ const Index = () => {
               ]
           ).map((cat, i) => (
             <Link key={i} to={`/${shopType}/categoria/${cat.id}`} className="group cursor-pointer text-center">
-              <div className="aspect-square overflow-hidden mb-4 bg-gray-50 border border-gray-100 shadow-sm transition-transform hover:-translate-y-1">
+              <div className="aspect-square overflow-hidden mb-3 md:mb-4 bg-gray-50 border border-gray-100 shadow-sm transition-transform hover:-translate-y-1">
                 <img src={cat.img} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               </div>
-              <span className="text-[10px] uppercase font-bold tracking-[0.2em] text-gray-500 group-hover:text-[#B89C6A]">{cat.name}</span>
+              <span className="text-[9px] md:text-[10px] uppercase font-bold tracking-[0.2em] text-gray-500 group-hover:text-[#B89C6A]">{cat.name}</span>
             </Link>
           ))}
         </div>
       </section>
 
-      {/* Carrossel de Produtos */}
-      <section className="py-24 bg-[#fafafa]">
+      {/* Carrossel de Produtos - Ajustado para 2 colunas no mobile */}
+      <section className="py-12 md:py-24 bg-[#fafafa]">
         <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center mb-12">
+          <div className="flex justify-between items-center mb-8 md:mb-12">
             <div className="flex items-center gap-4">
-               <h2 className="text-2xl font-serif">Sugestões Diamond</h2>
-               <Link to={`/${shopType}/categoria/todos`} className="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-primary">Ver todos</Link>
+               <h2 className="text-xl md:text-2xl font-serif">Sugestões Diamond</h2>
+               <Link to={`/${shopType}/categoria/todos`} className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-primary">Ver todos</Link>
             </div>
-            <div className="flex gap-2">
+            <div className="hidden md:flex gap-2">
                <Button variant="outline" size="icon" className="rounded-none border-gray-200"><ChevronLeft size={16} /></Button>
                <Button variant="outline" size="icon" className="rounded-none border-gray-200"><ChevronRight size={16} /></Button>
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+          {/* Grade: 2 colunas no mobile, 4 no desktop */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
             {products.slice(0, 4).map(product => (
               <ProductCard key={product.id} product={product} />
             ))}
@@ -104,50 +105,50 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Selos de Confiança */}
-      <section className="border-t border-b py-10 bg-[#fdfdfd]">
-        <div className="container mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-8">
-          <div className="flex flex-col items-center text-center gap-3">
-            <Truck size={24} strokeWidth={1} className="text-[#B89C6A]" />
+      {/* Selos de Confiança - 2x2 no mobile */}
+      <section className="border-t border-b py-8 md:py-10 bg-[#fdfdfd]">
+        <div className="container mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4">
+          <div className="flex flex-col items-center text-center gap-2 md:gap-3">
+            <Truck size={20} md:size={24} strokeWidth={1} className="text-[#B89C6A]" />
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest">Entrega Rápida</p>
-              <p className="text-[9px] text-gray-400">para todo Brasil</p>
+              <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest">Entrega Rápida</p>
+              <p className="text-[8px] md:text-[9px] text-gray-400">para todo Brasil</p>
             </div>
           </div>
-          <div className="flex flex-col items-center text-center gap-3">
-            <Gift size={24} strokeWidth={1} className="text-[#B89C6A]" />
+          <div className="flex flex-col items-center text-center gap-2 md:gap-3">
+            <Gift size={20} md:size={24} strokeWidth={1} className="text-[#B89C6A]" />
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest">Embrulho Presente</p>
-              <p className="text-[9px] text-gray-400">solicite nas observações</p>
+              <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest">Embrulho Presente</p>
+              <p className="text-[8px] md:text-[9px] text-gray-400">solicite nas observações</p>
             </div>
           </div>
-          <div className="flex flex-col items-center text-center gap-3">
-            <ShieldCheck size={24} strokeWidth={1} className="text-[#B89C6A]" />
+          <div className="flex flex-col items-center text-center gap-2 md:gap-3">
+            <ShieldCheck size={20} md:size={24} strokeWidth={1} className="text-[#B89C6A]" />
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest">Garantia Diamond</p>
-              <p className="text-[9px] text-gray-400">enviado junto ao pacote</p>
+              <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest">Garantia Diamond</p>
+              <p className="text-[8px] md:text-[9px] text-gray-400">enviado junto ao pacote</p>
             </div>
           </div>
-          <div className="flex flex-col items-center text-center gap-3">
-            <RotateCcw size={24} strokeWidth={1} className="text-[#B89C6A]" />
+          <div className="flex flex-col items-center text-center gap-2 md:gap-3">
+            <RotateCcw size={20} md:size={24} strokeWidth={1} className="text-[#B89C6A]" />
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest">Troca Fácil</p>
-              <p className="text-[9px] text-gray-400">entre em contato conosco</p>
+              <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest">Troca Fácil</p>
+              <p className="text-[8px] md:text-[9px] text-gray-400">entre em contato conosco</p>
             </div>
           </div>
         </div>
       </section>
 
-      <footer className="bg-white pt-20 pb-10 border-t">
-        <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-12">
+      <footer className="bg-white pt-12 md:pt-20 pb-10 border-t">
+        <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-12 text-center md:text-left">
           <div className="md:col-span-1">
-            <h3 className="text-2xl font-serif text-[#B89C6A] mb-6">DIAMON</h3>
-            <p className="text-xs text-gray-400 leading-loose">
+            <h3 className="text-xl md:text-2xl font-serif text-[#B89C6A] mb-4 md:mb-6">DIAMON</h3>
+            <p className="text-[10px] md:text-xs text-gray-400 leading-loose">
                {isPet ? "Tudo para o seu melhor amigo." : "Valorize a joia que você é."}
                <br /> Copyright © 2026 Diamond LTDA.
             </p>
           </div>
-          <div>
+          <div className="hidden md:block">
             <h4 className="text-[11px] font-bold uppercase tracking-widest mb-6">Informações</h4>
             <ul className="text-[11px] text-gray-500 space-y-3">
               <li>CONTATO</li>

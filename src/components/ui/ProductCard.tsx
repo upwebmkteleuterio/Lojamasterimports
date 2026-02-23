@@ -1,60 +1,65 @@
+"use client";
+
 import React from 'react';
+import { Link, useParams } from 'react-router-dom';
 import { Product } from '@/types/store';
-import { Button } from '@/components/ui/button';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useCart } from '@/context/CartContext';
 import { getSafeProductImage } from '@/utils/imageHandler';
+import { ShoppingBag } from 'lucide-react';
+import { useCart } from '@/context/CartContext';
 
 interface ProductCardProps {
   product: Product;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
-  const navigate = useNavigate();
-  const { shopType } = useParams<{ shopType: string }>();
   const { addToCart } = useCart();
-  
+  const { shopType } = useParams<{ shopType: string }>();
   const currentShop = shopType || product.categoryMother;
-  const productImage = getSafeProductImage(product.image);
 
   return (
-    <div className="group flex flex-col items-center text-center">
-      <div 
-        className="relative w-full aspect-[4/5] bg-[#fafafa] overflow-hidden cursor-pointer mb-6"
-        onClick={() => navigate(`/${currentShop}/produto/${product.id}`)}
-      >
+    <div className="group flex flex-col h-full bg-white transition-all duration-300">
+      <Link to={`/${currentShop}/produto/${product.id}`} className="relative aspect-[4/5] overflow-hidden bg-gray-50 border border-gray-100">
         <img 
-          src={productImage} 
+          src={getSafeProductImage(product.image)} 
           alt={product.name}
-          className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-110"
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
         />
-        <div className="absolute top-2 right-2">
-           <span className="bg-[#B89C6A] text-white text-[9px] px-2 py-0.5 font-bold uppercase tracking-widest">Destaque</span>
+        <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+        
+        {/* Botão de Compra Rápida - Escondido no mobile, aparece no hover desktop */}
+        <button 
+          onClick={(e) => {
+            e.preventDefault();
+            addToCart(product, 1);
+          }}
+          className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-sm text-black text-[10px] font-bold uppercase tracking-widest py-3 opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 hidden md:flex items-center justify-center gap-2 hover:bg-black hover:text-white"
+        >
+          <ShoppingBag size={14} /> Adicionar
+        </button>
+      </Link>
+      
+      <div className="mt-3 md:mt-4 flex flex-col flex-1">
+        <div className="flex justify-between items-start gap-2 mb-1">
+          <Link to={`/${currentShop}/produto/${product.id}`} className="flex-1">
+            <h3 className="text-[10px] md:text-[11px] font-bold text-gray-900 uppercase tracking-widest line-clamp-2 min-h-[2.5em] group-hover:text-[#B89C6A] transition-colors">
+              {product.name}
+            </h3>
+          </Link>
         </div>
         
-        <div className="absolute inset-x-4 bottom-4 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-          <Button 
-            onClick={(e) => {
-              e.stopPropagation();
-              addToCart(product, 1);
-            }}
-            className="w-full rounded-none bg-white text-black hover:bg-black hover:text-white border-none shadow-xl text-[10px] font-bold tracking-[0.2em] py-6"
+        <div className="mt-auto pt-2 flex items-center justify-between">
+          <p className="text-[11px] md:text-sm font-bold text-[#B89C6A]">
+            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price)}
+          </p>
+          
+          {/* Mobile Add Button - Visível apenas no mobile */}
+          <button 
+            onClick={() => addToCart(product, 1)}
+            className="md:hidden w-8 h-8 rounded-full border border-gray-100 flex items-center justify-center text-gray-400 active:bg-gray-100 transition-colors"
           >
-            COMPRAR
-          </Button>
+            <ShoppingBag size={14} />
+          </button>
         </div>
-      </div>
-      
-      <h3 className="text-[11px] font-bold text-gray-700 uppercase tracking-widest mb-1 line-clamp-1">
-        {product.name}
-      </h3>
-      <div className="space-y-1">
-        <p className="text-sm font-bold text-gray-900">
-          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price)}
-        </p>
-        <p className="text-[9px] text-gray-400 font-medium italic">
-          ou 10x de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price / 10)}
-        </p>
       </div>
     </div>
   );

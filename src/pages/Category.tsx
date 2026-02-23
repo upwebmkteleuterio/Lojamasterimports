@@ -16,17 +16,16 @@ const Category = () => {
     if (subId) {
       setProducts(getProductsBySubcategory(motherCategory, subId));
     }
-    // Scroll para o topo ao trocar de categoria
     window.scrollTo(0, 0);
   }, [subId, motherCategory]);
 
   return (
-    <div className="min-h-screen bg-white pb-20">
+    <div className="min-h-screen bg-white pb-32 md:pb-20">
       <Navbar />
       
-      <div className="container mx-auto px-4 py-12">
-        {/* Breadcrumb de Luxo */}
-        <nav className="flex items-center gap-3 text-[10px] uppercase tracking-widest text-gray-400 mb-12">
+      <div className="container mx-auto px-4 py-8 md:py-12">
+        {/* Breadcrumb - Mais compacto no mobile */}
+        <nav className="flex items-center gap-2 md:gap-3 text-[9px] md:text-[10px] uppercase tracking-widest text-gray-400 mb-8 md:mb-12">
           <Link to={`/${shopType}`} className="hover:text-[#B89C6A] transition-colors font-bold">Home</Link>
           <ChevronRight size={10} />
           <span className="font-bold">{shopType}</span>
@@ -34,15 +33,15 @@ const Category = () => {
           <span className="text-[#B89C6A] font-bold">{subId}</span>
         </nav>
 
-        <div className="flex flex-col lg:flex-row gap-16">
-          {/* Sidebar Minimalista */}
-          <aside className="w-full lg:w-64 space-y-12">
-            <div className="border-b pb-8">
-              <div className="flex items-center justify-between font-bold text-[11px] uppercase tracking-widest text-gray-900 mb-8">
+        <div className="flex flex-col lg:flex-row gap-8 md:gap-16">
+          {/* Sidebar - Oculta no Mobile ou compactada */}
+          <aside className="w-full lg:w-64 space-y-8 md:space-y-12">
+            <div className="border-b pb-6 md:pb-8 flex items-center justify-between lg:block">
+              <div className="flex items-center gap-2 font-bold text-[10px] md:text-[11px] uppercase tracking-widest text-gray-900 lg:mb-8">
                 Filtros <SlidersHorizontal size={14} />
               </div>
               
-              <div className="space-y-10">
+              <div className="hidden lg:block space-y-10">
                 <div>
                   <h4 className="text-[10px] font-bold text-gray-900 uppercase tracking-widest mb-4">Preço</h4>
                   <div className="space-y-3">
@@ -58,16 +57,16 @@ const Category = () => {
             </div>
           </aside>
 
-          {/* Grid de Produtos */}
+          {/* Grid de Produtos - 2 colunas no mobile */}
           <div className="flex-1">
-            <header className="mb-12 flex flex-col md:flex-row justify-between items-baseline gap-4 border-b pb-8">
+            <header className="mb-8 md:mb-12 flex flex-col md:flex-row justify-between items-baseline gap-4 border-b pb-6 md:pb-8">
               <div>
-                <h1 className="text-4xl font-serif font-light text-gray-900 capitalize mb-2">{subId}</h1>
-                <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Mostrando {products.length} itens encontrados</p>
+                <h1 className="text-2xl md:text-4xl font-serif font-light text-gray-900 capitalize mb-1 md:mb-2">{subId}</h1>
+                <p className="text-[9px] md:text-[10px] uppercase tracking-widest text-gray-400 font-bold">Mostrando {products.length} itens encontrados</p>
               </div>
-              <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+              <div className="flex items-center gap-4 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-gray-400">
                 Ordenar por: 
-                <select className="border-none bg-transparent text-black focus:ring-0 cursor-pointer">
+                <select className="border-none bg-transparent text-black focus:ring-0 cursor-pointer p-0">
                   <option>Destaques</option>
                   <option>Menor Preço</option>
                   <option>Maior Preço</option>
@@ -75,15 +74,15 @@ const Category = () => {
               </div>
             </header>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 md:gap-x-8 gap-y-8 md:gap-y-16">
               {products.map(product => (
                 <ProductCard key={product.id} product={product} />
               ))}
               
               {products.length === 0 && (
-                <div className="col-span-full py-32 text-center">
-                  <p className="font-serif text-2xl text-gray-300 italic">Desculpe, não encontramos produtos nesta seleção.</p>
-                  <Link to={`/${shopType}`} className="inline-block mt-8 text-[10px] font-bold uppercase tracking-widest border-b border-black pb-1">
+                <div className="col-span-full py-20 md:py-32 text-center">
+                  <p className="font-serif text-xl md:text-2xl text-gray-300 italic">Desculpe, não encontramos produtos nesta seleção.</p>
+                  <Link to={`/${shopType}`} className="inline-block mt-6 md:mt-8 text-[9px] md:text-[10px] font-bold uppercase tracking-widest border-b border-black pb-1">
                     Voltar para a Home
                   </Link>
                 </div>
