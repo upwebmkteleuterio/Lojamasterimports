@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
 import { getStorageItem } from '@/services/persistence';
 import { CategoryMother, Product } from '@/types/store';
