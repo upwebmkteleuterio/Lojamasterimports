@@ -1,55 +1,59 @@
 import React from 'react';
 import { Product } from '@/types/store';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ShoppingCart, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useCart } from '@/context/CartContext';
 
 interface ProductCardProps {
   product: Product;
-  onAddToCart?: (product: Product) => void;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
+export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const navigate = useNavigate();
+  const { addToCart } = useCart();
 
   return (
-    <Card className="overflow-hidden group hover:shadow-xl transition-all duration-300 border-none bg-white rounded-2xl">
+    <div className="group flex flex-col items-center text-center">
       <div 
-        className="relative aspect-square overflow-hidden cursor-pointer"
+        className="relative w-full aspect-[4/5] bg-[#fafafa] overflow-hidden cursor-pointer mb-6"
         onClick={() => navigate(`/produto/${product.id}`)}
       >
         <img 
           src={product.image} 
           alt={product.name}
-          className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-110"
+          className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-110"
         />
-        <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-           <Button variant="secondary" size="sm" className="rounded-full shadow-lg gap-2 scale-90 group-hover:scale-100 transition-transform">
-             <Eye size={16} /> Ver Detalhes
-           </Button>
+        <div className="absolute top-2 right-2">
+           <span className="bg-[#B89C6A] text-white text-[9px] px-2 py-0.5 font-bold">-1%</span>
+        </div>
+        {/* Overlay do botão no Hover */}
+        <div className="absolute inset-x-4 bottom-4 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+          <Button 
+            onClick={(e) => {
+              e.stopPropagation();
+              addToCart(product, 1);
+            }}
+            className="w-full rounded-none bg-white text-black hover:bg-black hover:text-white border-none shadow-xl text-[10px] font-bold tracking-[0.2em] py-6"
+          >
+            COMPRAR
+          </Button>
         </div>
       </div>
-      <CardContent className="p-4">
-        <h3 className="text-sm font-medium text-gray-800 line-clamp-2 min-h-[40px] mb-2">
-          {product.name}
-        </h3>
-        <p className="text-lg font-bold text-primary">
+      
+      <h3 className="text-[11px] font-bold text-gray-700 uppercase tracking-widest mb-1 line-clamp-1">
+        {product.name}
+      </h3>
+      <div className="space-y-1">
+        <p className="text-[10px] text-gray-400 line-through">
+          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price * 1.05)}
+        </p>
+        <p className="text-sm font-bold text-gray-900">
           {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price)}
         </p>
-      </CardContent>
-      <CardFooter className="p-4 pt-0">
-        <Button 
-          onClick={(e) => {
-            e.stopPropagation();
-            onAddToCart?.(product);
-          }}
-          className="w-full rounded-full bg-primary hover:bg-primary/90 text-white gap-2"
-        >
-          <ShoppingCart size={16} />
-          Adicionar
-        </Button>
-      </CardFooter>
-    </Card>
+        <p className="text-[9px] text-gray-400 font-medium">
+          10x de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price / 10)} sem juros
+        </p>
+      </div>
+    </div>
   );
 };
