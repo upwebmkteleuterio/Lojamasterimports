@@ -14,7 +14,6 @@ export const Navbar = () => {
   
   const currentShop = shopType || 'feminine';
   const isCheckoutOrCart = location.pathname === '/carrinho' || location.pathname === '/checkout';
-  const isCategoryPage = location.pathname.includes('/categoria/');
 
   const menuItems = currentShop === 'pet' 
     ? [
@@ -53,21 +52,20 @@ export const Navbar = () => {
       <div className="container mx-auto px-4 py-4 md:py-8">
         <div className="relative flex items-center justify-between md:grid md:grid-cols-3">
           
-          {/* Lado Esquerdo (Vazio no PC para manter logo centralizado) */}
+          {/* Lado Esquerdo (Desktop Only) */}
           <div className="hidden md:block" />
 
-          {/* Logo Centralizado */}
-          <div className="flex justify-center">
+          {/* Logo - Centralizado em todos os dispositivos */}
+          <div className="flex-1 md:flex-none flex justify-center">
             <Link to={`/${currentShop}`} className="text-2xl md:text-4xl font-serif font-light tracking-[0.2em] text-[#B89C6A] hover:opacity-80 transition-opacity uppercase whitespace-nowrap">
               {currentShop === 'pet' ? 'Diamond Pet' : 'Diamon'}
             </Link>
           </div>
 
-          {/* Lado Direito (Busca + Ícones no PC) */}
-          <div className="flex items-center justify-end gap-2 md:gap-4">
-            {/* Barra de Busca Desktop: Entre o logo e a conta */}
+          {/* Lado Direito (Desktop Only para Ícones e Busca) */}
+          <div className="hidden md:flex items-center justify-end gap-4 flex-1">
             {!isCheckoutOrCart && (
-              <div className="hidden md:flex relative w-64 items-center mr-2">
+              <div className="relative w-64 items-center">
                 <Input 
                   placeholder="Pesquisar..." 
                   className="rounded-full border-gray-100 bg-gray-50/50 focus-visible:ring-1 focus-visible:ring-[#B89C6A] h-9 text-xs pr-8"
@@ -91,9 +89,12 @@ export const Navbar = () => {
               </Button>
             </Link>
           </div>
+
+          {/* Placeholder para manter logo centralizado no mobile sem ícones à direita */}
+          <div className="flex-1 md:hidden" />
         </div>
 
-        {/* Barra de Busca Mobile: Abaixo do logo */}
+        {/* Barra de Busca Mobile: Apenas quando não estiver no checkout/carrinho */}
         {!isCheckoutOrCart && (
           <div className="md:hidden mt-4 relative w-full">
             <Input 
@@ -105,8 +106,8 @@ export const Navbar = () => {
         )}
       </div>
 
-      {/* Menu Categorias - Desktop Only. Oculto na página de categoria para evitar duplicidade */}
-      {!isCheckoutOrCart && !isCategoryPage && (
+      {/* Menu Categorias - Desktop Only. Aparece em todas as páginas exceto Checkout/Carrinho */}
+      {!isCheckoutOrCart && (
         <nav className="hidden md:block border-t border-b overflow-x-auto no-scrollbar scroll-smooth">
           <div className="container mx-auto px-4">
             <ul className="flex items-center justify-center gap-12 py-4 text-[11px] font-bold uppercase tracking-widest text-gray-700 whitespace-nowrap">
