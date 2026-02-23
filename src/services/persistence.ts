@@ -28,7 +28,7 @@ export const limparDadosFormulario = (nomeDaTela: string): void => {
   localStorage.removeItem(key);
 };
 
-// Funções para persistência de estados globais (como carrinho e categoria mãe)
+// Funções para persistência de estados globais
 export const setStorageItem = (key: string, value: any): void => {
   localStorage.setItem(key, JSON.stringify(value));
 };
@@ -36,4 +36,15 @@ export const setStorageItem = (key: string, value: any): void => {
 export const getStorageItem = <T>(key: string): T | null => {
   const data = localStorage.getItem(key);
   return data ? JSON.parse(data) : null;
+};
+
+// Gerenciamento de Pedidos (Simulando Banco de Dados)
+export const saveOrder = (order: any): void => {
+  const orders = getStorageItem<any[]>('orders_history') || [];
+  orders.unshift(order); // Adiciona no topo
+  setStorageItem('orders_history', orders);
+};
+
+export const getOrders = (): any[] => {
+  return getStorageItem<any[]>('orders_history') || [];
 };

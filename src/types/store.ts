@@ -15,11 +15,22 @@ export interface OrderItem extends Product {
   quantity: number;
 }
 
+export interface CustomerData {
+  fullName: string;
+  email: string;
+  phone: string;
+  zipCode: string;
+  address: string;
+  number: string;
+  city: string;
+  state: string;
+}
+
 export interface Order {
   id: string;
   items: OrderItem[];
   total: number;
   status: 'pending' | 'completed' | 'cancelled';
-  customerData: any;
+  customerData: CustomerData;
   createdAt: string;
 }
