@@ -73,16 +73,16 @@ const Category = () => {
     <div className="min-h-screen bg-white pb-32 md:pb-20">
       <Navbar />
       
-      {/* Lista Horizontal de Subcategorias - Mobile & Desktop */}
-      <div className="border-b bg-gray-50/30">
-        <div className="container mx-auto px-4 overflow-x-auto no-scrollbar py-3 md:py-4">
-          <div className="flex items-center gap-4 md:gap-8 whitespace-nowrap">
+      {/* Lista Horizontal de Subcategorias - Apenas Mobile no layout final para evitar duplicidade no PC */}
+      <div className="border-b bg-gray-50/30 md:hidden">
+        <div className="container mx-auto px-4 overflow-x-auto no-scrollbar py-3">
+          <div className="flex items-center gap-4 whitespace-nowrap">
             {subcategories.map((cat) => (
               <Link 
                 key={cat.id} 
                 to={`/${shopType}/categoria/${cat.id}`}
                 className={cn(
-                  "text-[10px] md:text-[11px] font-bold uppercase tracking-widest transition-all pb-1 border-b-2",
+                  "text-[10px] font-bold uppercase tracking-widest transition-all pb-1 border-b-2",
                   subId === cat.id 
                     ? "text-[#B89C6A] border-[#B89C6A]" 
                     : "text-gray-400 border-transparent hover:text-gray-600"

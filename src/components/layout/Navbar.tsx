@@ -14,6 +14,7 @@ export const Navbar = () => {
   
   const currentShop = shopType || 'feminine';
   const isCheckoutOrCart = location.pathname === '/carrinho' || location.pathname === '/checkout';
+  const isCategoryPage = location.pathname.includes('/categoria/');
 
   const menuItems = currentShop === 'pet' 
     ? [
@@ -33,7 +34,7 @@ export const Navbar = () => {
 
   return (
     <header className="w-full bg-white">
-      {/* Top Bar - Escondido no mobile para limpar visual */}
+      {/* Top Bar - Desktop */}
       <div className="hidden md:block bg-[#f8f8f8] border-b text-[10px] md:text-xs py-2">
         <div className="container mx-auto px-4 flex justify-between items-center text-gray-500 font-medium">
           <div className="flex items-center gap-4">
@@ -49,49 +50,63 @@ export const Navbar = () => {
       </div>
 
       {/* Main Header */}
-      <div className="container mx-auto px-4 py-4 md:py-6">
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <div className="flex-1 md:hidden" /> 
-            
-            <Link to={`/${currentShop}`} className="text-2xl md:text-4xl font-serif font-light tracking-[0.2em] text-[#B89C6A] hover:opacity-80 transition-opacity uppercase">
+      <div className="container mx-auto px-4 py-4 md:py-8">
+        <div className="relative flex items-center justify-between md:grid md:grid-cols-3">
+          
+          {/* Lado Esquerdo (Vazio no PC para manter logo centralizado) */}
+          <div className="hidden md:block" />
+
+          {/* Logo Centralizado */}
+          <div className="flex justify-center">
+            <Link to={`/${currentShop}`} className="text-2xl md:text-4xl font-serif font-light tracking-[0.2em] text-[#B89C6A] hover:opacity-80 transition-opacity uppercase whitespace-nowrap">
               {currentShop === 'pet' ? 'Diamond Pet' : 'Diamon'}
             </Link>
-
-            <div className="flex-1 flex items-center justify-end gap-2 md:gap-6">
-              <div className="hidden md:flex items-center gap-4">
-                <Button variant="ghost" size="icon" className="text-gray-700 hover:text-[#B89C6A]">
-                  <User size={20} strokeWidth={1.5} />
-                </Button>
-                <Link to="/carrinho" className="relative">
-                  <Button variant="ghost" size="icon" className="text-gray-700 hover:text-[#B89C6A]">
-                    <ShoppingBag size={20} strokeWidth={1.5} />
-                    {cartCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-[#B89C6A] text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
-                        {cartCount}
-                      </span>
-                    )}
-                  </Button>
-                </Link>
-              </div>
-            </div>
           </div>
 
-          {/* Barra de Busca - Oculta no Checkout e Carrinho */}
-          {!isCheckoutOrCart && (
-            <div className="relative w-full max-w-2xl mx-auto px-0 md:px-4">
-              <Input 
-                placeholder="O que você procura?" 
-                className="rounded-full border-gray-100 bg-gray-50/50 focus-visible:ring-1 focus-visible:ring-[#B89C6A] pr-10 text-xs md:text-sm h-10 md:h-11"
-              />
-              <Search className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-            </div>
-          )}
+          {/* Lado Direito (Busca + Ícones no PC) */}
+          <div className="flex items-center justify-end gap-2 md:gap-4">
+            {/* Barra de Busca Desktop: Entre o logo e a conta */}
+            {!isCheckoutOrCart && (
+              <div className="hidden md:flex relative w-64 items-center mr-2">
+                <Input 
+                  placeholder="Pesquisar..." 
+                  className="rounded-full border-gray-100 bg-gray-50/50 focus-visible:ring-1 focus-visible:ring-[#B89C6A] h-9 text-xs pr-8"
+                />
+                <Search className="absolute right-3 text-gray-400" size={14} />
+              </div>
+            )}
+
+            <Button variant="ghost" size="icon" className="text-gray-700 hover:text-[#B89C6A] h-9 w-9">
+              <User size={20} strokeWidth={1.5} />
+            </Button>
+            
+            <Link to="/carrinho" className="relative">
+              <Button variant="ghost" size="icon" className="text-gray-700 hover:text-[#B89C6A] h-9 w-9">
+                <ShoppingBag size={20} strokeWidth={1.5} />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-[#B89C6A] text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                    {cartCount}
+                  </span>
+                )}
+              </Button>
+            </Link>
+          </div>
         </div>
+
+        {/* Barra de Busca Mobile: Abaixo do logo */}
+        {!isCheckoutOrCart && (
+          <div className="md:hidden mt-4 relative w-full">
+            <Input 
+              placeholder="O que você procura?" 
+              className="rounded-full border-gray-100 bg-gray-50/50 focus-visible:ring-1 focus-visible:ring-[#B89C6A] pr-10 text-xs h-10"
+            />
+            <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+          </div>
+        )}
       </div>
 
-      {/* Menu Categorias - Desktop Only */}
-      {!isCheckoutOrCart && (
+      {/* Menu Categorias - Desktop Only. Oculto na página de categoria para evitar duplicidade */}
+      {!isCheckoutOrCart && !isCategoryPage && (
         <nav className="hidden md:block border-t border-b overflow-x-auto no-scrollbar scroll-smooth">
           <div className="container mx-auto px-4">
             <ul className="flex items-center justify-center gap-12 py-4 text-[11px] font-bold uppercase tracking-widest text-gray-700 whitespace-nowrap">
