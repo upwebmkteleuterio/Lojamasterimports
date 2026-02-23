@@ -5,11 +5,12 @@ import { getProductById } from '@/services/products';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ShoppingCart, Heart, ShieldCheck, Truck, RotateCcw, Minus, Plus } from 'lucide-react';
-import { toast } from 'sonner';
+import { useCart } from '@/context/CartContext';
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { addToCart } = useCart();
   const product = id ? getProductById(id) : null;
   const [quantity, setQuantity] = useState(1);
 
@@ -26,8 +27,7 @@ const ProductDetail = () => {
   }
 
   const handleAddToCart = () => {
-    // A lógica de integração com o estado do carrinho será na Etapa 5
-    toast.success(`${product.name} adicionado ao carrinho!`);
+    addToCart(product, quantity);
   };
 
   return (
@@ -36,16 +36,10 @@ const ProductDetail = () => {
       
       <main className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 xl:gap-20">
-          {/* Galeria de Imagens */}
           <div className="space-y-4">
             <div className="aspect-square rounded-3xl overflow-hidden bg-gray-100 border border-gray-100">
-              <img 
-                src={product.image} 
-                alt={product.name} 
-                className="w-full h-full object-cover"
-              />
+              <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
             </div>
-            {/* Thumbs - Simulação */}
             <div className="grid grid-cols-4 gap-4">
               {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="aspect-square rounded-xl overflow-hidden border-2 border-transparent hover:border-primary cursor-pointer transition-all bg-gray-50">
@@ -55,7 +49,6 @@ const ProductDetail = () => {
             </div>
           </div>
 
-          {/* Informações da Compra */}
           <div className="flex flex-col">
             <div className="mb-6 space-y-4">
               <div className="flex items-center gap-2">
@@ -75,9 +68,6 @@ const ProductDetail = () => {
                 <span className="text-3xl font-bold text-primary">
                   {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price)}
                 </span>
-                <span className="text-gray-400 line-through text-lg">
-                   {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price * 1.2)}
-                </span>
               </div>
             </div>
 
@@ -85,7 +75,6 @@ const ProductDetail = () => {
               {product.description}
             </p>
 
-            {/* Ações */}
             <div className="space-y-6 mt-auto">
               <div className="flex items-center gap-6">
                 <div className="flex items-center border border-gray-200 rounded-full px-4 py-2 gap-6 bg-gray-50">
@@ -97,10 +86,7 @@ const ProductDetail = () => {
                     <Minus size={20} />
                   </button>
                   <span className="font-bold w-4 text-center">{quantity}</span>
-                  <button 
-                    onClick={() => setQuantity(q => q + 1)}
-                    className="text-gray-500 hover:text-primary transition-colors"
-                  >
+                  <button onClick={() => setQuantity(q => q + 1)} className="text-gray-500 hover:text-primary transition-colors">
                     <Plus size={20} />
                   </button>
                 </div>
@@ -120,7 +106,6 @@ const ProductDetail = () => {
                 </Button>
               </div>
 
-              {/* Benefícios */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-8 border-t border-gray-100">
                 <div className="flex items-center gap-3 text-sm text-gray-500">
                   <Truck size={18} className="text-primary" />
@@ -129,10 +114,6 @@ const ProductDetail = () => {
                 <div className="flex items-center gap-3 text-sm text-gray-500">
                   <RotateCcw size={18} className="text-primary" />
                   Devolução grátis em 7 dias
-                </div>
-                <div className="flex items-center gap-3 text-sm text-gray-500">
-                  <ShieldCheck size={18} className="text-primary" />
-                  Garantia Diamond de 1 ano
                 </div>
               </div>
             </div>
