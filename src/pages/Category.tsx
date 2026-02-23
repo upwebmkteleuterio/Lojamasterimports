@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
 import { ProductCard } from '@/components/ui/ProductCard';
 import { getProductsBySubcategory } from '@/services/products';
 import { CategoryMother, Product } from '@/types/store';
-import { SlidersHorizontal, X } from 'lucide-react';
+import { SlidersHorizontal } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { 
   Sheet, 
   SheetContent, 
@@ -15,6 +16,7 @@ import {
 
 const Category = () => {
   const { shopType, subId } = useParams<{ shopType: string, subId: string }>();
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   
   const motherCategory = (shopType || 'feminine') as CategoryMother;
@@ -23,8 +25,25 @@ const Category = () => {
     if (subId) {
       setProducts(getProductsBySubcategory(motherCategory, subId));
     }
-    window.scrollTo(0, 0);
   }, [subId, motherCategory]);
+
+  const subcategories = motherCategory === 'pet' 
+    ? [
+        { id: 'todos', name: 'Todos' },
+        { id: 'conforto', name: 'Conforto' },
+        { id: 'higiene', name: 'Higiene' },
+        { id: 'brinquedos', name: 'Brinquedos' },
+        { id: 'acessorios', name: 'Acessórios' },
+        { id: 'saude', name: 'Saúde' }
+      ]
+    : [
+        { id: 'todos', name: 'Todos' },
+        { id: 'aneis', name: 'Anéis' },
+        { id: 'brincos', name: 'Brincos' },
+        { id: 'colares', name: 'Colares' },
+        { id: 'pulseiras', name: 'Pulseiras' },
+        { id: 'relogios', name: 'Relógios' }
+      ];
 
   const FilterContent = () => (
     <div className="space-y-10">
@@ -54,6 +73,28 @@ const Category = () => {
     <div className="min-h-screen bg-white pb-32 md:pb-20">
       <Navbar />
       
+      {/* Lista Horizontal de Subcategorias - Mobile & Desktop */}
+      <div className="border-b bg-gray-50/30">
+        <div className="container mx-auto px-4 overflow-x-auto no-scrollbar py-3 md:py-4">
+          <div className="flex items-center gap-4 md:gap-8 whitespace-nowrap">
+            {subcategories.map((cat) => (
+              <Link 
+                key={cat.id} 
+                to={`/${shopType}/categoria/${cat.id}`}
+                className={cn(
+                  "text-[10px] md:text-[11px] font-bold uppercase tracking-widest transition-all pb-1 border-b-2",
+                  subId === cat.id 
+                    ? "text-[#B89C6A] border-[#B89C6A]" 
+                    : "text-gray-400 border-transparent hover:text-gray-600"
+                )}
+              >
+                {cat.name}
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <div className="container mx-auto px-4 py-8 md:py-12">
         <div className="flex flex-col lg:flex-row gap-8 md:gap-16">
           
@@ -66,17 +107,17 @@ const Category = () => {
           </aside>
 
           <div className="flex-1">
-            {/* Cabeçalho de Categoria Reformulado */}
             <header className="mb-8 md:mb-12 flex items-end justify-between border-b pb-6 md:pb-8">
               <div className="space-y-1">
-                <h1 className="text-2xl md:text-4xl font-serif font-light text-gray-900 capitalize leading-none">{subId}</h1>
+                <h1 className="text-2xl md:text-4xl font-serif font-light text-gray-900 capitalize leading-none">
+                  {subId === 'todos' ? 'Nossa Coleção' : subId}
+                </h1>
                 <p className="text-[9px] md:text-[10px] uppercase tracking-widest text-gray-400 font-bold">
                   {products.length} itens encontrados
                 </p>
               </div>
 
               <div className="flex items-center gap-3 md:gap-6">
-                {/* Ordenação */}
                 <div className="flex items-center gap-2 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-gray-400">
                   <span className="hidden sm:inline">Ordenar:</span>
                   <select className="border-none bg-transparent text-black focus:ring-0 cursor-pointer p-0 font-bold text-[9px] md:text-[10px] uppercase tracking-widest">
@@ -86,7 +127,6 @@ const Category = () => {
                   </select>
                 </div>
 
-                {/* Filtro Mobile (Sheet) */}
                 <div className="lg:hidden">
                   <Sheet>
                     <SheetTrigger asChild>
@@ -105,7 +145,6 @@ const Category = () => {
               </div>
             </header>
 
-            {/* Grid de Produtos - 2 colunas mobile */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 md:gap-x-8 gap-y-8 md:gap-y-16">
               {products.map(product => (
                 <ProductCard key={product.id} product={product} />
