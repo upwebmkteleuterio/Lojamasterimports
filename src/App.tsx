@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { CartProvider } from "./context/CartContext";
 import Landing from "./pages/Landing";
 import Index from "./pages/Index";
@@ -24,12 +24,17 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Landing />} />
-            <Route path="/home" element={<Index />} />
-            <Route path="/categoria/:subId" element={<Category />} />
-            <Route path="/produto/:id" element={<ProductDetail />} />
+            
+            {/* Rotas Dinâmicas por Nicho */}
+            <Route path="/:shopType" element={<Index />} />
+            <Route path="/:shopType/categoria/:subId" element={<Category />} />
+            <Route path="/:shopType/produto/:id" element={<ProductDetail />} />
+            
+            {/* Rotas Globais */}
             <Route path="/carrinho" element={<Cart />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/meus-pedidos" element={<Orders />} />
+            
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

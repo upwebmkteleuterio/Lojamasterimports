@@ -1,7 +1,7 @@
 import React from 'react';
 import { Product } from '@/types/store';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useCart } from '@/context/CartContext';
 
 interface ProductCardProps {
@@ -10,13 +10,16 @@ interface ProductCardProps {
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const navigate = useNavigate();
+  const { shopType } = useParams<{ shopType: string }>();
   const { addToCart } = useCart();
+  
+  const currentShop = shopType || product.categoryMother;
 
   return (
     <div className="group flex flex-col items-center text-center">
       <div 
         className="relative w-full aspect-[4/5] bg-[#fafafa] overflow-hidden cursor-pointer mb-6"
-        onClick={() => navigate(`/produto/${product.id}`)}
+        onClick={() => navigate(`/${currentShop}/produto/${product.id}`)}
       >
         <img 
           src={product.image} 
@@ -24,9 +27,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-110"
         />
         <div className="absolute top-2 right-2">
-           <span className="bg-[#B89C6A] text-white text-[9px] px-2 py-0.5 font-bold">-1%</span>
+           <span className="bg-[#B89C6A] text-white text-[9px] px-2 py-0.5 font-bold">NOVO</span>
         </div>
-        {/* Overlay do botão no Hover */}
+        
         <div className="absolute inset-x-4 bottom-4 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
           <Button 
             onClick={(e) => {
@@ -44,14 +47,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         {product.name}
       </h3>
       <div className="space-y-1">
-        <p className="text-[10px] text-gray-400 line-through">
-          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price * 1.05)}
-        </p>
         <p className="text-sm font-bold text-gray-900">
           {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price)}
         </p>
         <p className="text-[9px] text-gray-400 font-medium">
-          10x de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price / 10)} sem juros
+          ou 10x de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price / 10)}
         </p>
       </div>
     </div>

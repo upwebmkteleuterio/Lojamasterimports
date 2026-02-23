@@ -8,7 +8,7 @@ const Landing = () => {
 
   const handleSelectCategory = (category: CategoryMother) => {
     setStorageItem('mother_category', category);
-    navigate('/home');
+    navigate(`/${category}`);
   };
 
   return (

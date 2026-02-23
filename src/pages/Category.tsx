@@ -3,52 +3,55 @@ import { useParams, Link } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
 import { ProductCard } from '@/components/ui/ProductCard';
 import { getProductsBySubcategory } from '@/services/products';
-import { getStorageItem } from '@/services/persistence';
 import { CategoryMother, Product } from '@/types/store';
-import { ChevronRight, Filter } from 'lucide-react';
+import { ChevronRight, Filter, SlidersHorizontal } from 'lucide-react';
 
 const Category = () => {
-  const { subId } = useParams<{ subId: string }>();
+  const { shopType, subId } = useParams<{ shopType: string, subId: string }>();
   const [products, setProducts] = useState<Product[]>([]);
-  const motherCategory = getStorageItem<CategoryMother>('mother_category') || 'pet';
+  
+  const motherCategory = (shopType || 'feminine') as CategoryMother;
 
   useEffect(() => {
     if (subId) {
       setProducts(getProductsBySubcategory(motherCategory, subId));
     }
+    // Scroll para o topo ao trocar de categoria
+    window.scrollTo(0, 0);
   }, [subId, motherCategory]);
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-white pb-20">
       <Navbar />
       
-      <div className="container mx-auto px-4 py-8">
-        {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 text-sm text-gray-500 mb-8">
-          <Link to="/home" className="hover:text-primary transition-colors">Home</Link>
-          <ChevronRight size={14} />
-          <span className="capitalize">{motherCategory}</span>
-          <ChevronRight size={14} />
-          <span className="text-primary font-medium capitalize">{subId}</span>
+      <div className="container mx-auto px-4 py-12">
+        {/* Breadcrumb de Luxo */}
+        <nav className="flex items-center gap-3 text-[10px] uppercase tracking-widest text-gray-400 mb-12">
+          <Link to={`/${shopType}`} className="hover:text-[#B89C6A] transition-colors font-bold">Home</Link>
+          <ChevronRight size={10} />
+          <span className="font-bold">{shopType}</span>
+          <ChevronRight size={10} />
+          <span className="text-[#B89C6A] font-bold">{subId}</span>
         </nav>
 
-        <div className="flex flex-col md:flex-row gap-8">
-          {/* Sidebar de Filtros (Placeholder) */}
-          <aside className="w-full md:w-64 space-y-8">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-              <div className="flex items-center gap-2 font-bold text-gray-900 mb-6">
-                <Filter size={18} /> Filtros
+        <div className="flex flex-col lg:flex-row gap-16">
+          {/* Sidebar Minimalista */}
+          <aside className="w-full lg:w-64 space-y-12">
+            <div className="border-b pb-8">
+              <div className="flex items-center justify-between font-bold text-[11px] uppercase tracking-widest text-gray-900 mb-8">
+                Filtros <SlidersHorizontal size={14} />
               </div>
-              <div className="space-y-4">
+              
+              <div className="space-y-10">
                 <div>
-                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Preço</h4>
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                      <input type="checkbox" className="rounded text-primary border-gray-300" /> Até R$ 50,00
-                    </label>
-                    <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                      <input type="checkbox" className="rounded text-primary border-gray-300" /> R$ 50 a R$ 150
-                    </label>
+                  <h4 className="text-[10px] font-bold text-gray-900 uppercase tracking-widest mb-4">Preço</h4>
+                  <div className="space-y-3">
+                    {['Até R$ 100', 'R$ 100 - R$ 500', 'R$ 500+'].map((range) => (
+                      <label key={range} className="flex items-center gap-3 text-[11px] text-gray-500 cursor-pointer hover:text-black transition-colors group">
+                        <input type="checkbox" className="w-3 h-3 rounded-none border-gray-300 text-[#B89C6A] focus:ring-0" />
+                        <span className="group-hover:translate-x-1 transition-transform">{range}</span>
+                      </label>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -57,18 +60,32 @@ const Category = () => {
 
           {/* Grid de Produtos */}
           <div className="flex-1">
-            <header className="mb-8 flex justify-between items-center">
-              <h1 className="text-3xl font-serif font-bold text-gray-900 capitalize">{subId}</h1>
-              <p className="text-sm text-gray-500">{products.length} produtos encontrados</p>
+            <header className="mb-12 flex flex-col md:flex-row justify-between items-baseline gap-4 border-b pb-8">
+              <div>
+                <h1 className="text-4xl font-serif font-light text-gray-900 capitalize mb-2">{subId}</h1>
+                <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Mostrando {products.length} itens encontrados</p>
+              </div>
+              <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                Ordenar por: 
+                <select className="border-none bg-transparent text-black focus:ring-0 cursor-pointer">
+                  <option>Destaques</option>
+                  <option>Menor Preço</option>
+                  <option>Maior Preço</option>
+                </select>
+              </div>
             </header>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16">
               {products.map(product => (
                 <ProductCard key={product.id} product={product} />
               ))}
+              
               {products.length === 0 && (
-                <div className="col-span-full py-32 text-center bg-white rounded-3xl border border-dashed border-gray-200">
-                  <p className="text-gray-400">Nenhum produto encontrado nesta subcategoria.</p>
+                <div className="col-span-full py-32 text-center">
+                  <p className="font-serif text-2xl text-gray-300 italic">Desculpe, não encontramos produtos nesta seleção.</p>
+                  <Link to={`/${shopType}`} className="inline-block mt-8 text-[10px] font-bold uppercase tracking-widest border-b border-black pb-1">
+                    Voltar para a Home
+                  </Link>
                 </div>
               )}
             </div>
