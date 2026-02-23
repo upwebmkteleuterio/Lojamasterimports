@@ -32,7 +32,7 @@ const Index = () => {
         <img 
           src={isPet 
             ? "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?q=80&w=2071&auto=format&fit=crop" 
-            : "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?q=80&w=2070&auto=format&fit=crop" // Imagem de alta qualidade de cosméticos
+            : "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?q=80&w=2070&auto=format&fit=crop"
           }
           className="absolute inset-0 w-full h-full object-cover"
           alt="Hero"
@@ -62,7 +62,7 @@ const Index = () => {
                 { id: 'conforto', name: 'Conforto', img: 'https://images.unsplash.com/photo-1541599540903-216a46ca1dfa?q=80&w=1000' },
                 { id: 'higiene', name: 'Higiene', img: 'https://images.unsplash.com/photo-1583947581924-860bda6a26df?q=80&w=1000' },
                 { id: 'brinquedos', name: 'Brinquedos', img: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?q=80&w=1000' },
-                { id: 'acessorios', name: 'Acessórios', img: 'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?q=80&w=1000' },
+                { id: 'acessorios', name: 'Acessórios', img: 'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?q=80&w=2071&auto=format&fit=crop' },
                 { id: 'saude', name: 'Saúde', img: 'https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?q=80&w=1000' }
               ]
             : [
@@ -83,7 +83,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Carrossel de Produtos - Ajustado para 2 colunas no mobile */}
+      {/* Carrossel de Produtos */}
       <section className="py-12 md:py-24 bg-[#fafafa]">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center mb-8 md:mb-12">
@@ -96,7 +96,6 @@ const Index = () => {
                <Button variant="outline" size="icon" className="rounded-none border-gray-200"><ChevronRight size={16} /></Button>
             </div>
           </div>
-          {/* Grade: 2 colunas no mobile, 4 no desktop */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
             {products.slice(0, 4).map(product => (
               <ProductCard key={product.id} product={product} />
@@ -105,32 +104,32 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Selos de Confiança - 2x2 no mobile */}
+      {/* Selos de Confiança */}
       <section className="border-t border-b py-8 md:py-10 bg-[#fdfdfd]">
         <div className="container mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4">
           <div className="flex flex-col items-center text-center gap-2 md:gap-3">
-            <Truck size={20} md:size={24} strokeWidth={1} className="text-[#B89C6A]" />
+            <Truck size={24} strokeWidth={1} className="text-[#B89C6A]" />
             <div>
               <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest">Entrega Rápida</p>
               <p className="text-[8px] md:text-[9px] text-gray-400">para todo Brasil</p>
             </div>
           </div>
           <div className="flex flex-col items-center text-center gap-2 md:gap-3">
-            <Gift size={20} md:size={24} strokeWidth={1} className="text-[#B89C6A]" />
+            <Gift size={24} strokeWidth={1} className="text-[#B89C6A]" />
             <div>
               <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest">Embrulho Presente</p>
               <p className="text-[8px] md:text-[9px] text-gray-400">solicite nas observações</p>
             </div>
           </div>
           <div className="flex flex-col items-center text-center gap-2 md:gap-3">
-            <ShieldCheck size={20} md:size={24} strokeWidth={1} className="text-[#B89C6A]" />
+            <ShieldCheck size={24} strokeWidth={1} className="text-[#B89C6A]" />
             <div>
               <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest">Garantia Diamond</p>
               <p className="text-[8px] md:text-[9px] text-gray-400">enviado junto ao pacote</p>
             </div>
           </div>
           <div className="flex flex-col items-center text-center gap-2 md:gap-3">
-            <RotateCcw size={20} md:size={24} strokeWidth={1} className="text-[#B89C6A]" />
+            <RotateCcw size={24} strokeWidth={1} className="text-[#B89C6A]" />
             <div>
               <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest">Troca Fácil</p>
               <p className="text-[8px] md:text-[9px] text-gray-400">entre em contato conosco</p>
