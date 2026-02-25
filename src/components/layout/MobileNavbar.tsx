@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { Home, Dog, Sparkles, ShoppingBag, User } from 'lucide-react';
+import { Home, Dog, Sparkles, ShoppingCart, User } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { cn } from '@/lib/utils';
 
@@ -17,7 +17,7 @@ export const MobileNavbar = () => {
     { label: 'Home', icon: Home, path: `/${currentShop}` },
     { label: 'Pet', icon: Dog, path: '/pet' },
     { label: 'Mulher', icon: Sparkles, path: '/feminine' },
-    { label: 'Carrinho', icon: ShoppingBag, path: '/carrinho', badge: cartCount },
+    { label: 'Carrinho', icon: ShoppingCart, path: '/carrinho', badge: cartCount },
     { label: 'Você', icon: User, path: '/meus-pedidos' },
   ];
 

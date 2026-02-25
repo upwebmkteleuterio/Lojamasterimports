@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Link, useParams, useLocation } from 'react-router-dom';
-import { ShoppingBag, User, Search, Menu, Phone, MapPin } from 'lucide-react';
+import { ShoppingCart, User, Search, Menu, Phone, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
 import { Input } from '@/components/ui/input';
@@ -70,12 +70,12 @@ export const Navbar = () => {
             {/* Desktop UI Only */}
             <div className="hidden md:flex items-center gap-4">
               {!shouldHideElements && (
-                <div className="relative w-64 items-center mr-2">
+                <div className="relative w-64 flex items-center mr-2">
                   <Input 
                     placeholder="Pesquisar..." 
-                    className="rounded-full border-gray-100 bg-gray-50/50 focus-visible:ring-1 focus-visible:ring-[#B89C6A] h-9 text-xs pr-8"
+                    className="rounded-full border-gray-100 bg-gray-50/50 focus-visible:ring-1 focus-visible:ring-[#B89C6A] h-9 text-xs pr-10"
                   />
-                  <Search className="absolute right-3 text-gray-400" size={14} />
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                 </div>
               )}
 
@@ -85,7 +85,7 @@ export const Navbar = () => {
               
               <Link to="/carrinho" className="relative">
                 <Button variant="ghost" size="icon" className="text-gray-700 hover:text-[#B89C6A] h-9 w-9">
-                  <ShoppingBag size={20} strokeWidth={1.5} />
+                  <ShoppingCart size={20} strokeWidth={1.5} />
                   {cartCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-[#B89C6A] text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
                       {cartCount}
