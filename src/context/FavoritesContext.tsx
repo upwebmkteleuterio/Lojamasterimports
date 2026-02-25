@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product } from '@/types/store';
 import { getFavorites, saveFavorites } from '@/services/persistence';
-import { toast } from '@/utils/toast';
+import { showSuccess } from '@/utils/toast';
+import { toast } from 'sonner';
 
 interface FavoritesContextType {
   favorites: Product[];
@@ -32,7 +33,7 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         toast.info("Removido dos favoritos");
       } else {
         newFavorites = [...prev, product];
-        toast.success("Adicionado aos favoritos");
+        showSuccess("Adicionado aos favoritos");
       }
       
       saveFavorites(newFavorites);

@@ -39,7 +39,6 @@ const App = () => (
               {/* Rotas Globais */}
               <Route path="/carrinho" element={<Cart />} />
               <Route path="/checkout" element={<Checkout />} />
-              <Route path="/meus-pedidos" element={<Orders />} />
               <Route path="/minha-conta" element={<Account />} />
               
               <Route path="*" element={<NotFound />} />

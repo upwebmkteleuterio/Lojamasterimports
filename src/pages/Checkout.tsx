@@ -15,6 +15,7 @@ const initialCustomerData: CustomerData = {
   fullName: '',
   email: '',
   phone: '',
+  cpf: '',
   zipCode: '',
   address: '',
   number: '',
@@ -90,11 +91,21 @@ const Checkout = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phone">Telefone / WhatsApp</Label>
-                    <Input 
-                      id="phone" 
-                      value={data.phone} 
+                    <Input
+                      id="phone"
+                      value={data.phone}
                       onChange={(e) => updateField('phone', e.target.value)}
                       placeholder="(00) 00000-0000"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cpf">CPF</Label>
+                    <Input
+                      id="cpf"
+                      value={data.cpf}
+                      onChange={(e) => updateField('cpf', e.target.value)}
+                      placeholder="000.000.000-00"
                       required
                     />
                   </div>
