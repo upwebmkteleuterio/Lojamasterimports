@@ -22,8 +22,8 @@ export const Navbar = () => {
     return null;
   }
 
-  // Páginas onde a busca e o menu de categorias devem ser ocultados
-  const pagesWithoutSearch = ['/carrinho', '/checkout', '/minha-conta'];
+  // Páginas onde a busca e o menu de categorias devem ser ocultados (apenas fluxo de finalização)
+  const pagesWithoutSearch = ['/carrinho', '/checkout'];
   const shouldHideElements = pagesWithoutSearch.includes(location.pathname);
 
   const menuItems = currentShop === 'pet' 
