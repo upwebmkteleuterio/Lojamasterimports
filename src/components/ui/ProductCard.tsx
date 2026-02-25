@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Product } from '@/types/store';
 import { Button } from '@/components/ui/button';
 import { getSafeProductImage } from '@/utils/imageHandler';
@@ -12,11 +12,6 @@ interface ProductCardProps {
 
 export const ProductCard = ({ product }: ProductCardProps) => {
   const navigate = useNavigate();
-  
-  // Simulação de preço original para o efeito visual da imagem
-  const originalPrice = product.price * 1.1;
-  const installments = 10;
-  const installmentValue = product.price / installments;
 
   const handleProductClick = () => {
     navigate(`/${product.categoryMother}/produto/${product.id}`);
@@ -34,10 +29,6 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           alt={product.name}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
-        {/* Badge de Desconto (Simulado) */}
-        <div className="absolute top-0 right-0 bg-[#E5B343] text-white text-[10px] font-bold px-3 py-1">
-          -10%
-        </div>
       </div>
 
       {/* Informações do Produto */}
@@ -50,14 +41,8 @@ export const ProductCard = ({ product }: ProductCardProps) => {
         </h3>
 
         <div className="flex flex-col items-center gap-0.5 mt-2">
-          <span className="text-[10px] md:text-xs text-gray-400 line-through">
-            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(originalPrice)}
-          </span>
           <span className="font-bold text-sm md:text-lg text-[#1A365D]">
             {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price)}
-          </span>
-          <span className="text-[10px] md:text-xs text-gray-500 italic">
-            {installments}x de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(installmentValue)} sem juros
           </span>
         </div>
 
