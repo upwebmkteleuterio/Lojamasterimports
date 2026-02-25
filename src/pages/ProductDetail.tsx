@@ -10,6 +10,7 @@ import { ProductGallery } from '@/components/product/ProductGallery';
 import { ProductSidebar } from '@/components/product/ProductSidebar';
 import { ProductDescription } from '@/components/product/ProductDescription';
 import { ProductTabs } from '@/components/product/ProductTabs';
+import { RelatedProducts } from '@/components/product/RelatedProducts';
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -46,6 +47,9 @@ const ProductDetail = () => {
           <ProductSidebar product={product} onAddToCart={handleAddToCart} />
         </div>
       </main>
+
+      {/* Sugestões de Produtos (Veja também) */}
+      <RelatedProducts currentProductId={product.id} categoryMother={product.categoryMother} />
 
       {/* Descrição Detalhada */}
       <ProductDescription name={product.name} description={product.description} />

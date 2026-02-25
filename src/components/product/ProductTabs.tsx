@@ -33,7 +33,7 @@ export const ProductTabs = () => {
                 : "bg-gray-50/50 border-gray-50 text-gray-400 hover:text-gray-600"
             )}
           >
-            <span className="text-xl md:text-3xl font-serif">Dúvidas (0)</span>
+            <span className="text-xl md:text-3xl font-serif">Dúvidas</span>
           </button>
         </div>
 
