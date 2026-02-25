@@ -18,7 +18,7 @@ export const MobileNavbar = () => {
     { label: 'Pet', icon: Dog, path: '/pet' },
     { label: 'Mulher', icon: Sparkles, path: '/feminine' },
     { label: 'Carrinho', icon: ShoppingCart, path: '/carrinho', badge: cartCount },
-    { label: 'Você', icon: User, path: '/meus-pedidos' },
+    { label: 'Você', icon: User, path: '/minha-conta' },
   ];
 
   return (

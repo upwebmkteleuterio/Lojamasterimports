@@ -48,3 +48,21 @@ export const saveOrder = (order: any): void => {
 export const getOrders = (): any[] => {
   return getStorageItem<any[]>('orders_history') || [];
 };
+
+// Gerenciamento de Favoritos
+export const saveFavorites = (favorites: any[]): void => {
+  setStorageItem('favorites', favorites);
+};
+
+export const getFavorites = (): any[] => {
+  return getStorageItem<any[]>('favorites') || [];
+};
+
+// Gerenciamento de Perfil
+export const saveProfile = (profile: any): void => {
+  setStorageItem('user_profile', profile);
+};
+
+export const getProfile = (): any | null => {
+  return getStorageItem<any>('user_profile');
+};

@@ -23,7 +23,7 @@ export const Navbar = () => {
   }
 
   // Páginas onde a busca e o menu de categorias devem ser ocultados
-  const pagesWithoutSearch = ['/carrinho', '/checkout', '/meus-pedidos'];
+  const pagesWithoutSearch = ['/carrinho', '/checkout', '/minha-conta'];
   const shouldHideElements = pagesWithoutSearch.includes(location.pathname);
 
   const menuItems = currentShop === 'pet' 
@@ -52,7 +52,7 @@ export const Navbar = () => {
           </div>
           <p>Diamond {currentShop === 'pet' ? 'Pet' : 'Luxury'} Store - Qualidade e Confiança.</p>
           <div className="flex items-center gap-4">
-             <Link to="/meus-pedidos" className="flex items-center gap-1 hover:text-[#B89C6A] transition-colors">
+             <Link to="/minha-conta" className="flex items-center gap-1 hover:text-[#B89C6A] transition-colors">
                <MapPin size={12} /> Rastreie seu pedido
              </Link>
           </div>
@@ -79,17 +79,19 @@ export const Navbar = () => {
             <div className="hidden md:flex items-center gap-4">
               {!shouldHideElements && (
                 <div className="relative w-64 flex items-center mr-2">
-                  <Input 
-                    placeholder="Pesquisar..." 
+                  <Input
+                    placeholder="Pesquisar..."
                     className="rounded-full border-gray-100 bg-gray-50/50 focus-visible:ring-1 focus-visible:ring-[#B89C6A] h-9 text-xs pr-10"
                   />
                   <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                 </div>
               )}
 
-              <Button variant="ghost" size="icon" className="text-gray-700 hover:text-[#B89C6A] h-9 w-9">
-                <User size={20} strokeWidth={1.5} />
-              </Button>
+              <Link to="/minha-conta">
+                <Button variant="ghost" size="icon" className="text-gray-700 hover:text-[#B89C6A] h-9 w-9">
+                  <User size={20} strokeWidth={1.5} />
+                </Button>
+              </Link>
               
               <Link to="/carrinho" className="relative">
                 <Button variant="ghost" size="icon" className="text-gray-700 hover:text-[#B89C6A] h-9 w-9">

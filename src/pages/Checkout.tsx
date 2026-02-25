@@ -46,7 +46,7 @@ const Checkout = () => {
     limparDadosFormulario('checkout_form');
     
     toast.success('Pedido realizado com sucesso!');
-    navigate('/meus-pedidos');
+    navigate('/minha-conta');
   };
 
   return (
