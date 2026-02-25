@@ -38,27 +38,27 @@ export const ProductSidebar = ({ product, onAddToCart }: ProductSidebarProps) =>
         </span>
       </div>
 
-      {/* Ações: Qtd + Comprar */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-10">
-        <div className="flex items-center border border-gray-200 h-14 bg-white">
+      {/* Ações: Qtd + Comprar (Sempre lado a lado) */}
+      <div className="flex items-center gap-3 md:gap-4 mb-10">
+        <div className="flex items-center border border-gray-200 h-14 bg-white min-w-[120px] md:min-w-[140px]">
           <button 
             onClick={() => setQuantity(q => Math.max(1, q - 1))}
-            className="px-4 h-full text-gray-400 hover:text-black transition-colors"
+            className="flex-1 flex items-center justify-center h-full text-gray-400 hover:text-black transition-colors"
           >
-            <Minus size={18} />
+            <Minus size={16} />
           </button>
-          <span className="w-10 text-center font-serif text-lg">{quantity}</span>
+          <span className="w-8 text-center font-serif text-lg">{quantity}</span>
           <button 
             onClick={() => setQuantity(q => q + 1)}
-            className="px-4 h-full text-gray-400 hover:text-black transition-colors"
+            className="flex-1 flex items-center justify-center h-full text-gray-400 hover:text-black transition-colors"
           >
-            <Plus size={18} />
+            <Plus size={16} />
           </button>
         </div>
         
         <Button 
           onClick={() => onAddToCart(quantity)}
-          className="flex-1 h-14 rounded-none bg-[#D4AF37] hover:bg-[#b8962d] text-white font-bold text-lg tracking-widest"
+          className="flex-1 h-14 rounded-none bg-[#D4AF37] hover:bg-[#b8962d] text-white font-bold text-sm md:text-lg tracking-widest"
         >
           COMPRAR
         </Button>
