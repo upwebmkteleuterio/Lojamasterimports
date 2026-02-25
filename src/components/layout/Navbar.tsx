@@ -6,14 +6,22 @@ import { ShoppingCart, User, Search, Menu, Phone, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
 import { Input } from '@/components/ui/input';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export const Navbar = () => {
   const { cartCount } = useCart();
   const { shopType } = useParams<{ shopType: string }>();
   const location = useLocation();
+  const isMobile = useIsMobile();
   
   const currentShop = shopType || 'feminine';
   
+  // Lógica específica: Ocultar Navbar completa no Mobile para a página de Produto
+  const isProductPage = location.pathname.includes('/produto/');
+  if (isMobile && isProductPage) {
+    return null;
+  }
+
   // Páginas onde a busca e o menu de categorias devem ser ocultados
   const pagesWithoutSearch = ['/carrinho', '/checkout', '/meus-pedidos'];
   const shouldHideElements = pagesWithoutSearch.includes(location.pathname);
