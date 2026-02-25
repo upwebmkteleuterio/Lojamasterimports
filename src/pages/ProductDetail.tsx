@@ -9,6 +9,7 @@ import { useCart } from '@/context/CartContext';
 import { ProductGallery } from '@/components/product/ProductGallery';
 import { ProductSidebar } from '@/components/product/ProductSidebar';
 import { ProductDescription } from '@/components/product/ProductDescription';
+import { ProductTabs } from '@/components/product/ProductTabs';
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -48,6 +49,9 @@ const ProductDetail = () => {
 
       {/* Descrição Detalhada */}
       <ProductDescription name={product.name} description={product.description} />
+
+      {/* Abas de Avaliação e Dúvidas */}
+      <ProductTabs />
     </div>
   );
 };
