@@ -20,19 +20,25 @@ export const RelatedProducts = ({ currentProductId, categoryMother }: RelatedPro
   if (related.length === 0) return null;
 
   return (
-    <section className="py-12 md:py-20 bg-white">
+    <section className="py-12 md:py-20 bg-white border-t border-gray-50">
       <div className="container mx-auto px-4">
         <h2 className="text-xl md:text-2xl font-serif text-gray-800 mb-8 md:mb-12 text-center md:text-left">
           Veja também
         </h2>
         
-        {/* Container Responsivo: 
-            Mobile: Flex com 2 colunas visuais (aprox 46% cada) e rolagem.
-            PC: Grid padrão de 4 colunas. 
+        {/* 
+            Mobile: 
+            - flex com overflow-x-auto para rolagem lateral.
+            - w-[calc(50%-0.75rem)] garante que caibam exatamente 2 itens (considerando o gap).
+            PC:
+            - grid padrão de 4 colunas.
         */}
-        <div className="flex overflow-x-auto no-scrollbar gap-3 pb-6 -mx-4 px-4 md:mx-0 md:px-0 md:grid md:grid-cols-4 md:gap-8 md:pb-0">
+        <div className="flex overflow-x-auto no-scrollbar gap-4 pb-6 -mx-4 px-4 md:mx-0 md:px-0 md:grid md:grid-cols-4 md:gap-8 md:pb-0">
           {related.map(product => (
-            <div key={product.id} className="min-w-[46%] md:min-w-0 flex-shrink-0 md:w-auto">
+            <div 
+              key={product.id} 
+              className="w-[calc(50%-0.5rem)] min-w-[calc(50%-0.5rem)] md:w-full md:min-w-0 flex-shrink-0"
+            >
               <ProductCard product={product} />
             </div>
           ))}
