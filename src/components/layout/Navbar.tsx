@@ -1,7 +1,7 @@
 "use client";
 
-import React from 'react';
-import { Link, useParams, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useParams, useLocation, useNavigate } from 'react-router-dom';
 import { ShoppingCart, User, Search, Menu, Phone, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
@@ -12,10 +12,19 @@ export const Navbar = () => {
   const { cartCount } = useCart();
   const { shopType } = useParams<{ shopType: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const [searchValue, setSearchValue] = useState("");
   
   const currentShop = shopType || 'feminine';
   
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchValue.trim()) {
+      navigate(`/${currentShop}/busca?q=${encodeURIComponent(searchValue.trim())}`);
+    }
+  };
+
   // Lógica específica: Ocultar Navbar completa no Mobile para a página de Produto
   const isProductPage = location.pathname.includes('/produto/');
   if (isMobile && isProductPage) {
@@ -78,13 +87,17 @@ export const Navbar = () => {
             {/* Desktop UI Only */}
             <div className="hidden md:flex items-center gap-4">
               {!shouldHideElements && (
-                <div className="relative w-64 flex items-center mr-2">
+                <form onSubmit={handleSearch} className="relative w-64 flex items-center mr-2">
                   <Input
                     placeholder="Pesquisar..."
+                    value={searchValue}
+                    onChange={(e) => setSearchValue(e.target.value)}
                     className="rounded-full border-gray-100 bg-gray-50/50 focus-visible:ring-1 focus-visible:ring-[#B89C6A] h-9 text-xs pr-10"
                   />
-                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-                </div>
+                  <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    <Search size={14} />
+                  </button>
+                </form>
               )}
 
               <Link to="/minha-conta">
@@ -109,13 +122,17 @@ export const Navbar = () => {
 
         {/* Barra de Busca Mobile: Apenas nas páginas permitidas */}
         {!shouldHideElements && (
-          <div className="md:hidden mt-4 relative w-full">
+          <form onSubmit={handleSearch} className="md:hidden mt-4 relative w-full">
             <Input 
               placeholder="O que você procura?" 
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
               className="rounded-full border-gray-100 bg-gray-50/50 focus-visible:ring-1 focus-visible:ring-[#B89C6A] pr-10 text-xs h-10"
             />
-            <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-          </div>
+            <button type="submit" className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+              <Search size={16} />
+            </button>
+          </form>
         )}
       </div>
 

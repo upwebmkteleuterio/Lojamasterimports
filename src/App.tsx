@@ -13,9 +13,9 @@ import Category from "./pages/Category";
 import ProductDetail from "./pages/ProductDetail";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
-import Orders from "./pages/Orders";
 import Account from "./pages/Account";
 import NotFound from "./pages/NotFound";
+import SearchResults from "./pages/SearchResults";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +35,7 @@ const App = () => (
               <Route path="/:shopType" element={<Index />} />
               <Route path="/:shopType/categoria/:subId" element={<Category />} />
               <Route path="/:shopType/produto/:id" element={<ProductDetail />} />
+              <Route path="/:shopType/busca" element={<SearchResults />} />
               
               {/* Rotas Globais */}
               <Route path="/carrinho" element={<Cart />} />

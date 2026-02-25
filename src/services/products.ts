@@ -113,3 +113,13 @@ export const getProductsBySubcategory = (mother: CategoryMother, sub: string): P
 export const getProductById = (id: string): Product | undefined => {
   return MOCK_PRODUCTS.find(p => p.id === id);
 };
+
+export const searchProducts = (mother: CategoryMother, query: string): Product[] => {
+  const normalizedQuery = query.toLowerCase().trim();
+  if (!normalizedQuery) return getProductsByMother(mother);
+  
+  return MOCK_PRODUCTS.filter(p => 
+    p.categoryMother === mother && 
+    (p.name.toLowerCase().includes(normalizedQuery) || p.description.toLowerCase().includes(normalizedQuery))
+  );
+};
