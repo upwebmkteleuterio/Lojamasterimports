@@ -26,10 +26,13 @@ export const RelatedProducts = ({ currentProductId, categoryMother }: RelatedPro
           Veja também
         </h2>
         
-        {/* Container Responsivo: Flex com scroll no mobile, Grid no PC */}
-        <div className="flex overflow-x-auto no-scrollbar gap-4 pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:grid md:grid-cols-4 md:gap-8 md:pb-0">
+        {/* Container Responsivo: 
+            Mobile: Flex com 2 colunas visuais (aprox 46% cada) e rolagem.
+            PC: Grid padrão de 4 colunas. 
+        */}
+        <div className="flex overflow-x-auto no-scrollbar gap-3 pb-6 -mx-4 px-4 md:mx-0 md:px-0 md:grid md:grid-cols-4 md:gap-8 md:pb-0">
           {related.map(product => (
-            <div key={product.id} className="min-w-[200px] md:min-w-0 flex-shrink-0">
+            <div key={product.id} className="min-w-[46%] md:min-w-0 flex-shrink-0 md:w-auto">
               <ProductCard product={product} />
             </div>
           ))}

@@ -13,8 +13,8 @@ export const ProductGallery = ({ image, name }: ProductGalleryProps) => {
   
   return (
     <div className="space-y-4">
-      {/* Imagem Principal com altura limitada no PC para evitar rolagem excessiva */}
-      <div className="bg-white border border-gray-100 overflow-hidden flex items-center justify-center h-[350px] md:h-[500px]">
+      {/* Imagem Principal: Ajustada para aspect-square ou altura menor no mobile */}
+      <div className="bg-white border border-gray-100 overflow-hidden flex items-center justify-center h-[300px] md:h-[500px]">
         <img 
           src={safeImage} 
           alt={name} 
