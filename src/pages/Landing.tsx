@@ -41,7 +41,7 @@ const Landing = () => {
         className="group relative flex-1 cursor-pointer overflow-hidden transition-all duration-700 ease-in-out hover:flex-[1.5] border-t-2 md:border-t-0 md:border-l-2 border-white"
       >
         <img 
-          src="https://images.unsplash.com/photo-1596462502278-27bfdc4033c8?q=80&w=1780&auto=format&fit=crop" 
+          src="https://audioderma.com.br/wp-content/uploads/2019/10/cuidado-com-a-pele.png" 
           alt="Cuidados Femininos"
           className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
         />
