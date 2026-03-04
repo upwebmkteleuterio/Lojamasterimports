@@ -4,6 +4,7 @@ import React from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, ShoppingBag, Users, DollarSign } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const Dashboard = () => {
   const stats = [
