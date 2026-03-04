@@ -19,6 +19,8 @@ import SearchResults from "./pages/SearchResults";
 
 // Admin Pages
 import Dashboard from "./pages/admin/Dashboard";
+import Variations from "./pages/admin/Variations";
+import VariationForm from "./pages/admin/VariationForm";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +47,9 @@ const AppContent = () => {
         
         {/* Rotas Administrativas */}
         <Route path="/adm" element={<Dashboard />} />
+        <Route path="/adm/variacoes" element={<Variations />} />
+        <Route path="/adm/variacoes/novo" element={<VariationForm />} />
+        <Route path="/adm/variacoes/editar/:id" element={<VariationForm />} />
         
         <Route path="*" element={<NotFound />} />
       </Routes>
