@@ -21,6 +21,8 @@ import SearchResults from "./pages/SearchResults";
 import Dashboard from "./pages/admin/Dashboard";
 import Variations from "./pages/admin/Variations";
 import VariationForm from "./pages/admin/VariationForm";
+import Categories from "./pages/admin/Categories";
+import CategoryForm from "./pages/admin/CategoryForm";
 
 const queryClient = new QueryClient();
 
@@ -47,9 +49,16 @@ const AppContent = () => {
         
         {/* Rotas Administrativas */}
         <Route path="/adm" element={<Dashboard />} />
+        
+        {/* Variações */}
         <Route path="/adm/variacoes" element={<Variations />} />
         <Route path="/adm/variacoes/novo" element={<VariationForm />} />
         <Route path="/adm/variacoes/editar/:id" element={<VariationForm />} />
+
+        {/* Categorias */}
+        <Route path="/adm/categorias" element={<Categories />} />
+        <Route path="/adm/categorias/novo" element={<CategoryForm />} />
+        <Route path="/adm/categorias/editar/:id" element={<CategoryForm />} />
         
         <Route path="*" element={<NotFound />} />
       </Routes>
