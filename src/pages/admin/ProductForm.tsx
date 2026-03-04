@@ -8,334 +8,189 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Plus, 
-  Trash2, 
-  Image as ImageIcon, 
-  Save, 
-  DollarSign, 
-  Truck, 
-  Layers, 
-  Info, 
-  Barcode 
-} from 'lucide-react';
+import { Plus, Trash2, Image as ImageIcon, Save, DollarSign, Truck, Layers, Info, Barcode } from 'lucide-react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { getStorageItem, setStorageItem } from '@/services/persistence';
-import { Product, CategoryMotherData, ProductVariation } from '@/types/store';
+import { supabase } from '@/integrations/supabase/client';
+import { Product, ProductVariation } from '@/types/store';
 import { toast } from 'sonner';
 
 const ProductForm = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [saving, setSaving] = useState(false);
   
-  const [categories, setCategories] = useState<CategoryMotherData[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [availableVariations, setAvailableVariations] = useState<ProductVariation[]>([]);
 
-  const [formData, setFormData] = useState<Partial<Product>>({
-    id: '',
+  const [formData, setFormData] = useState<any>({
     name: '',
     price: 0,
-    costPrice: 0,
-    promotionalPrice: 0,
-    image: '',
-    categoryMother: 'feminine',
-    subcategory: '',
+    cost_price: 0,
+    promo_price: 0,
+    main_image: '',
+    category_mother_id: '',
+    subcategory_id: '',
     description: '',
     stock: 0,
     sku: '',
     barcode: '',
-    active: true,
+    is_active: true,
     weight: 0,
     length: 0,
     width: 0,
-    height: 0,
-    variations: []
+    height: 0
   });
 
-  useEffect(() => {
-    // Carregar dados de suporte
-    const savedCats = getStorageItem<CategoryMotherData[]>('mother_categories') || [];
-    const savedVars = getStorageItem<ProductVariation[]>('global_variations') || [];
-    setCategories(savedCats);
-    setAvailableVariations(savedVars);
+  const [selectedVariations, setSelectedVariations] = useState<string[]>([]);
 
-    // Se for edição, carregar o produto
+  useEffect(() => {
+    fetchSupportData();
     if (id) {
-      const savedProducts = getStorageItem<Product[]>('admin_products') || [];
-      const found = savedProducts.find(p => p.id === id);
-      if (found) setFormData(found);
+      fetchProduct();
     }
   }, [id]);
 
-  const handleSave = () => {
-    if (!formData.name || !formData.price || !formData.categoryMother) {
-      toast.error("Preencha os campos obrigatórios (Nome, Preço e Nicho)");
+  const fetchSupportData = async () => {
+    const { data: cats } = await supabase.from('category_mothers').select('*, subcategories(*)');
+    const { data: vars } = await supabase.from('variations').select('*');
+    if (cats) setCategories(cats);
+    if (vars) setAvailableVariations(vars);
+  };
+
+  const fetchProduct = async () => {
+    const { data: prod } = await supabase.from('products').select('*').eq('id', id).single();
+    if (prod) setFormData(prod);
+
+    const { data: links } = await supabase.from('product_variations_link').select('variation_id').eq('product_id', id);
+    if (links) setSelectedVariations(links.map(l => l.variation_id));
+  };
+
+  const handleSave = async () => {
+    if (!formData.name || !formData.price || !formData.category_mother_id) {
+      toast.error("Preencha os campos obrigatórios");
       return;
     }
 
-    const saved = getStorageItem<Product[]>('admin_products') || [];
-    const productToSave = {
-      ...formData,
-      id: formData.id || Math.random().toString(36).substr(2, 9),
-    } as Product;
+    setSaving(true);
+    try {
+      // 1. Salvar Produto
+      const { data: savedProd, error: prodError } = await supabase
+        .from('products')
+        .upsert(formData)
+        .select()
+        .single();
 
-    let updated;
-    if (id) {
-      updated = saved.map(p => p.id === id ? productToSave : p);
-    } else {
-      updated = [productToSave, ...saved];
+      if (prodError) throw prodError;
+
+      // 2. Salvar Vínculos de Variações
+      if (savedProd) {
+        await supabase.from('product_variations_link').delete().eq('product_id', savedProd.id);
+        if (selectedVariations.length > 0) {
+          const { error: varError } = await supabase
+            .from('product_variations_link')
+            .insert(selectedVariations.map(vId => ({ product_id: savedProd.id, variation_id: vId })));
+          if (varError) throw varError;
+        }
+      }
+
+      toast.success("Produto salvo com sucesso no banco!");
+      navigate('/adm/produtos');
+    } catch (error: any) {
+      toast.error("Erro ao salvar: " + error.message);
+    } finally {
+      setSaving(false);
     }
-
-    setStorageItem('admin_products', updated);
-    toast.success("Produto salvo com sucesso");
-    navigate('/adm/produtos');
   };
 
-  const selectedNiche = categories.find(c => c.id === formData.categoryMother);
+  const selectedNiche = categories.find(c => c.id === formData.category_mother_id);
 
   return (
-    <AdminLayout 
-      title={id ? `Editar: ${formData.name}` : "Novo Produto"}
-      actions={
-        <Button onClick={handleSave} className="bg-[#B89C6A] hover:bg-[#A68B5B] rounded-full px-8 h-12 font-bold text-xs uppercase tracking-widest gap-2">
-          <Save size={18} /> Salvar Produto
-        </Button>
-      }
-    >
+    <AdminLayout title={id ? "Editar Produto" : "Novo Produto"}>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* Coluna Esquerda: Geral e Preços */}
         <div className="lg:col-span-8 space-y-8">
-          
-          {/* Informações Gerais */}
-          <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
+          <Card className="rounded-3xl border-none shadow-sm bg-white">
             <CardHeader className="bg-gray-50/50 border-b">
-              <CardTitle className="text-sm font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                <Info size={16} /> Informações Gerais
-              </CardTitle>
+              <CardTitle className="text-sm font-bold uppercase text-gray-400">Informações Gerais</CardTitle>
             </CardHeader>
             <CardContent className="p-8 space-y-6">
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-gray-500 uppercase">Nome do Produto</Label>
-                <Input 
-                  value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  placeholder="Ex: Anel Solitário Diamond Eternal"
-                  className="rounded-2xl border-gray-100 bg-gray-50 h-12 focus-visible:ring-[#B89C6A]"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-gray-500 uppercase">Descrição</Label>
-                <Textarea 
-                  value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  placeholder="Descreva os detalhes luxuosos deste produto..."
-                  className="rounded-2xl border-gray-100 bg-gray-50 min-h-[150px] focus-visible:ring-[#B89C6A]"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2"><Barcode size={14}/> SKU</Label>
-                  <Input 
-                    value={formData.sku}
-                    onChange={(e) => setFormData({...formData, sku: e.target.value})}
-                    placeholder="EX: DIAM-001"
-                    className="rounded-2xl border-gray-100 bg-gray-50 h-12"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold text-gray-500 uppercase">Código de Barras (EAN)</Label>
-                  <Input 
-                    value={formData.barcode}
-                    onChange={(e) => setFormData({...formData, barcode: e.target.value})}
-                    className="rounded-2xl border-gray-100 bg-gray-50 h-12"
-                  />
-                </div>
+              <Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Nome do produto" className="rounded-2xl h-12" />
+              <Textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} placeholder="Descrição" className="rounded-2xl min-h-[150px]" />
+              <div className="grid grid-cols-2 gap-6">
+                <Input value={formData.sku} onChange={e => setFormData({...formData, sku: e.target.value})} placeholder="SKU" className="rounded-2xl h-12" />
+                <Input value={formData.barcode} onChange={e => setFormData({...formData, barcode: e.target.value})} placeholder="EAN" className="rounded-2xl h-12" />
               </div>
             </CardContent>
           </Card>
 
-          {/* Preços */}
-          <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
+          <Card className="rounded-3xl border-none shadow-sm bg-white">
             <CardHeader className="bg-gray-50/50 border-b">
-              <CardTitle className="text-sm font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                <DollarSign size={16} /> Precificação
-              </CardTitle>
+              <CardTitle className="text-sm font-bold uppercase text-gray-400">Precificação</CardTitle>
             </CardHeader>
-            <CardContent className="p-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-gray-500 uppercase">Preço de Venda</Label>
-                <Input 
-                  type="number"
-                  value={formData.price}
-                  onChange={(e) => setFormData({...formData, price: Number(e.target.value)})}
-                  placeholder="R$ 0,00"
-                  className="rounded-2xl border-gray-100 bg-gray-50 h-12"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-gray-500 uppercase">Preço de Custo</Label>
-                <Input 
-                  type="number"
-                  value={formData.costPrice}
-                  onChange={(e) => setFormData({...formData, costPrice: Number(e.target.value)})}
-                  className="rounded-2xl border-gray-100 bg-gray-50 h-12"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-gray-500 uppercase text-[#B89C6A]">Preço Promocional</Label>
-                <Input 
-                  type="number"
-                  value={formData.promotionalPrice}
-                  onChange={(e) => setFormData({...formData, promotionalPrice: Number(e.target.value)})}
-                  className="rounded-2xl border-gray-100 bg-white border-[#B89C6A]/30 h-12 focus-visible:ring-[#B89C6A]"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Logística */}
-          <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
-            <CardHeader className="bg-gray-50/50 border-b">
-              <CardTitle className="text-sm font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                <Truck size={16} /> Estoque e Logística
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-8 space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold text-gray-500 uppercase">Estoque</Label>
-                  <Input 
-                    type="number"
-                    value={formData.stock}
-                    onChange={(e) => setFormData({...formData, stock: Number(e.target.value)})}
-                    className="rounded-2xl border-gray-100 bg-gray-50 h-12"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold text-gray-500 uppercase">Peso (kg)</Label>
-                  <Input 
-                    type="number"
-                    value={formData.weight}
-                    onChange={(e) => setFormData({...formData, weight: Number(e.target.value)})}
-                    className="rounded-2xl border-gray-100 bg-gray-50 h-12"
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                   <Label className="text-xs font-bold text-gray-500 uppercase">Dimensões (C x L x A) cm</Label>
-                   <div className="flex gap-2">
-                     <Input placeholder="C" type="number" value={formData.length} onChange={(e) => setFormData({...formData, length: Number(e.target.value)})} className="rounded-xl bg-gray-50 h-12" />
-                     <Input placeholder="L" type="number" value={formData.width} onChange={(e) => setFormData({...formData, width: Number(e.target.value)})} className="rounded-xl bg-gray-50 h-12" />
-                     <Input placeholder="A" type="number" value={formData.height} onChange={(e) => setFormData({...formData, height: Number(e.target.value)})} className="rounded-xl bg-gray-50 h-12" />
-                   </div>
-                </div>
-              </div>
+            <CardContent className="p-8 grid grid-cols-3 gap-6">
+              <Input type="number" value={formData.price} onChange={e => setFormData({...formData, price: Number(e.target.value)})} placeholder="Venda" className="rounded-2xl h-12" />
+              <Input type="number" value={formData.cost_price} onChange={e => setFormData({...formData, cost_price: Number(e.target.value)})} placeholder="Custo" className="rounded-2xl h-12" />
+              <Input type="number" value={formData.promo_price} onChange={e => setFormData({...formData, promo_price: Number(e.target.value)})} placeholder="Promo" className="rounded-2xl h-12 border-[#B89C6A]/30" />
             </CardContent>
           </Card>
         </div>
 
-        {/* Coluna Direita: Imagens e Organização */}
         <div className="lg:col-span-4 space-y-8">
-          
-          {/* Status e Nicho */}
-          <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
+          <Card className="rounded-3xl border-none shadow-sm bg-white">
             <CardContent className="p-6 space-y-6">
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-100">
-                <span className="text-xs font-bold text-gray-900 uppercase">Status do Produto</span>
-                <Switch 
-                  checked={formData.active} 
-                  onCheckedChange={(checked) => setFormData({...formData, active: checked})} 
-                />
+              <div className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl">
+                <span className="text-xs font-bold uppercase">Ativo</span>
+                <Switch checked={formData.is_active} onCheckedChange={v => setFormData({...formData, is_active: v})} />
               </div>
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold text-gray-500 uppercase">Nicho (Categoria Mãe)</Label>
-                  <select 
-                    value={formData.categoryMother}
-                    onChange={(e) => setFormData({...formData, categoryMother: e.target.value, subcategory: ''})}
-                    className="w-full rounded-2xl border-gray-100 bg-gray-50 h-12 px-4 text-sm focus:ring-[#B89C6A] outline-none"
-                  >
-                    <option value="">Selecione o Nicho</option>
-                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold text-gray-500 uppercase">Subcategoria</Label>
-                  <select 
-                    value={formData.subcategory}
-                    onChange={(e) => setFormData({...formData, subcategory: e.target.value})}
-                    disabled={!formData.categoryMother}
-                    className="w-full rounded-2xl border-gray-100 bg-gray-50 h-12 px-4 text-sm focus:ring-[#B89C6A] outline-none disabled:opacity-50"
-                  >
-                    <option value="">Selecione a Subcategoria</option>
-                    {selectedNiche?.subcategories.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
-                </div>
-              </div>
+              <select value={formData.category_mother_id} onChange={e => setFormData({...formData, category_mother_id: e.target.value, subcategory_id: ''})} className="w-full h-12 rounded-2xl bg-gray-50 border-gray-100 px-4">
+                <option value="">Selecione o Nicho</option>
+                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              <select value={formData.subcategory_id} onChange={e => setFormData({...formData, subcategory_id: e.target.value})} disabled={!formData.category_mother_id} className="w-full h-12 rounded-2xl bg-gray-50 border-gray-100 px-4">
+                <option value="">Selecione a Subcategoria</option>
+                {selectedNiche?.subcategories.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
             </CardContent>
           </Card>
 
-          {/* Mídia */}
-          <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
-            <CardHeader className="bg-gray-50/50 border-b">
-              <CardTitle className="text-sm font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                <ImageIcon size={16} /> Mídia Principal
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div className="aspect-square rounded-2xl bg-gray-50 border-2 border-dashed border-gray-100 flex flex-col items-center justify-center overflow-hidden">
-                {formData.image ? (
-                  <img src={formData.image} className="w-full h-full object-cover" alt="Preview" />
-                ) : (
-                  <>
-                    <ImageIcon size={40} className="text-gray-200 mb-2" />
-                    <span className="text-[10px] text-gray-400 uppercase font-bold">Sem imagem</span>
-                  </>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-gray-500 uppercase">URL da Imagem</Label>
-                <Input 
-                  value={formData.image}
-                  onChange={(e) => setFormData({...formData, image: e.target.value})}
-                  placeholder="https://suaimagem.com/foto.jpg"
-                  className="rounded-xl bg-gray-50 h-10 text-xs"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Variações Disponíveis */}
-          <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
-            <CardHeader className="bg-gray-50/50 border-b">
-              <CardTitle className="text-sm font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                <Layers size={16} /> Atributos / Variações
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-               <p className="text-[10px] text-gray-400 mb-4 italic">Selecione quais variações este produto terá na loja.</p>
-               <div className="space-y-2">
-                 {availableVariations.map(v => (
-                   <label key={v.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 cursor-pointer hover:border-[#B89C6A] transition-colors">
-                     <input type="checkbox" className="rounded-none border-gray-300 text-[#B89C6A] focus:ring-0" />
-                     <span className="text-xs font-bold text-gray-700">{v.name}</span>
-                     <span className="text-[9px] text-gray-400 ml-auto">({v.options.length} opções)</span>
-                   </label>
-                 ))}
-                 {availableVariations.length === 0 && (
-                   <div className="text-center py-4">
-                     <Link to="/adm/variacoes/novo" className="text-[10px] font-bold text-[#B89C6A] hover:underline">+ CRIAR PRIMEIRA VARIAÇÃO</Link>
-                   </div>
-                 )}
+          <Card className="rounded-3xl border-none shadow-sm bg-white">
+             <CardHeader className="bg-gray-50/50 border-b">
+               <CardTitle className="text-sm font-bold uppercase text-gray-400">Mídia Principal</CardTitle>
+             </CardHeader>
+             <CardContent className="p-6 space-y-4">
+               <div className="aspect-square bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100 flex items-center justify-center overflow-hidden">
+                 {formData.main_image ? <img src={formData.main_image} className="w-full h-full object-cover" /> : <ImageIcon size={40} className="text-gray-200" />}
                </div>
-            </CardContent>
+               <Input value={formData.main_image} onChange={e => setFormData({...formData, main_image: e.target.value})} placeholder="URL da imagem" className="rounded-xl h-10 text-xs" />
+             </CardContent>
           </Card>
 
+          <Card className="rounded-3xl border-none shadow-sm bg-white">
+            <CardHeader className="bg-gray-50/50 border-b">
+              <CardTitle className="text-sm font-bold uppercase text-gray-400">Variações</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 space-y-2">
+              {availableVariations.map(v => (
+                <label key={v.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={selectedVariations.includes(v.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) setSelectedVariations([...selectedVariations, v.id]);
+                      else setSelectedVariations(selectedVariations.filter(id => id !== v.id));
+                    }}
+                    className="text-[#B89C6A] focus:ring-0" 
+                  />
+                  <span className="text-xs font-bold text-gray-700">{v.name}</span>
+                </label>
+              ))}
+            </CardContent>
+          </Card>
         </div>
+      </div>
+      <div className="mt-8 flex justify-end">
+        <Button onClick={handleSave} disabled={saving} className="bg-[#B89C6A] hover:bg-[#A68B5B] rounded-full px-12 h-14 font-bold uppercase">
+          {saving ? 'Gravando...' : 'Salvar no Banco'}
+        </Button>
       </div>
     </AdminLayout>
   );
