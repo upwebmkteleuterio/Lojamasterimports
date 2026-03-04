@@ -19,7 +19,7 @@ import {
   Info, 
   Barcode 
 } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { getStorageItem, setStorageItem } from '@/services/persistence';
 import { Product, CategoryMotherData, ProductVariation } from '@/types/store';
 import { toast } from 'sonner';

@@ -9,9 +9,7 @@ import {
   Settings, 
   Users, 
   TrendingUp, 
-  ChevronRight,
   ChevronDown,
-  Tag
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -50,7 +48,14 @@ export const AdminSidebar = () => {
       <nav className="flex-1 overflow-y-auto py-6">
         <ul className="space-y-1 px-3">
           {menuItems.map((item) => {
-            const isActive = location.pathname === item.path || (item.submenu && location.pathname.startsWith(item.path));
+            // Verifica se o item principal ou qualquer um de seus sub-itens está ativo
+            const isAnySubItemActive = item.submenu?.some(sub => 
+              location.pathname === sub.path || (sub.path !== '/adm/produtos' && location.pathname.startsWith(sub.path))
+            );
+            
+            const isParentActive = location.pathname === item.path || (item.path !== '/adm' && location.pathname.startsWith(item.path));
+            const isActive = isParentActive || isAnySubItemActive;
+            
             const Icon = item.icon;
 
             return (
@@ -73,19 +78,23 @@ export const AdminSidebar = () => {
 
                 {item.submenu && isActive && (
                   <ul className="mt-1 ml-9 space-y-1">
-                    {item.submenu.map((sub) => (
-                      <li key={sub.label}>
-                        <Link
-                          to={sub.path}
-                          className={cn(
-                            "block px-4 py-2 text-xs font-medium rounded-lg transition-colors",
-                            location.pathname === sub.path ? "text-[#B89C6A]" : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"
-                          )}
-                        >
-                          {sub.label}
-                        </Link>
-                      </li>
-                    ))}
+                    {item.submenu.map((sub) => {
+                      const isSubActive = location.pathname === sub.path || (sub.path !== '/adm/produtos' && location.pathname.startsWith(sub.path));
+                      
+                      return (
+                        <li key={sub.label}>
+                          <Link
+                            to={sub.path}
+                            className={cn(
+                              "block px-4 py-2 text-xs font-medium rounded-lg transition-colors",
+                              isSubActive ? "text-[#B89C6A]" : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+                            )}
+                          >
+                            {sub.label}
+                          </Link>
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </li>
