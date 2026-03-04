@@ -23,6 +23,8 @@ import Variations from "./pages/admin/Variations";
 import VariationForm from "./pages/admin/VariationForm";
 import Categories from "./pages/admin/Categories";
 import CategoryForm from "./pages/admin/CategoryForm";
+import Products from "./pages/admin/Products";
+import ProductForm from "./pages/admin/ProductForm";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +51,11 @@ const AppContent = () => {
         
         {/* Rotas Administrativas */}
         <Route path="/adm" element={<Dashboard />} />
+        
+        {/* Produtos */}
+        <Route path="/adm/produtos" element={<Products />} />
+        <Route path="/adm/produtos/novo" element={<ProductForm />} />
+        <Route path="/adm/produtos/editar/:id" element={<ProductForm />} />
         
         {/* Variações */}
         <Route path="/adm/variacoes" element={<Variations />} />
