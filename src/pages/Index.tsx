@@ -13,13 +13,22 @@ const Index = () => {
   const { shopType } = useParams<{ shopType: string }>();
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (shopType !== 'pet' && shopType !== 'feminine') {
       navigate('/');
       return;
     }
-    setProducts(getProductsByMother(shopType as CategoryMother));
+    
+    const loadProducts = async () => {
+      setLoading(true);
+      const data = await getProductsByMother(shopType as CategoryMother);
+      setProducts(data);
+      setLoading(false);
+    };
+
+    loadProducts();
   }, [shopType, navigate]);
 
   const isPet = shopType === 'pet';
@@ -91,15 +100,15 @@ const Index = () => {
                <h2 className="text-xl md:text-2xl font-serif">Sugestões Diamond</h2>
                <Link to={`/${shopType}/categoria/todos`} className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-primary">Ver todos</Link>
             </div>
-            <div className="hidden md:flex gap-2">
-               <Button variant="outline" size="icon" className="rounded-none border-gray-200"><ChevronLeft size={16} /></Button>
-               <Button variant="outline" size="icon" className="rounded-none border-gray-200"><ChevronRight size={16} /></Button>
-            </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
-            {products.slice(0, 4).map(product => (
-              <ProductCard key={product.id} product={product} />
-            ))}
+            {loading ? (
+              [1,2,3,4].map(i => <div key={i} className="aspect-[3/4] bg-gray-100 animate-pulse rounded-2xl" />)
+            ) : (
+              products.slice(0, 4).map(product => (
+                <ProductCard key={product.id} product={product} />
+              ))
+            )}
           </div>
         </div>
       </section>
@@ -146,15 +155,6 @@ const Index = () => {
                {isPet ? "Tudo para o seu melhor amigo." : "Valorize a joia que você é."}
                <br /> Copyright © 2026 Diamond LTDA.
             </p>
-          </div>
-          <div className="hidden md:block">
-            <h4 className="text-[11px] font-bold uppercase tracking-widest mb-6">Informações</h4>
-            <ul className="text-[11px] text-gray-500 space-y-3">
-              <li>CONTATO</li>
-              <li>PERGUNTAS FREQUENTES</li>
-              <li>POLÍTICAS DE PRIVACIDADE</li>
-              <li>SOBRE NÓS</li>
-            </ul>
           </div>
         </div>
       </footer>

@@ -5,7 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { CartProvider } from "./context/CartContext";
 import { FavoritesProvider } from "./context/FavoritesContext";
-import { MobileNavbar } from "./components/layout/MobileNavbar";
+import { AuthProvider } from "./context/AuthContext";
+import { MobileNavbar } from "./components/layout/Navbar";
 import ScrollToTop from "./components/ScrollToTop";
 import Landing from "./pages/Landing";
 import Index from "./pages/Index";
@@ -16,6 +17,7 @@ import Checkout from "./pages/Checkout";
 import Account from "./pages/Account";
 import NotFound from "./pages/NotFound";
 import SearchResults from "./pages/SearchResults";
+import Login from "./pages/Login";
 
 // Admin Pages
 import Dashboard from "./pages/admin/Dashboard";
@@ -25,6 +27,7 @@ import Categories from "./pages/admin/Categories";
 import CategoryForm from "./pages/admin/CategoryForm";
 import Products from "./pages/admin/Products";
 import ProductForm from "./pages/admin/ProductForm";
+import Settings from "./pages/admin/Settings";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +40,7 @@ const AppContent = () => {
       <ScrollToTop />
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
         
         {/* Rotas Dinâmicas por Nicho */}
         <Route path="/:shopType" element={<Index />} />
@@ -66,6 +70,9 @@ const AppContent = () => {
         <Route path="/adm/categorias" element={<Categories />} />
         <Route path="/adm/categorias/novo" element={<CategoryForm />} />
         <Route path="/adm/categorias/editar/:id" element={<CategoryForm />} />
+
+        {/* Configurações */}
+        <Route path="/adm/configuracoes" element={<Settings />} />
         
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -77,15 +84,17 @@ const AppContent = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <CartProvider>
-        <FavoritesProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AppContent />
-          </BrowserRouter>
-        </FavoritesProvider>
-      </CartProvider>
+      <AuthProvider>
+        <CartProvider>
+          <FavoritesProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AppContent />
+            </BrowserRouter>
+          </FavoritesProvider>
+        </CartProvider>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
