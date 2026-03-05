@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ProductVariant } from "@/types/store";
 import { formatCurrency, parseCurrencyInput } from "@/utils/currency";
-import { Truck, RotateCcw } from "lucide-react";
+import { Truck, RotateCcw } from "lucide-center";
 import { diamondDebug } from '@/utils/debug';
 
 interface VariantEditModalProps {
@@ -81,28 +81,31 @@ export const VariantEditModal = ({ isOpen, onClose, variant, onSave, mainProduct
           </div>
 
           <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase text-gray-400">Preço de custo</Label>
-              <Input 
-                value={formatCurrency(data.cost_price)}
-                onChange={(e) => setData({...data, cost_price: parseCurrencyInput(e.target.value)})}
-                className="h-12 rounded-xl bg-gray-50 focus:bg-white"
-              />
-            </div>
+            {/* AGORA O PREÇO DE VENDA É O PRIMEIRO CAMPO (ESQUERDA) */}
             <div className="space-y-2">
               <Label className="text-[10px] font-bold uppercase text-gray-400">Preço de venda</Label>
               <Input 
                 value={formatCurrency(data.price)}
                 onChange={(e) => setData({...data, price: parseCurrencyInput(e.target.value)})}
-                className="h-12 rounded-xl bg-gray-50 focus:bg-white"
+                className="h-12 rounded-xl bg-gray-50 focus:bg-white border-gray-100"
               />
             </div>
+            
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase text-gray-400">Preço de custo</Label>
+              <Input 
+                value={formatCurrency(data.cost_price)}
+                onChange={(e) => setData({...data, cost_price: parseCurrencyInput(e.target.value)})}
+                className="h-12 rounded-xl bg-gray-50 focus:bg-white border-gray-100"
+              />
+            </div>
+
             <div className="space-y-2">
               <Label className="text-[10px] font-bold uppercase text-gray-400">Preço promo</Label>
               <Input 
                 value={formatCurrency(data.promo_price)}
                 onChange={(e) => setData({...data, promo_price: parseCurrencyInput(e.target.value)})}
-                className="h-12 rounded-xl bg-gray-50 focus:bg-white"
+                className="h-12 rounded-xl bg-gray-50 focus:bg-white border-gray-100"
               />
             </div>
           </div>
@@ -110,11 +113,11 @@ export const VariantEditModal = ({ isOpen, onClose, variant, onSave, mainProduct
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="text-[10px] font-bold uppercase text-gray-400">SKU</Label>
-              <Input value={data.sku} onChange={e => setData({...data, sku: e.target.value})} className="h-12 rounded-xl bg-gray-50" />
+              <Input value={data.sku} onChange={e => setData({...data, sku: e.target.value})} className="h-12 rounded-xl bg-gray-50 border-gray-100" />
             </div>
             <div className="space-y-2">
               <Label className="text-[10px] font-bold uppercase text-gray-400">Código de Barras</Label>
-              <Input value={data.barcode} onChange={e => setData({...data, barcode: e.target.value})} className="h-12 rounded-xl bg-gray-50" />
+              <Input value={data.barcode} onChange={e => setData({...data, barcode: e.target.value})} className="h-12 rounded-xl bg-gray-50 border-gray-100" />
             </div>
           </div>
 
@@ -126,19 +129,19 @@ export const VariantEditModal = ({ isOpen, onClose, variant, onSave, mainProduct
             <div className="grid grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label className="text-[9px] font-bold text-gray-400 uppercase">Peso (kg)</Label>
-                <Input type="number" value={data.weight} onChange={e => setData({...data, weight: Number(e.target.value)})} className="h-10 rounded-lg bg-gray-50" />
+                <Input type="number" value={data.weight} onChange={e => setData({...data, weight: Number(e.target.value)})} className="h-10 rounded-lg bg-gray-50 border-gray-100" />
               </div>
               <div className="space-y-2">
                 <Label className="text-[9px] font-bold text-gray-400 uppercase">Altura (cm)</Label>
-                <Input type="number" value={data.height} onChange={e => setData({...data, height: Number(e.target.value)})} className="h-10 rounded-lg bg-gray-50" />
+                <Input type="number" value={data.height} onChange={e => setData({...data, height: Number(e.target.value)})} className="h-10 rounded-lg bg-gray-50 border-gray-100" />
               </div>
               <div className="space-y-2">
                 <Label className="text-[9px] font-bold text-gray-400 uppercase">Largura (cm)</Label>
-                <Input type="number" value={data.width} onChange={e => setData({...data, width: Number(e.target.value)})} className="h-10 rounded-lg bg-gray-50" />
+                <Input type="number" value={data.width} onChange={e => setData({...data, width: Number(e.target.value)})} className="h-10 rounded-lg bg-gray-50 border-gray-100" />
               </div>
               <div className="space-y-2">
                 <Label className="text-[9px] font-bold text-gray-400 uppercase">Comp. (cm)</Label>
-                <Input type="number" value={data.length} onChange={e => setData({...data, length: Number(e.target.value)})} className="h-10 rounded-lg bg-gray-50" />
+                <Input type="number" value={data.length} onChange={e => setData({...data, length: Number(e.target.value)})} className="h-10 rounded-lg bg-gray-50 border-gray-100" />
               </div>
             </div>
           </div>
