@@ -5,7 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { CartProvider } from "./context/CartContext";
 import { FavoritesProvider } from "./context/FavoritesContext";
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import { AuthProvider } from "./context/AuthContext";
+import { useAuthStore } from "./store/useAuthStore";
 import { MobileNavbar } from "./components/layout/MobileNavbar";
 import ScrollToTop from "./components/ScrollToTop";
 import Landing from "./pages/Landing";
@@ -31,23 +32,23 @@ import Settings from "./pages/admin/Settings";
 
 const queryClient = new QueryClient();
 
-// Componente para Proteger Rotas
+// Componente para Proteger Rotas Não-Bloqueante
 const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.ReactNode, requireAdmin?: boolean }) => {
-  const { session, profile, loading } = useAuth();
+  const { session, profile, isInitialized } = useAuthStore();
   const location = useLocation();
 
-  if (loading) return (
-    <div className="h-screen w-full flex items-center justify-center bg-white">
-      <div className="w-10 h-10 border-4 border-[#B89C6A] border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+  if (!isInitialized) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-white">
+        <div className="w-10 h-10 border-4 border-[#B89C6A] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
-  // Não logado
   if (!session) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Se exigir admin e o usuário for apenas 'user'
   if (requireAdmin && profile?.role !== 'adm') {
     return <Navigate to="/minha-conta" replace />;
   }
@@ -77,7 +78,7 @@ const AppContent = () => {
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/minha-conta" element={<ProtectedRoute><Account /></ProtectedRoute>} />
         
-        {/* Rotas Administrativas - Todas Protegidas com requireAdmin */}
+        {/* Rotas Administrativas */}
         <Route path="/adm" element={<ProtectedRoute requireAdmin><Dashboard /></ProtectedRoute>} />
         <Route path="/adm/produtos" element={<ProtectedRoute requireAdmin><Products /></ProtectedRoute>} />
         <Route path="/adm/produtos/novo" element={<ProtectedRoute requireAdmin><ProductForm /></ProtectedRoute>} />

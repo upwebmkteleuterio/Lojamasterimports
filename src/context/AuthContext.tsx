@@ -1,10 +1,9 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Session, User } from '@supabase/supabase-js';
+import React, { createContext, useContext, useEffect } from 'react';
+import { useAuthStore } from '@/store/useAuthStore';
 
 interface AuthContextType {
-  session: Session | null;
-  user: User | null;
+  session: any | null;
+  user: any | null;
   profile: any | null;
   loading: boolean;
   signOut: () => Promise<void>;
@@ -13,63 +12,14 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<any | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const fetchProfile = async (userId: string) => {
-    try {
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
-      setProfile(data);
-    } catch (error) {
-      console.error("Erro ao buscar perfil:", error);
-    }
-  };
+  const { session, user, profile, isInitialized, initialize, signOut } = useAuthStore();
 
   useEffect(() => {
-    // Função inicializadora
-    const initializeAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        await fetchProfile(session.user.id);
-      }
-      
-      setLoading(false);
-    };
-
-    initializeAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        setLoading(true);
-        await fetchProfile(session.user.id);
-        setLoading(false);
-      } else {
-        setProfile(null);
-        setLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const signOut = async () => {
-    await supabase.auth.signOut();
-  };
+    initialize();
+  }, [initialize]);
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, loading, signOut }}>
+    <AuthContext.Provider value={{ session, user, profile, loading: !isInitialized, signOut }}>
       {children}
     </AuthContext.Provider>
   );
