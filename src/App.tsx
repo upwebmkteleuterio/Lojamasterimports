@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-route
 import { CartProvider } from "./context/CartContext";
 import { FavoritesProvider } from "./context/FavoritesContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { MobileNavbar } from "./components/mobile/MobileNavbar";
+import { MobileNavbar } from "./components/layout/MobileNavbar";
 import ScrollToTop from "./components/ScrollToTop";
 import Landing from "./pages/Landing";
 import Index from "./pages/Index";
