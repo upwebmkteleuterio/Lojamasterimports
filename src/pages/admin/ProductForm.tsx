@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card'; // Importação adicionada para corrigir o erro
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { ProductVariation } from '@/types/store';
