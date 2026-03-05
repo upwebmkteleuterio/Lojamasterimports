@@ -19,7 +19,7 @@ const Index = () => {
   const [subcategories, setSubcategories] = useState<any[]>([]);
 
   useEffect(() => {
-    if (shopType !== 'pet' && shopType !== 'feminine') {
+    if (!shopType) {
       navigate('/');
       return;
     }
@@ -28,13 +28,20 @@ const Index = () => {
       setLoading(true);
       
       // 1. Buscar dados do Nicho (Banners)
-      const { data: niche } = await supabase
+      const { data: niche, error } = await supabase
         .from('category_mothers')
         .select('*')
         .eq('id', shopType)
-        .single();
+        .maybeSingle();
       
-      if (niche) setNicheData(niche);
+      // Se o nicho não existir no banco, volta para a landing
+      if (!niche || error) {
+        console.error("Nicho não encontrado ou erro:", error);
+        navigate('/');
+        return;
+      }
+
+      setNicheData(niche);
 
       // 2. Buscar Subcategorias para o grid
       const { data: subs } = await supabase
@@ -55,7 +62,14 @@ const Index = () => {
     loadPageData();
   }, [shopType, navigate]);
 
-  const isPet = shopType === 'pet';
+  // Se estiver carregando, mostra um estado neutro ou spinner
+  if (loading && !nicheData) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-white">
+        <div className="w-10 h-10 border-4 border-[#B89C6A] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white font-sans text-gray-900 pb-20 md:pb-0">
@@ -63,10 +77,7 @@ const Index = () => {
       
       <section className="relative h-[400px] md:h-[650px] w-full overflow-hidden flex items-center">
         <img 
-          src={nicheData?.home_hero_banner || (isPet 
-            ? "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?q=80&w=2071" 
-            : "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?q=80&w=2070")
-          }
+          src={nicheData?.home_hero_banner || "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?q=80&w=2070"}
           className="absolute inset-0 w-full h-full object-cover"
           alt="Hero"
         />
@@ -74,10 +85,10 @@ const Index = () => {
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-xl text-center md:text-right ml-auto">
             <h2 className="text-3xl md:text-7xl font-serif font-light text-[#B89C6A] mb-4 drop-shadow-sm uppercase">
-               {nicheData?.name || (isPet ? "MUNDO PET" : "LOJA LUXURY")}
+               {nicheData?.name || "BEM-VINDO"}
             </h2>
             <p className="text-sm md:text-2xl text-gray-700 font-light mb-6 md:mb-10 tracking-wide italic">
-              {isPet ? "O luxo que seu melhor amigo merece." : "O cuidado que sua pele necessita."}
+              {shopType === 'pet' ? "O luxo que seu melhor amigo merece." : "Elegância e sofisticação em cada detalhe."}
             </p>
             <Button variant="outline" className="rounded-none border-[#B89C6A] text-[#B89C6A] px-8 md:px-12 py-4 md:py-7 text-[10px] md:text-sm font-bold tracking-[0.2em] hover:bg-[#B89C6A] hover:text-white transition-all bg-white/50 backdrop-blur-sm">
               CONFIRA A COLEÇÃO
@@ -166,7 +177,7 @@ const Index = () => {
           <div className="md:col-span-1">
             <h3 className="text-xl md:text-2xl font-serif text-[#B89C6A] mb-4 md:mb-6">DIAMON</h3>
             <p className="text-[10px] md:text-xs text-gray-400 leading-loose">
-               {isPet ? "Tudo para o seu melhor amigo." : "Valorize a joia que você é."}
+               {shopType === 'pet' ? "Tudo para o seu melhor amigo." : "Valorize a joia que você é."}
                <br /> Copyright © 2026 Diamond LTDA.
             </p>
           </div>
