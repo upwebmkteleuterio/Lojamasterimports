@@ -56,20 +56,49 @@ const ProductForm = () => {
   }, [id]);
 
   const fetchSupportData = async () => {
-    const { data: cats } = await supabase.from('category_mothers').select('*, subcategories(*)');
-    const { data: vars } = await supabase.from('variations').select('*');
-    if (cats) setCategories(cats);
-    if (vars) setAvailableVariations(vars || []);
+    // 1. Buscar Categorias com isolamento de erro
+    try {
+      const { data: cats, error: catsError } = await supabase
+        .from('category_mothers')
+        .select('*, subcategories(*)');
+      
+      if (catsError) {
+        const { data: simpleCats } = await supabase.from('category_mothers').select('*');
+        if (simpleCats) setCategories(simpleCats);
+      } else if (cats) {
+        setCategories(cats);
+      }
+    } catch (err) {
+      console.error("Erro ao carregar categorias:", err);
+    }
+
+    // 2. Buscar Variações Globais com isolamento de erro
+    try {
+      const { data: vars, error: varsError } = await supabase
+        .from('variations')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (varsError) throw varsError;
+      if (vars) setAvailableVariations(vars);
+    } catch (err) {
+      console.error("Erro ao carregar variações:", err);
+    }
   };
 
   const fetchProduct = async () => {
-    const { data: prod } = await supabase.from('products').select('*').eq('id', id).single();
-    if (prod) {
-      setFormData((prev: any) => ({ ...prod, ...prev }));
+    try {
+      const { data: prod, error } = await supabase.from('products').select('*').eq('id', id).single();
+      if (error) throw error;
+      if (prod) {
+        setFormData((prev: any) => ({ ...prod, ...prev }));
+      }
+      
+      const { data: dbVariants } = await supabase.from('product_variants').select('*').eq('product_id', id);
+      if (dbVariants) setVariants(dbVariants);
+    } catch (error: any) {
+      toast.error("Erro ao buscar produto: " + error.message);
     }
-    // Buscar variantes configuradas
-    const { data: dbVariants } = await supabase.from('product_variants').select('*').eq('product_id', id);
-    if (dbVariants) setVariants(dbVariants);
   };
 
   const handleSave = async () => {
@@ -89,23 +118,20 @@ const ProductForm = () => {
       if (prodError) throw prodError;
 
       if (savedProd) {
-        // Salvar Variantes
-        // 1. Deletar antigas
         await supabase.from('product_variants').delete().eq('product_id', savedProd.id);
         
-        // 2. Inserir novas
         if (variants.length > 0) {
           const variantsToSave = variants.map(v => ({
             ...v,
             product_id: savedProd.id,
-            id: undefined // Garante que gere novos IDs no banco
+            id: undefined 
           }));
           const { error: varError } = await supabase.from('product_variants').insert(variantsToSave);
           if (varError) throw varError;
         }
       }
 
-      toast.success("Produto e variações salvos com sucesso!");
+      toast.success("Produto salvo com sucesso!");
       localStorage.removeItem(`form_data_${persistenceKey}`);
       navigate('/adm/produtos');
     } catch (error: any) {
@@ -121,68 +147,25 @@ const ProductForm = () => {
       actions={
         <div className="flex gap-2">
            <Button variant="ghost" onClick={() => navigate('/adm/produtos')} className="rounded-full px-6 uppercase text-[10px] font-bold tracking-widest">Cancelar</Button>
-           <Button onClick={handleSave} disabled={saving} className="bg-gray-900 hover:bg-black rounded-full px-12 h-11 font-bold uppercase text-[10px] tracking-widest">
-            {saving ? 'Gravando...' : 'Salvar'}
+           <Button onClick={handleSave} disabled={saving} className="bg-gray-900 hover:bg-black rounded-full px-12 h-11 font-bold uppercase text-[10px] tracking-widest text-white">
+            {saving ? 'Gravando...' : 'Salvar Produto'}
           </Button>
         </div>
       }
     >
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-8">
-          
-          <GeneralInfoSection 
-            name={formData.name}
-            description={formData.description}
-            isActive={formData.is_active}
-            onChange={updateField}
-          />
-
-          <PricingSection 
-            costPrice={formData.cost_price}
-            price={formData.price}
-            promoPrice={formData.promo_price}
-            onChange={updateField}
-          />
-
+          <GeneralInfoSection name={formData.name} description={formData.description} isActive={formData.is_active} onChange={updateField} />
+          <PricingSection costPrice={formData.cost_price} price={formData.price} promoPrice={formData.promo_price} onChange={updateField} />
           <Card className="rounded-3xl border-none shadow-sm bg-white overflow-hidden p-8">
-            <InventorySection 
-              sku={formData.sku}
-              barcode={formData.barcode}
-              onChange={updateField}
-            />
+            <InventorySection sku={formData.sku} barcode={formData.barcode} onChange={updateField} />
           </Card>
-
-          <ShippingSection 
-            weight={formData.weight}
-            width={formData.width}
-            height={formData.height}
-            length={formData.length}
-            onChange={updateField}
-          />
-
-          <VariationsSection 
-            availableVariations={availableVariations}
-            variants={variants}
-            onUpdateVariants={setVariants}
-            mainProductData={formData}
-          />
+          <ShippingSection weight={formData.weight} width={formData.width} height={formData.height} length={formData.length} onChange={updateField} />
+          <VariationsSection availableVariations={availableVariations} variants={variants} onUpdateVariants={setVariants} mainProductData={formData} />
         </div>
-
         <div className="lg:col-span-4 space-y-8">
-          <CategorizationSection 
-            nicheId={formData.category_mother_id}
-            subcategoryId={formData.subcategory_id}
-            stock={formData.stock}
-            categories={categories}
-            onFieldChange={updateField}
-          />
-
-          <MediaSection 
-            mainImage={formData.main_image}
-            gallery={formData.gallery || []}
-            onMainImageChange={(url) => updateField('main_image', url)}
-            onGalleryChange={(newGallery) => updateField('gallery', newGallery)}
-          />
+          <CategorizationSection nicheId={formData.category_mother_id} subcategoryId={formData.subcategory_id} stock={formData.stock} categories={categories} onFieldChange={updateField} />
+          <MediaSection mainImage={formData.main_image} gallery={formData.gallery || []} onMainImageChange={(url) => updateField('main_image', url)} onGalleryChange={(newGallery) => updateField('gallery', newGallery)} />
         </div>
       </div>
     </AdminLayout>
