@@ -15,7 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { ProductVariant } from "@/types/store";
 import { formatCurrency, parseCurrencyInput } from "@/utils/currency";
 import { Truck, RotateCcw } from "lucide-react";
-import { diamondDebug } from '@/utils/debug';
+import { useVariantEdit } from '@/hooks/useVariantEdit';
 
 interface VariantEditModalProps {
   isOpen: boolean;
@@ -26,35 +26,7 @@ interface VariantEditModalProps {
 }
 
 export const VariantEditModal = ({ isOpen, onClose, variant, onSave, mainProductData }: VariantEditModalProps) => {
-  const [data, setData] = React.useState<ProductVariant>(variant);
-
-  React.useEffect(() => {
-    setData(variant);
-  }, [variant]);
-
-  const handlePullData = () => {
-    diamondDebug('info', `Puxando dados globais para variante: ${variant.option_name}`);
-    setData(prev => ({
-      ...prev,
-      price: mainProductData.price || 0,
-      cost_price: mainProductData.cost_price || 0,
-      promo_price: mainProductData.promo_price || 0,
-      weight: mainProductData.weight || 0,
-      height: mainProductData.height || 0,
-      width: mainProductData.width || 0,
-      length: mainProductData.length || 0,
-      sku: mainProductData.sku ? `${mainProductData.sku}-${prev.option_name.toUpperCase()}` : prev.sku
-    }));
-  };
-
-  const handleSave = () => {
-    diamondDebug('info', `Solicitando salvamento de variante: ${data.option_name}`, {
-      preco_venda: data.price,
-      preco_custo: data.cost_price,
-      sku: data.sku
-    });
-    onSave(data);
-  };
+  const { data, setData, handlePullData, handleSave } = useVariantEdit(variant, mainProductData, onSave);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -81,21 +53,21 @@ export const VariantEditModal = ({ isOpen, onClose, variant, onSave, mainProduct
           </div>
 
           <div className="grid grid-cols-3 gap-4">
-            {/* AGORA O PREÇO DE VENDA É O PRIMEIRO CAMPO (ESQUERDA) */}
-            <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase text-gray-400">Preço de venda</Label>
-              <Input 
-                value={formatCurrency(data.price)}
-                onChange={(e) => setData({...data, price: parseCurrencyInput(e.target.value)})}
-                className="h-12 rounded-xl bg-gray-50 focus:bg-white border-gray-100"
-              />
-            </div>
-            
+            {/* AGORA O PREÇO DE CUSTO É O PRIMEIRO CAMPO (ESQUERDA) */}
             <div className="space-y-2">
               <Label className="text-[10px] font-bold uppercase text-gray-400">Preço de custo</Label>
               <Input 
                 value={formatCurrency(data.cost_price)}
                 onChange={(e) => setData({...data, cost_price: parseCurrencyInput(e.target.value)})}
+                className="h-12 rounded-xl bg-gray-50 focus:bg-white border-gray-100"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase text-gray-400">Preço de venda</Label>
+              <Input 
+                value={formatCurrency(data.price)}
+                onChange={(e) => setData({...data, price: parseCurrencyInput(e.target.value)})}
                 className="h-12 rounded-xl bg-gray-50 focus:bg-white border-gray-100"
               />
             </div>
