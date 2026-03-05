@@ -82,11 +82,16 @@ export const VariationsSection = ({ availableVariations, variants, onUpdateVaria
     }));
 
     onUpdateVariants([...variants, ...newVariants]);
+    diamondDebug('success', `Geradas ${newVariants.length} variantes para ${selectedAttr.name}`);
     setSelectedAttr(null);
     setSelectedOptions([]);
   };
 
   const handleSaveEditedVariant = (updated: ProductVariant) => {
+    diamondDebug('info', `VariationsSection recebeu variante atualizada: ${updated.option_name}`, {
+      price_recebido: updated.price,
+      cost_recebido: updated.cost_price
+    });
     const next = [...variants];
     next[editIndex] = updated;
     onUpdateVariants(next);
@@ -108,10 +113,6 @@ export const VariationsSection = ({ availableVariations, variants, onUpdateVaria
           <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Nova variação</p>
           
           <div className="relative">
-            {/* 
-               MENU DE BUSCA: 
-               Invertido para 'bottom-full' e 'mb-2' para abrir PARA CIMA 
-            */}
             {showDropdown && !selectedAttr && (
               <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-100 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] rounded-2xl z-[100] py-2 max-h-64 overflow-y-auto animate-in fade-in slide-in-from-bottom-2 duration-200">
                 {filteredAttrs.length > 0 ? (
@@ -143,20 +144,11 @@ export const VariationsSection = ({ availableVariations, variants, onUpdateVaria
                       setShowDropdown(true);
                       if (selectedAttr) setSelectedAttr(null);
                     }}
-                    onFocus={() => {
-                      diamondDebug('info', 'Dropdown de variações focado');
-                      setShowDropdown(true);
-                    }}
+                    onFocus={() => setShowDropdown(true)}
                     placeholder="Clique aqui para ver as variações..."
                     className="pl-12 pr-10 h-14 rounded-2xl border-gray-100 bg-gray-50 focus:bg-white transition-colors"
                   />
-                  <ChevronDown 
-                    size={18} 
-                    className={cn(
-                      "absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 transition-transform pointer-events-none",
-                      showDropdown && "rotate-180"
-                    )} 
-                  />
+                  <ChevronDown size={18} className={cn("absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 transition-transform pointer-events-none", showDropdown && "rotate-180")} />
                </div>
                {selectedAttr && (
                  <Button onClick={handleGenerateVariants} disabled={selectedOptions.length === 0} className="bg-gray-900 hover:bg-black rounded-2xl h-14 px-8 font-bold text-xs uppercase tracking-widest">
@@ -179,9 +171,7 @@ export const VariationsSection = ({ availableVariations, variants, onUpdateVaria
                     onClick={() => handleToggleOption(opt)}
                     className={cn(
                       "px-5 py-2.5 rounded-full text-xs font-bold transition-all border",
-                      selectedOptions.includes(opt) 
-                        ? "bg-gray-900 border-gray-900 text-white" 
-                        : "bg-white border-gray-200 text-gray-500 hover:border-[#B89C6A]"
+                      selectedOptions.includes(opt) ? "bg-gray-900 border-gray-900 text-white" : "bg-white border-gray-200 text-gray-500 hover:border-[#B89C6A]"
                     )}
                   >
                     {opt}

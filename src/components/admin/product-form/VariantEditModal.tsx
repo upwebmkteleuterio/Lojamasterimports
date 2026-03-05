@@ -14,7 +14,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ProductVariant } from "@/types/store";
 import { formatCurrency, parseCurrencyInput } from "@/utils/currency";
-import { Truck, RotateCcw, Image as ImageIcon } from "lucide-react";
+import { Truck, RotateCcw } from "lucide-react";
+import { diamondDebug } from '@/utils/debug';
 
 interface VariantEditModalProps {
   isOpen: boolean;
@@ -32,6 +33,7 @@ export const VariantEditModal = ({ isOpen, onClose, variant, onSave, mainProduct
   }, [variant]);
 
   const handlePullData = () => {
+    diamondDebug('info', `Puxando dados globais para variante: ${variant.option_name}`);
     setData(prev => ({
       ...prev,
       price: mainProductData.price || 0,
@@ -45,9 +47,18 @@ export const VariantEditModal = ({ isOpen, onClose, variant, onSave, mainProduct
     }));
   };
 
+  const handleSave = () => {
+    diamondDebug('info', `Solicitando salvamento de variante: ${data.option_name}`, {
+      preco_venda: data.price,
+      preco_custo: data.cost_price,
+      sku: data.sku
+    });
+    onSave(data);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-[32px]">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-[32px] border-none shadow-2xl">
         <DialogHeader>
           <DialogTitle className="text-xl font-serif">
             Editar opção: <span className="text-[#B89C6A]">{data.option_name}</span>
@@ -75,7 +86,7 @@ export const VariantEditModal = ({ isOpen, onClose, variant, onSave, mainProduct
               <Input 
                 value={formatCurrency(data.cost_price)}
                 onChange={(e) => setData({...data, cost_price: parseCurrencyInput(e.target.value)})}
-                className="h-12 rounded-xl bg-gray-50"
+                className="h-12 rounded-xl bg-gray-50 focus:bg-white"
               />
             </div>
             <div className="space-y-2">
@@ -83,7 +94,7 @@ export const VariantEditModal = ({ isOpen, onClose, variant, onSave, mainProduct
               <Input 
                 value={formatCurrency(data.price)}
                 onChange={(e) => setData({...data, price: parseCurrencyInput(e.target.value)})}
-                className="h-12 rounded-xl bg-gray-50"
+                className="h-12 rounded-xl bg-gray-50 focus:bg-white"
               />
             </div>
             <div className="space-y-2">
@@ -91,7 +102,7 @@ export const VariantEditModal = ({ isOpen, onClose, variant, onSave, mainProduct
               <Input 
                 value={formatCurrency(data.promo_price)}
                 onChange={(e) => setData({...data, promo_price: parseCurrencyInput(e.target.value)})}
-                className="h-12 rounded-xl bg-gray-50"
+                className="h-12 rounded-xl bg-gray-50 focus:bg-white"
               />
             </div>
           </div>
@@ -107,22 +118,37 @@ export const VariantEditModal = ({ isOpen, onClose, variant, onSave, mainProduct
             </div>
           </div>
 
-          <div className="space-y-4">
-            <Label className="text-[10px] font-bold uppercase text-gray-400 flex items-center gap-2">
+          <div className="space-y-4 pt-6 border-t border-gray-50">
+            <Label className="text-[10px] font-bold uppercase text-gray-400 flex items-center gap-2 mb-4">
               <Truck size={14} /> Peso e Dimensões
             </Label>
+            
             <div className="grid grid-cols-4 gap-4">
-              <Input placeholder="Peso (kg)" type="number" value={data.weight} onChange={e => setData({...data, weight: Number(e.target.value)})} className="h-10 rounded-lg bg-gray-50" />
-              <Input placeholder="Alt (cm)" type="number" value={data.height} onChange={e => setData({...data, height: Number(e.target.value)})} className="h-10 rounded-lg bg-gray-50" />
-              <Input placeholder="Larg (cm)" type="number" value={data.width} onChange={e => setData({...data, width: Number(e.target.value)})} className="h-10 rounded-lg bg-gray-50" />
-              <Input placeholder="Comp (cm)" type="number" value={data.length} onChange={e => setData({...data, length: Number(e.target.value)})} className="h-10 rounded-lg bg-gray-50" />
+              <div className="space-y-2">
+                <Label className="text-[9px] font-bold text-gray-400 uppercase">Peso (kg)</Label>
+                <Input type="number" value={data.weight} onChange={e => setData({...data, weight: Number(e.target.value)})} className="h-10 rounded-lg bg-gray-50" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[9px] font-bold text-gray-400 uppercase">Altura (cm)</Label>
+                <Input type="number" value={data.height} onChange={e => setData({...data, height: Number(e.target.value)})} className="h-10 rounded-lg bg-gray-50" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[9px] font-bold text-gray-400 uppercase">Largura (cm)</Label>
+                <Input type="number" value={data.width} onChange={e => setData({...data, width: Number(e.target.value)})} className="h-10 rounded-lg bg-gray-50" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[9px] font-bold text-gray-400 uppercase">Comp. (cm)</Label>
+                <Input type="number" value={data.length} onChange={e => setData({...data, length: Number(e.target.value)})} className="h-10 rounded-lg bg-gray-50" />
+              </div>
             </div>
           </div>
         </div>
 
-        <DialogFooter className="gap-2">
-          <Button variant="ghost" onClick={onClose} className="rounded-full px-8">Cancelar</Button>
-          <Button onClick={() => onSave(data)} className="bg-gray-900 text-white rounded-full px-12 h-12 font-bold uppercase tracking-widest text-[10px]">Salvar Opção</Button>
+        <DialogFooter className="gap-2 pt-4">
+          <Button variant="ghost" onClick={onClose} className="rounded-full px-8 text-xs font-bold uppercase tracking-widest text-gray-400">Cancelar</Button>
+          <Button onClick={handleSave} className="bg-gray-900 hover:bg-black text-white rounded-full px-12 h-14 font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-black/10">
+            Salvar Opção
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
