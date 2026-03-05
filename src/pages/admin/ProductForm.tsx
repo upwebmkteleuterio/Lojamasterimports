@@ -6,11 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { ProductVariation } from '@/types/store';
+import { ProductVariation, ProductVariant } from '@/types/store';
 import { toast } from 'sonner';
 import { usePersistence } from '@/hooks/usePersistence';
 
-// Importação das seções refatoradas
+// Importação das seções
 import { GeneralInfoSection } from '@/components/admin/product-form/GeneralInfoSection';
 import { PricingSection } from '@/components/admin/product-form/PricingSection';
 import { InventorySection } from '@/components/admin/product-form/InventorySection';
@@ -45,10 +45,10 @@ const ProductForm = () => {
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const [availableVariations, setAvailableVariations] = useState<ProductVariation[]>([]);
+  const [variants, setVariants] = useState<ProductVariant[]>([]);
 
   const persistenceKey = id ? `edit_product_${id}` : 'new_product_draft';
   const { data: formData, updateField, setData: setFormData } = usePersistence<any>(persistenceKey, initialFormData);
-  const [selectedVariations, setSelectedVariations] = useState<string[]>([]);
 
   useEffect(() => {
     fetchSupportData();
@@ -67,19 +67,14 @@ const ProductForm = () => {
     if (prod) {
       setFormData((prev: any) => ({ ...prod, ...prev }));
     }
-    const { data: links } = await supabase.from('product_variations_link').select('variation_id').eq('product_id', id);
-    if (links) setSelectedVariations(links.map(l => l.variation_id));
-  };
-
-  const handleCancel = () => {
-    // Limpa persistência ao cancelar
-    localStorage.removeItem(`form_data_${persistenceKey}`);
-    navigate('/adm/produtos');
+    // Buscar variantes configuradas
+    const { data: dbVariants } = await supabase.from('product_variants').select('*').eq('product_id', id);
+    if (dbVariants) setVariants(dbVariants);
   };
 
   const handleSave = async () => {
     if (!formData.name || !formData.price || !formData.category_mother_id) {
-      toast.error("Preencha os campos obrigatórios");
+      toast.error("Preencha os campos obrigatórios (*)");
       return;
     }
 
@@ -94,17 +89,23 @@ const ProductForm = () => {
       if (prodError) throw prodError;
 
       if (savedProd) {
-        await supabase.from('product_variations_link').delete().eq('product_id', savedProd.id);
-        if (selectedVariations.length > 0) {
-          const { error: varError } = await supabase
-            .from('product_variations_link')
-            .insert(selectedVariations.map(vId => ({ product_id: savedProd.id, variation_id: vId })));
+        // Salvar Variantes
+        // 1. Deletar antigas
+        await supabase.from('product_variants').delete().eq('product_id', savedProd.id);
+        
+        // 2. Inserir novas
+        if (variants.length > 0) {
+          const variantsToSave = variants.map(v => ({
+            ...v,
+            product_id: savedProd.id,
+            id: undefined // Garante que gere novos IDs no banco
+          }));
+          const { error: varError } = await supabase.from('product_variants').insert(variantsToSave);
           if (varError) throw varError;
         }
       }
 
-      toast.success("Produto salvo com sucesso!");
-      // Limpa persistência ao salvar
+      toast.success("Produto e variações salvos com sucesso!");
       localStorage.removeItem(`form_data_${persistenceKey}`);
       navigate('/adm/produtos');
     } catch (error: any) {
@@ -119,7 +120,7 @@ const ProductForm = () => {
       title={id ? "Editar Produto" : "Novo Produto"}
       actions={
         <div className="flex gap-2">
-           <Button variant="ghost" onClick={handleCancel} className="rounded-full px-6 uppercase text-[10px] font-bold tracking-widest">Cancelar</Button>
+           <Button variant="ghost" onClick={() => navigate('/adm/produtos')} className="rounded-full px-6 uppercase text-[10px] font-bold tracking-widest">Cancelar</Button>
            <Button onClick={handleSave} disabled={saving} className="bg-gray-900 hover:bg-black rounded-full px-12 h-11 font-bold uppercase text-[10px] tracking-widest">
             {saving ? 'Gravando...' : 'Salvar'}
           </Button>
@@ -161,12 +162,9 @@ const ProductForm = () => {
 
           <VariationsSection 
             availableVariations={availableVariations}
-            selectedVariations={selectedVariations}
-            onToggle={(id) => {
-              setSelectedVariations(prev => 
-                prev.includes(id) ? prev.filter(v => v !== id) : [...prev, id]
-              );
-            }}
+            variants={variants}
+            onUpdateVariants={setVariants}
+            mainProductData={formData}
           />
         </div>
 

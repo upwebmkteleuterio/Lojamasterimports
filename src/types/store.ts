@@ -3,7 +3,26 @@ export type CategoryMother = 'pet' | 'feminine' | string;
 export interface ProductVariation {
   id: string;
   name: string; // Ex: Cor, Tamanho
-  options: string[]; // Ex: ['Azul', 'Verde'] ou ['P', 'M', 'G']
+  options: string[]; // Ex: ['Azul', 'Verde']
+}
+
+export interface ProductVariant {
+  id?: string;
+  product_id?: string;
+  attribute_name: string;
+  option_name: string;
+  sku: string;
+  barcode: string;
+  price: number;
+  cost_price: number;
+  promo_price: number;
+  stock: number;
+  main_image: string;
+  weight: number;
+  height: number;
+  width: number;
+  length: number;
+  is_active: boolean;
 }
 
 export interface Product {
@@ -21,11 +40,11 @@ export interface Product {
   sku: string;
   barcode?: string;
   active: boolean;
-  weight?: number; // em kg
-  length?: number; // em cm
-  width?: number; // em cm
-  height?: number; // em cm
-  variations?: ProductVariation[];
+  weight?: number;
+  length?: number;
+  width?: number;
+  height?: number;
+  variants?: ProductVariant[];
 }
 
 export interface OrderItem extends Product {
@@ -51,13 +70,4 @@ export interface Order {
   status: 'pending' | 'completed' | 'cancelled';
   customerData: CustomerData;
   createdAt: string;
-}
-
-export interface CategoryMotherData {
-  id: CategoryMother;
-  name: string;
-  landingBanner: string;
-  homeHeroBanner: string;
-  active: boolean;
-  subcategories: { id: string, name: string, image: string }[];
 }

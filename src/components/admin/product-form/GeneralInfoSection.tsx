@@ -29,12 +29,24 @@ export const GeneralInfoSection = ({ name, description, isActive, onChange }: Ge
             </div>
           </div>
           <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-600">Nome do produto</Label>
-            <Input value={name} onChange={e => onChange('name', e.target.value)} className="rounded-xl h-12 bg-gray-50/50 border-gray-100" />
+            <Label className="text-sm font-medium text-gray-600 flex items-center gap-1">
+              Nome do produto <span className="text-red-500 font-bold">*</span>
+            </Label>
+            <Input 
+              value={name} 
+              onChange={e => onChange('name', e.target.value)} 
+              placeholder="Ex: Anel Diamond Gold"
+              className="rounded-xl h-12 bg-gray-50/50 border-gray-100" 
+            />
           </div>
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-600">Descrição</Label>
-            <Textarea value={description} onChange={e => onChange('description', e.target.value)} className="rounded-xl min-h-[150px] bg-gray-50/50 border-gray-100" />
+            <Textarea 
+              value={description} 
+              onChange={e => onChange('description', e.target.value)} 
+              placeholder="Conte detalhes sobre o produto..."
+              className="rounded-xl min-h-[150px] bg-gray-50/50 border-gray-100" 
+            />
           </div>
         </div>
       </CardContent>
