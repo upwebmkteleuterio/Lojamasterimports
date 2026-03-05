@@ -9,6 +9,7 @@ import { Plus, Search, Edit3, Trash2, ChevronDown, X } from 'lucide-react';
 import { ProductVariation, ProductVariant } from '@/types/store';
 import { VariantEditModal } from './VariantEditModal';
 import { cn } from '@/lib/utils';
+import { diamondDebug } from '@/utils/debug';
 
 interface VariationsSectionProps {
   availableVariations: ProductVariation[];
@@ -28,7 +29,6 @@ export const VariationsSection = ({ availableVariations, variants, onUpdateVaria
 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Fechar dropdown ao clicar fora
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -44,6 +44,7 @@ export const VariationsSection = ({ availableVariations, variants, onUpdateVaria
   );
 
   const handleSelectAttr = (attr: ProductVariation) => {
+    diamondDebug('info', `Variação selecionada: ${attr.name}`, attr);
     setSelectedAttr(attr);
     setSearchTerm("");
     setShowDropdown(false);
@@ -59,7 +60,6 @@ export const VariationsSection = ({ availableVariations, variants, onUpdateVaria
   const handleGenerateVariants = () => {
     if (!selectedAttr) return;
     
-    // Filtra opções que já existem para não duplicar
     const filteredNewOptions = selectedOptions.filter(opt => 
       !variants.some(v => v.attribute_name === selectedAttr.name && v.option_name === opt)
     );
@@ -98,16 +98,14 @@ export const VariationsSection = ({ availableVariations, variants, onUpdateVaria
   };
 
   return (
-    <Card className="rounded-3xl border-none shadow-sm bg-white overflow-hidden">
+    <Card className="rounded-3xl border-none shadow-sm bg-white">
       <CardHeader className="bg-white border-b border-gray-50 flex flex-row items-center justify-between">
         <CardTitle className="text-sm font-bold text-gray-700">Variações do produto</CardTitle>
       </CardHeader>
       <CardContent className="p-8 space-y-8">
         
-        {/* Seletor de Nova Variação */}
         <div className="space-y-4 max-w-xl" ref={containerRef}>
           <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Nova variação</p>
-          <p className="text-[11px] text-gray-400">O que está variando no seu produto? Escolha na lista ou digite para buscar.</p>
           
           <div className="relative">
             <div className="flex gap-2">
@@ -120,8 +118,11 @@ export const VariationsSection = ({ availableVariations, variants, onUpdateVaria
                       setShowDropdown(true);
                       if (selectedAttr) setSelectedAttr(null);
                     }}
-                    onFocus={() => setShowDropdown(true)}
-                    placeholder="Escolha uma variação (Ex: Cor, Tamanho...)"
+                    onFocus={() => {
+                      diamondDebug('info', 'Dropdown de variações focado');
+                      setShowDropdown(true);
+                    }}
+                    placeholder="Clique aqui para ver as variações..."
                     className="pl-12 pr-10 h-14 rounded-2xl border-gray-100 bg-gray-50 focus:bg-white transition-colors"
                   />
                   <ChevronDown 
@@ -140,7 +141,7 @@ export const VariationsSection = ({ availableVariations, variants, onUpdateVaria
             </div>
 
             {showDropdown && !selectedAttr && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 shadow-2xl rounded-2xl z-50 py-2 max-h-64 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 shadow-[0_10px_40px_rgba(0,0,0,0.1)] rounded-2xl z-[100] py-2 max-h-64 overflow-y-auto animate-in fade-in slide-in-from-top-1">
                 {filteredAttrs.length > 0 ? (
                   filteredAttrs.map(attr => (
                     <button 
@@ -154,7 +155,7 @@ export const VariationsSection = ({ availableVariations, variants, onUpdateVaria
                   ))
                 ) : (
                   <div className="px-6 py-6 text-center">
-                    <p className="text-sm text-gray-400 italic">Nenhuma variação encontrada com este nome.</p>
+                    <p className="text-sm text-gray-400 italic">Nenhuma variação cadastrada.</p>
                   </div>
                 )}
               </div>
@@ -164,7 +165,7 @@ export const VariationsSection = ({ availableVariations, variants, onUpdateVaria
           {selectedAttr && (
             <div className="bg-gray-50/50 p-6 rounded-3xl border border-dashed border-gray-200 animate-in fade-in slide-in-from-top-2">
               <div className="flex justify-between items-center mb-4">
-                <p className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Selecione as opções de {selectedAttr.name}:</p>
+                <p className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Opções de {selectedAttr.name}:</p>
                 <button onClick={() => setSelectedAttr(null)} className="text-gray-400 hover:text-red-500"><X size={14}/></button>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -175,8 +176,8 @@ export const VariationsSection = ({ availableVariations, variants, onUpdateVaria
                     className={cn(
                       "px-5 py-2.5 rounded-full text-xs font-bold transition-all border",
                       selectedOptions.includes(opt) 
-                        ? "bg-gray-900 border-gray-900 text-white shadow-lg shadow-gray-200" 
-                        : "bg-white border-gray-200 text-gray-500 hover:border-[#B89C6A] hover:text-[#B89C6A]"
+                        ? "bg-gray-900 border-gray-900 text-white" 
+                        : "bg-white border-gray-200 text-gray-500 hover:border-[#B89C6A]"
                     )}
                   >
                     {opt}
@@ -187,21 +188,16 @@ export const VariationsSection = ({ availableVariations, variants, onUpdateVaria
           )}
         </div>
 
-        {/* Tabela de Variantes Geradas */}
         {variants.length > 0 && (
           <div className="space-y-4 pt-8 border-t border-gray-50">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-gray-700">Variantes configuradas</h3>
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{variants.length} opções</span>
-            </div>
+            <h3 className="text-sm font-bold text-gray-700">Variantes configuradas</h3>
             <div className="border border-gray-100 rounded-3xl overflow-hidden overflow-x-auto bg-gray-50/30">
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="bg-white border-b border-gray-50 text-[10px] uppercase font-bold text-gray-400">
                     <th className="px-6 py-5">Opção</th>
-                    <th className="px-6 py-5">SKU / Código</th>
+                    <th className="px-6 py-5">SKU</th>
                     <th className="px-6 py-5">Preço</th>
-                    <th className="px-6 py-5">Status</th>
                     <th className="px-6 py-5 text-right">Ações</th>
                   </tr>
                 </thead>
@@ -209,46 +205,18 @@ export const VariationsSection = ({ availableVariations, variants, onUpdateVaria
                   {variants.map((v, idx) => (
                     <tr key={idx} className="hover:bg-white transition-colors group">
                       <td className="px-6 py-5">
-                        <div className="flex flex-col">
-                           <span className="text-[10px] text-gray-400 font-bold uppercase">{v.attribute_name}</span>
-                           <span className="text-sm font-bold text-gray-900">{v.option_name}</span>
-                        </div>
+                        <span className="font-bold text-gray-900">{v.option_name}</span>
                       </td>
                       <td className="px-6 py-5">
-                        <span className="font-mono text-[11px] text-gray-500 uppercase bg-gray-100 px-2 py-1 rounded">{v.sku || '--'}</span>
+                        <span className="font-mono text-[11px] text-gray-500 uppercase">{v.sku || '--'}</span>
                       </td>
-                      <td className="px-6 py-5 font-bold text-gray-900">
+                      <td className="px-6 py-5 font-bold">
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v.price)}
                       </td>
-                      <td className="px-6 py-5">
-                        <Badge className={cn(
-                          "border-none rounded-full px-3 text-[9px] font-bold uppercase",
-                          v.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"
-                        )}>
-                          {v.is_active ? 'ATIVO' : 'INATIVO'}
-                        </Badge>
-                      </td>
                       <td className="px-6 py-5 text-right">
-                         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                           <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => {
-                              setEditingVariant(v);
-                              setEditIndex(idx);
-                            }}
-                            className="h-9 rounded-xl border-gray-100 text-gray-500 hover:text-[#B89C6A] hover:border-[#B89C6A] font-bold uppercase text-[10px]"
-                           >
-                            <Edit3 size={14} className="mr-2" /> Editar
-                           </Button>
-                           <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => removeVariant(idx)}
-                            className="h-9 w-9 text-gray-300 hover:text-red-500 rounded-xl"
-                           >
-                            <Trash2 size={16} />
-                           </Button>
+                         <div className="flex justify-end gap-2">
+                           <Button variant="ghost" size="icon" onClick={() => { setEditingVariant(v); setEditIndex(idx); }} className="h-8 w-8 text-gray-400 hover:text-[#B89C6A]"><Edit3 size={14} /></Button>
+                           <Button variant="ghost" size="icon" onClick={() => removeVariant(idx)} className="h-8 w-8 text-gray-300 hover:text-red-500"><Trash2 size={16} /></Button>
                          </div>
                       </td>
                     </tr>
