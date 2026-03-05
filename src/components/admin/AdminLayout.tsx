@@ -5,6 +5,7 @@ import { AdminSidebar } from './AdminSidebar';
 import { Search, Bell, ExternalLink } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Link } from 'react-router-dom';
+import { DebugInspector } from './DebugInspector';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -14,10 +15,10 @@ interface AdminLayoutProps {
 
 export const AdminLayout = ({ children, title, actions }: AdminLayoutProps) => {
   return (
-    <div className="min-h-screen bg-[#F9FAFB] flex">
+    <div className="min-h-screen bg-[#F9FAFB] flex relative">
       <AdminSidebar />
       
-      <main className="flex-1 ml-64 flex flex-col">
+      <main className="flex-1 ml-64 flex flex-col min-w-0">
         {/* Navbar Admin */}
         <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-8 sticky top-0 z-40">
           <div className="relative w-96">
@@ -53,6 +54,9 @@ export const AdminLayout = ({ children, title, actions }: AdminLayoutProps) => {
           </div>
         </div>
       </main>
+
+      {/* Inspetor de Debug fixo no Layout para evitar problemas de contexto */}
+      <DebugInspector />
     </div>
   );
 };

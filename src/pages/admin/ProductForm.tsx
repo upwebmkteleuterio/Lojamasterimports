@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ProductVariation, ProductVariant } from '@/types/store';
 import { toast } from 'sonner';
 import { usePersistence } from '@/hooks/usePersistence';
+import { diamondDebug } from '@/utils/debug';
 
 // Importação das seções
 import { GeneralInfoSection } from '@/components/admin/product-form/GeneralInfoSection';
@@ -56,33 +57,54 @@ const ProductForm = () => {
   }, [id]);
 
   const fetchSupportData = async () => {
-    // 1. Buscar Categorias com isolamento de erro
+    diamondDebug('info', 'Iniciando busca de suporte (Categorias e Variações)...');
+
     try {
-      const { data: cats, error: catsError } = await supabase
-        .from('category_mothers')
-        .select('*, subcategories(*)');
+      // 1. Nichos
+      diamondDebug('info', 'Executando SELECT em category_mothers...');
+      const { data: cats, error: catsError } = await supabase.from('category_mothers').select('*');
       
       if (catsError) {
-        const { data: simpleCats } = await supabase.from('category_mothers').select('*');
-        if (simpleCats) setCategories(simpleCats);
-      } else if (cats) {
-        setCategories(cats);
+        diamondDebug('error', 'Falha ao buscar category_mothers', catsError);
+        throw catsError;
       }
-    } catch (err) {
-      console.error("Erro ao carregar categorias:", err);
+
+      // 2. Subcategorias
+      diamondDebug('info', 'Executando SELECT em subcategories...');
+      const { data: subs, error: subsError } = await supabase.from('subcategories').select('*');
+      
+      if (subsError) {
+        diamondDebug('error', 'Falha ao buscar subcategories', subsError);
+        throw subsError;
+      }
+
+      const mappedCategories = cats.map(cat => ({
+        ...cat,
+        subcategories: subs.filter(s => s.mother_id === cat.id)
+      }));
+
+      setCategories(mappedCategories);
+      diamondDebug('success', `Carregamento completo: ${cats.length} nichos e ${subs.length} subcategorias localizadas.`);
+    } catch (err: any) {
+      diamondDebug('error', 'Falha crítica no processamento de categorização', err);
     }
 
-    // 2. Buscar Variações Globais com isolamento de erro
     try {
+      diamondDebug('info', 'Executando SELECT em variations...');
       const { data: vars, error: varsError } = await supabase
         .from('variations')
         .select('*')
         .order('created_at', { ascending: false });
       
-      if (varsError) throw varsError;
-      if (vars) setAvailableVariations(vars);
-    } catch (err) {
-      console.error("Erro ao carregar variações:", err);
+      if (varsError) {
+        diamondDebug('error', 'Falha ao buscar variações globais', varsError);
+        throw varsError;
+      }
+
+      setAvailableVariations(vars || []);
+      diamondDebug('success', `Carregadas ${vars?.length || 0} variações globais.`, vars);
+    } catch (err: any) {
+      diamondDebug('error', 'Falha crítica no processamento de variações', err);
     }
   };
 
@@ -90,14 +112,12 @@ const ProductForm = () => {
     try {
       const { data: prod, error } = await supabase.from('products').select('*').eq('id', id).single();
       if (error) throw error;
-      if (prod) {
-        setFormData((prev: any) => ({ ...prod, ...prev }));
-      }
+      if (prod) setFormData((prev: any) => ({ ...prod, ...prev }));
       
       const { data: dbVariants } = await supabase.from('product_variants').select('*').eq('product_id', id);
       if (dbVariants) setVariants(dbVariants);
     } catch (error: any) {
-      toast.error("Erro ao buscar produto: " + error.message);
+      diamondDebug('error', 'Falha ao carregar produto existente', error);
     }
   };
 
@@ -108,6 +128,7 @@ const ProductForm = () => {
     }
 
     setSaving(true);
+    diamondDebug('info', 'Salvando produto e variantes...');
     try {
       const { data: savedProd, error: prodError } = await supabase
         .from('products')
@@ -119,22 +140,19 @@ const ProductForm = () => {
 
       if (savedProd) {
         await supabase.from('product_variants').delete().eq('product_id', savedProd.id);
-        
         if (variants.length > 0) {
-          const variantsToSave = variants.map(v => ({
-            ...v,
-            product_id: savedProd.id,
-            id: undefined 
-          }));
+          const variantsToSave = variants.map(v => ({ ...v, product_id: savedProd.id, id: undefined }));
           const { error: varError } = await supabase.from('product_variants').insert(variantsToSave);
           if (varError) throw varError;
         }
       }
 
+      diamondDebug('success', 'Persistência concluída com sucesso!');
       toast.success("Produto salvo com sucesso!");
       localStorage.removeItem(`form_data_${persistenceKey}`);
       navigate('/adm/produtos');
     } catch (error: any) {
+      diamondDebug('error', 'Falha no salvamento do produto', error);
       toast.error("Erro ao salvar: " + error.message);
     } finally {
       setSaving(false);
