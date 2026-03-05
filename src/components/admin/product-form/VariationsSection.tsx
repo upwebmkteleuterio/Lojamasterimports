@@ -108,6 +108,31 @@ export const VariationsSection = ({ availableVariations, variants, onUpdateVaria
           <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Nova variação</p>
           
           <div className="relative">
+            {/* 
+               MENU DE BUSCA: 
+               Invertido para 'bottom-full' e 'mb-2' para abrir PARA CIMA 
+            */}
+            {showDropdown && !selectedAttr && (
+              <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-100 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] rounded-2xl z-[100] py-2 max-h-64 overflow-y-auto animate-in fade-in slide-in-from-bottom-2 duration-200">
+                {filteredAttrs.length > 0 ? (
+                  filteredAttrs.map(attr => (
+                    <button 
+                      key={attr.id}
+                      onClick={() => handleSelectAttr(attr)}
+                      className="w-full text-left px-6 py-4 text-sm font-medium text-gray-700 hover:bg-[#B89C6A]/5 hover:text-[#B89C6A] transition-colors border-b border-gray-50 last:border-0"
+                    >
+                      {attr.name}
+                      <span className="block text-[10px] text-gray-400 font-normal mt-0.5">Opções: {attr.options.join(', ')}</span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-6 py-6 text-center">
+                    <p className="text-sm text-gray-400 italic">Nenhuma variação cadastrada.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex gap-2">
                <div className="relative flex-1">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
@@ -139,27 +164,6 @@ export const VariationsSection = ({ availableVariations, variants, onUpdateVaria
                  </Button>
                )}
             </div>
-
-            {showDropdown && !selectedAttr && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 shadow-[0_10px_40px_rgba(0,0,0,0.1)] rounded-2xl z-[100] py-2 max-h-64 overflow-y-auto animate-in fade-in slide-in-from-top-1">
-                {filteredAttrs.length > 0 ? (
-                  filteredAttrs.map(attr => (
-                    <button 
-                      key={attr.id}
-                      onClick={() => handleSelectAttr(attr)}
-                      className="w-full text-left px-6 py-4 text-sm font-medium text-gray-700 hover:bg-[#B89C6A]/5 hover:text-[#B89C6A] transition-colors border-b border-gray-50 last:border-0"
-                    >
-                      {attr.name}
-                      <span className="block text-[10px] text-gray-400 font-normal mt-0.5">Opções: {attr.options.join(', ')}</span>
-                    </button>
-                  ))
-                ) : (
-                  <div className="px-6 py-6 text-center">
-                    <p className="text-sm text-gray-400 italic">Nenhuma variação cadastrada.</p>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
           {selectedAttr && (
