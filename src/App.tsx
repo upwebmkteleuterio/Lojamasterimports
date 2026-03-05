@@ -2,10 +2,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { CartProvider } from "./context/CartContext";
 import { FavoritesProvider } from "./context/FavoritesContext";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import { MobileNavbar } from "./components/layout/MobileNavbar";
 import ScrollToTop from "./components/ScrollToTop";
 import Landing from "./pages/Landing";
@@ -31,6 +31,24 @@ import Settings from "./pages/admin/Settings";
 
 const queryClient = new QueryClient();
 
+// Componente para Proteger Rotas
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { session, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) return (
+    <div className="h-screen w-full flex items-center justify-center bg-white">
+      <div className="w-10 h-10 border-4 border-[#B89C6A] border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
+  if (!session) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return <>{children}</>;
+};
+
 const AppContent = () => {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/adm');
@@ -51,28 +69,28 @@ const AppContent = () => {
         {/* Rotas Globais */}
         <Route path="/carrinho" element={<Cart />} />
         <Route path="/checkout" element={<Checkout />} />
-        <Route path="/minha-conta" element={<Account />} />
+        <Route path="/minha-conta" element={<ProtectedRoute><Account /></ProtectedRoute>} />
         
-        {/* Rotas Administrativas */}
-        <Route path="/adm" element={<Dashboard />} />
+        {/* Rotas Administrativas - Todas Protegidas */}
+        <Route path="/adm" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         
         {/* Produtos */}
-        <Route path="/adm/produtos" element={<Products />} />
-        <Route path="/adm/produtos/novo" element={<ProductForm />} />
-        <Route path="/adm/produtos/editar/:id" element={<ProductForm />} />
+        <Route path="/adm/produtos" element={<ProtectedRoute><Products /></ProtectedRoute>} />
+        <Route path="/adm/produtos/novo" element={<ProtectedRoute><ProductForm /></ProtectedRoute>} />
+        <Route path="/adm/produtos/editar/:id" element={<ProtectedRoute><ProductForm /></ProtectedRoute>} />
         
         {/* Variações */}
-        <Route path="/adm/variacoes" element={<Variations />} />
-        <Route path="/adm/variacoes/novo" element={<VariationForm />} />
-        <Route path="/adm/variacoes/editar/:id" element={<VariationForm />} />
+        <Route path="/adm/variacoes" element={<ProtectedRoute><Variations /></ProtectedRoute>} />
+        <Route path="/adm/variacoes/novo" element={<ProtectedRoute><VariationForm /></ProtectedRoute>} />
+        <Route path="/adm/variacoes/editar/:id" element={<ProtectedRoute><VariationForm /></ProtectedRoute>} />
 
         {/* Categorias */}
-        <Route path="/adm/categorias" element={<Categories />} />
-        <Route path="/adm/categorias/novo" element={<CategoryForm />} />
-        <Route path="/adm/categorias/editar/:id" element={<CategoryForm />} />
+        <Route path="/adm/categorias" element={<ProtectedRoute><Categories /></ProtectedRoute>} />
+        <Route path="/adm/categorias/novo" element={<ProtectedRoute><CategoryForm /></ProtectedRoute>} />
+        <Route path="/adm/categorias/editar/:id" element={<ProtectedRoute><CategoryForm /></ProtectedRoute>} />
 
         {/* Configurações */}
-        <Route path="/adm/configuracoes" element={<Settings />} />
+        <Route path="/adm/configuracoes" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
         
         <Route path="*" element={<NotFound />} />
       </Routes>
