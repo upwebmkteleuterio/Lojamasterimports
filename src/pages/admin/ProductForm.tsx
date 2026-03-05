@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card'; // Importação adicionada para corrigir o erro
+import { Card } from '@/components/ui/card';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { ProductVariation } from '@/types/store';
@@ -25,6 +25,7 @@ const initialFormData = {
   cost_price: 0,
   promo_price: 0,
   main_image: '',
+  gallery: [],
   category_mother_id: '',
   subcategory_id: '',
   description: '',
@@ -70,10 +71,10 @@ const ProductForm = () => {
     if (links) setSelectedVariations(links.map(l => l.variation_id));
   };
 
-  const handleToggleVariation = (variationId: string) => {
-    setSelectedVariations(prev => 
-      prev.includes(variationId) ? prev.filter(id => id !== variationId) : [...prev, variationId]
-    );
+  const handleCancel = () => {
+    // Limpa persistência ao cancelar
+    localStorage.removeItem(`form_data_${persistenceKey}`);
+    navigate('/adm/produtos');
   };
 
   const handleSave = async () => {
@@ -103,6 +104,7 @@ const ProductForm = () => {
       }
 
       toast.success("Produto salvo com sucesso!");
+      // Limpa persistência ao salvar
       localStorage.removeItem(`form_data_${persistenceKey}`);
       navigate('/adm/produtos');
     } catch (error: any) {
@@ -117,7 +119,7 @@ const ProductForm = () => {
       title={id ? "Editar Produto" : "Novo Produto"}
       actions={
         <div className="flex gap-2">
-           <Button variant="ghost" onClick={() => navigate('/adm/produtos')} className="rounded-full px-6 uppercase text-[10px] font-bold tracking-widest">Cancelar</Button>
+           <Button variant="ghost" onClick={handleCancel} className="rounded-full px-6 uppercase text-[10px] font-bold tracking-widest">Cancelar</Button>
            <Button onClick={handleSave} disabled={saving} className="bg-gray-900 hover:bg-black rounded-full px-12 h-11 font-bold uppercase text-[10px] tracking-widest">
             {saving ? 'Gravando...' : 'Salvar'}
           </Button>
@@ -160,7 +162,11 @@ const ProductForm = () => {
           <VariationsSection 
             availableVariations={availableVariations}
             selectedVariations={selectedVariations}
-            onToggle={handleToggleVariation}
+            onToggle={(id) => {
+              setSelectedVariations(prev => 
+                prev.includes(id) ? prev.filter(v => v !== id) : [...prev, id]
+              );
+            }}
           />
         </div>
 
@@ -174,8 +180,10 @@ const ProductForm = () => {
           />
 
           <MediaSection 
-            image={formData.main_image}
-            onImageChange={(url) => updateField('main_image', url)}
+            mainImage={formData.main_image}
+            gallery={formData.gallery || []}
+            onMainImageChange={(url) => updateField('main_image', url)}
+            onGalleryChange={(newGallery) => updateField('gallery', newGallery)}
           />
         </div>
       </div>
