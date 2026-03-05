@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ProductVariant } from "@/types/store";
 import { formatCurrency, parseCurrencyInput } from "@/utils/currency";
-import { Truck, RotateCcw } from "lucide-center";
+import { Truck, RotateCcw } from "lucide-react";
 import { diamondDebug } from '@/utils/debug';
 
 interface VariantEditModalProps {
