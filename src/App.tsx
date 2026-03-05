@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-route
 import { CartProvider } from "./context/CartContext";
 import { FavoritesProvider } from "./context/FavoritesContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { MobileNavbar } from "./components/layout/MobileNavbar";
+import { MobileNavbar } from "./components/mobile/MobileNavbar";
 import ScrollToTop from "./components/ScrollToTop";
 import Landing from "./pages/Landing";
 import Index from "./pages/Index";
@@ -32,8 +32,8 @@ import Settings from "./pages/admin/Settings";
 const queryClient = new QueryClient();
 
 // Componente para Proteger Rotas
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { session, loading } = useAuth();
+const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.ReactNode, requireAdmin?: boolean }) => {
+  const { session, profile, loading } = useAuth();
   const location = useLocation();
 
   if (loading) return (
@@ -42,8 +42,14 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     </div>
   );
 
+  // Não logado
   if (!session) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // Se exigir admin e o usuário for apenas 'user'
+  if (requireAdmin && profile?.role !== 'adm') {
+    return <Navigate to="/minha-conta" replace />;
   }
 
   return <>{children}</>;
@@ -71,26 +77,18 @@ const AppContent = () => {
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/minha-conta" element={<ProtectedRoute><Account /></ProtectedRoute>} />
         
-        {/* Rotas Administrativas - Todas Protegidas */}
-        <Route path="/adm" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        
-        {/* Produtos */}
-        <Route path="/adm/produtos" element={<ProtectedRoute><Products /></ProtectedRoute>} />
-        <Route path="/adm/produtos/novo" element={<ProtectedRoute><ProductForm /></ProtectedRoute>} />
-        <Route path="/adm/produtos/editar/:id" element={<ProtectedRoute><ProductForm /></ProtectedRoute>} />
-        
-        {/* Variações */}
-        <Route path="/adm/variacoes" element={<ProtectedRoute><Variations /></ProtectedRoute>} />
-        <Route path="/adm/variacoes/novo" element={<ProtectedRoute><VariationForm /></ProtectedRoute>} />
-        <Route path="/adm/variacoes/editar/:id" element={<ProtectedRoute><VariationForm /></ProtectedRoute>} />
-
-        {/* Categorias */}
-        <Route path="/adm/categorias" element={<ProtectedRoute><Categories /></ProtectedRoute>} />
-        <Route path="/adm/categorias/novo" element={<ProtectedRoute><CategoryForm /></ProtectedRoute>} />
-        <Route path="/adm/categorias/editar/:id" element={<ProtectedRoute><CategoryForm /></ProtectedRoute>} />
-
-        {/* Configurações */}
-        <Route path="/adm/configuracoes" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        {/* Rotas Administrativas - Todas Protegidas com requireAdmin */}
+        <Route path="/adm" element={<ProtectedRoute requireAdmin><Dashboard /></ProtectedRoute>} />
+        <Route path="/adm/produtos" element={<ProtectedRoute requireAdmin><Products /></ProtectedRoute>} />
+        <Route path="/adm/produtos/novo" element={<ProtectedRoute requireAdmin><ProductForm /></ProtectedRoute>} />
+        <Route path="/adm/produtos/editar/:id" element={<ProtectedRoute requireAdmin><ProductForm /></ProtectedRoute>} />
+        <Route path="/adm/variacoes" element={<ProtectedRoute requireAdmin><Variations /></ProtectedRoute>} />
+        <Route path="/adm/variacoes/novo" element={<ProtectedRoute requireAdmin><VariationForm /></ProtectedRoute>} />
+        <Route path="/adm/variacoes/editar/:id" element={<ProtectedRoute requireAdmin><VariationForm /></ProtectedRoute>} />
+        <Route path="/adm/categorias" element={<ProtectedRoute requireAdmin><Categories /></ProtectedRoute>} />
+        <Route path="/adm/categorias/novo" element={<ProtectedRoute requireAdmin><CategoryForm /></ProtectedRoute>} />
+        <Route path="/adm/categorias/editar/:id" element={<ProtectedRoute requireAdmin><CategoryForm /></ProtectedRoute>} />
+        <Route path="/adm/configuracoes" element={<ProtectedRoute requireAdmin><Settings /></ProtectedRoute>} />
         
         <Route path="*" element={<NotFound />} />
       </Routes>
