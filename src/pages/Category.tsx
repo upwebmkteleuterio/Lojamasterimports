@@ -6,6 +6,7 @@ import { getProductsBySubcategory } from '@/services/products';
 import { CategoryMother, Product } from '@/types/store';
 import { SlidersHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   Sheet, 
   SheetContent, 
@@ -18,52 +19,44 @@ const Category = () => {
   const { shopType, subId } = useParams<{ shopType: string, subId: string }>();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [subName, setSubName] = useState("");
   
   // Estados dos filtros
   const [selectedPrices, setSelectedPrices] = useState<string[]>([]);
   const [onlyInStock, setOnlyInStock] = useState(false);
+  const [sortOrder, setSortOrder] = useState("Destaques");
   
   const motherCategory = (shopType || 'feminine') as CategoryMother;
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      if (subId) {
-        setLoading(true);
-        const data = await getProductsBySubcategory(motherCategory, subId);
-        setProducts(data);
-        setLoading(false);
+    const loadData = async () => {
+      if (!subId) return;
+      setLoading(true);
+
+      // 1. Busca nome da subcategoria no banco
+      if (subId === 'todos') {
+        setSubName('Nossa Coleção');
+      } else {
+        const { data } = await supabase
+          .from('subcategories')
+          .select('name')
+          .eq('id', subId)
+          .maybeSingle();
+        setSubName(data?.name || subId);
       }
+
+      // 2. Busca produtos
+      const data = await getProductsBySubcategory(motherCategory, subId);
+      setProducts(data);
+      setLoading(false);
     };
-    fetchProducts();
+
+    loadData();
   }, [subId, motherCategory]);
 
-  const subcategories = motherCategory === 'pet' 
-    ? [
-        { id: 'todos', name: 'Nossa Coleção' },
-        { id: 'conforto', name: 'Conforto' },
-        { id: 'higiene', name: 'Higiene' },
-        { id: 'brinquedos', name: 'Brinquedos' },
-        { id: 'acessorios', name: 'Acessórios' },
-        { id: 'saude', name: 'Saúde' }
-      ]
-    : [
-        { id: 'todos', name: 'Nossa Coleção' },
-        { id: 'aneis', name: 'Anéis' },
-        { id: 'brincos', name: 'Brincos' },
-        { id: 'colares', name: 'Colares' },
-        { id: 'pulseiras', name: 'Pulseiras' },
-        { id: 'relogios', name: 'Relógios' }
-      ];
-
-  // Nome da subcategoria ativa para o título
-  const activeSubName = useMemo(() => {
-    if (subId === 'todos') return 'Nossa Coleção';
-    return subcategories.find(s => s.id === subId)?.name || subId;
-  }, [subId, subcategories]);
-
-  // Lógica de filtragem funcional
-  const filteredProducts = useMemo(() => {
-    return products.filter(p => {
+  // Lógica de filtragem e ordenação
+  const processedProducts = useMemo(() => {
+    let result = products.filter(p => {
       // Filtro de Estoque
       if (onlyInStock && p.stock <= 0) return false;
 
@@ -77,10 +70,26 @@ const Category = () => {
           return true;
         });
       }
-
       return true;
     });
-  }, [products, onlyInStock, selectedPrices]);
+
+    // Filtro de Ordenação
+    if (sortOrder === "Menor Preço") {
+      result.sort((a, b) => {
+        const pA = a.promotionalPrice && a.promotionalPrice > 0 ? a.promotionalPrice : a.price;
+        const pB = b.promotionalPrice && b.promotionalPrice > 0 ? b.promotionalPrice : b.price;
+        return pA - pB;
+      });
+    } else if (sortOrder === "Maior Preço") {
+      result.sort((a, b) => {
+        const pA = a.promotionalPrice && a.promotionalPrice > 0 ? a.promotionalPrice : a.price;
+        const pB = b.promotionalPrice && b.promotionalPrice > 0 ? b.promotionalPrice : b.price;
+        return pB - pA;
+      });
+    }
+
+    return result;
+  }, [products, onlyInStock, selectedPrices, sortOrder]);
 
   const handlePriceToggle = (range: string) => {
     setSelectedPrices(prev => 
@@ -128,32 +137,9 @@ const Category = () => {
     <div className="min-h-screen bg-white pb-32 md:pb-20">
       <Navbar />
       
-      {/* Lista Horizontal de Subcategorias */}
-      <div className="border-b bg-gray-50/30 md:hidden">
-        <div className="container mx-auto px-4 overflow-x-auto no-scrollbar py-3">
-          <div className="flex items-center gap-4 whitespace-nowrap">
-            {subcategories.map((cat) => (
-              <Link 
-                key={cat.id} 
-                to={`/${shopType}/categoria/${cat.id}`}
-                className={cn(
-                  "text-[10px] font-bold uppercase tracking-widest transition-all pb-1 border-b-2",
-                  subId === cat.id 
-                    ? "text-[#B89C6A] border-[#B89C6A]" 
-                    : "text-gray-400 border-transparent hover:text-gray-600"
-                )}
-              >
-                {cat.name}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
-
       <div className="container mx-auto px-4 py-8 md:py-12">
         <div className="flex flex-col lg:flex-row gap-8 md:gap-16">
           
-          {/* Sidebar - Apenas Desktop */}
           <aside className="hidden lg:block w-64 space-y-12 shrink-0">
             <div className="flex items-center gap-2 font-bold text-[11px] uppercase tracking-widest text-gray-900 mb-8 border-b pb-4">
               Filtros <SlidersHorizontal size={14} />
@@ -164,18 +150,22 @@ const Category = () => {
           <div className="flex-1">
             <header className="mb-8 md:mb-12 flex items-end justify-between border-b pb-6 md:pb-8">
               <div className="space-y-1">
-                <h1 className="text-2xl md:text-4xl font-serif font-light text-gray-900 capitalize leading-none">
-                  {activeSubName}
+                <h1 className="text-2xl md:text-4xl font-serif font-light text-gray-900 leading-none">
+                  {subName}
                 </h1>
                 <p className="text-[9px] md:text-[10px] uppercase tracking-widest text-gray-400 font-bold">
-                  {loading ? 'Carregando...' : `${filteredProducts.length} itens encontrados`}
+                  {loading ? 'Carregando...' : `${processedProducts.length} itens encontrados`}
                 </p>
               </div>
 
               <div className="flex items-center gap-3 md:gap-6">
                 <div className="flex items-center gap-2 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-gray-400">
                   <span className="hidden sm:inline">Ordenar:</span>
-                  <select className="border-none bg-transparent text-black focus:ring-0 cursor-pointer p-0 font-bold text-[9px] md:text-[10px] uppercase tracking-widest">
+                  <select 
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value)}
+                    className="border-none bg-transparent text-black focus:ring-0 cursor-pointer p-0 font-bold text-[9px] md:text-[10px] uppercase tracking-widest outline-none"
+                  >
                     <option>Destaques</option>
                     <option>Menor Preço</option>
                     <option>Maior Preço</option>
@@ -208,15 +198,15 @@ const Category = () => {
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 md:gap-x-8 gap-y-8 md:gap-y-16">
-                {filteredProducts.map(product => (
+                {processedProducts.map(product => (
                   <ProductCard key={product.id} product={product} />
                 ))}
                 
-                {filteredProducts.length === 0 && (
+                {processedProducts.length === 0 && (
                   <div className="col-span-full py-20 md:py-32 text-center">
                     <p className="font-serif text-xl md:text-2xl text-gray-300 italic">Nenhum produto encontrado com os filtros selecionados.</p>
                     <button 
-                      onClick={() => { setSelectedPrices([]); setOnlyInStock(false); }}
+                      onClick={() => { setSelectedPrices([]); setOnlyInStock(false); setSortOrder("Destaques"); }}
                       className="inline-block mt-6 md:mt-8 text-[9px] md:text-[10px] font-bold uppercase tracking-widest border-b border-black pb-1"
                     >
                       Limpar Filtros
