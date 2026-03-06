@@ -29,13 +29,13 @@ export const ProductCard = ({ product }: ProductCardProps) => {
 
   return (
     <div className="group flex flex-col h-full bg-white transition-all duration-500">
-      {/* Imagem do Produto */}
+      {/* Imagem do Produto - object-cover para preenchimento total */}
       <div className="relative aspect-square overflow-hidden bg-[#F7F7F7] mb-5">
         <Link to={`/${currentShop}/produto/${product.id}`} className="block w-full h-full">
           <img 
             src={getSafeProductImage(product.image)} 
             alt={product.name}
-            className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
           />
         </Link>
         
