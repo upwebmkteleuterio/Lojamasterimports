@@ -26,15 +26,23 @@ export const ProductSidebar = ({ product, onAddToCart }: ProductSidebarProps) =>
     return () => clearInterval(timer);
   }, []);
 
+  const hasPromo = product.promotionalPrice && product.promotionalPrice > 0;
+  const displayPrice = hasPromo ? product.promotionalPrice : product.price;
+
   return (
     <div className="flex flex-col">
       <h1 className="text-3xl md:text-5xl font-serif font-light text-[#333] mb-6 leading-tight">
         {product.name}
       </h1>
 
-      <div className="mb-8">
+      <div className="mb-8 flex flex-col gap-1">
+        {hasPromo && (
+          <span className="text-sm md:text-lg text-gray-400 line-through font-light">
+            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price)}
+          </span>
+        )}
         <span className="text-3xl md:text-4xl font-bold text-[#D4AF37]">
-          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price)}
+          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(displayPrice || 0)}
         </span>
       </div>
 

@@ -1,12 +1,12 @@
 "use client";
 
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
+import { Heart, ShoppingBag } from 'lucide-react';
 import { Product } from '@/types/store';
-import { Button } from '@/components/ui/button';
-import { getSafeProductImage } from '@/utils/imageHandler';
-import { Heart } from 'lucide-react';
+import { useCart } from '@/context/CartContext';
 import { useFavorites } from '@/context/FavoritesContext';
+import { getSafeProductImage } from '@/utils/imageHandler';
 import { cn } from '@/lib/utils';
 
 interface ProductCardProps {
@@ -14,71 +14,93 @@ interface ProductCardProps {
 }
 
 export const ProductCard = ({ product }: ProductCardProps) => {
-  const navigate = useNavigate();
+  const { addToCart } = useCart();
   const { toggleFavorite, isFavorite } = useFavorites();
-  const active = isFavorite(product.id);
-
-  const handleProductClick = () => {
-    navigate(`/${product.categoryMother}/produto/${product.id}`);
-  };
-
-  const handleToggleFavorite = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    toggleFavorite(product);
-  };
+  const { shopType } = useParams<{ shopType: string }>();
+  
+  const currentShop = shopType || product.categoryMother || 'feminine';
+  const hasPromo = product.promotionalPrice && product.promotionalPrice > 0;
+  const displayPrice = hasPromo ? product.promotionalPrice : product.price;
 
   return (
-    <div className="group flex flex-col items-center bg-white relative">
+    <div className="group relative flex flex-col h-full bg-white transition-all duration-500">
       {/* Imagem do Produto */}
-      <div
-        onClick={handleProductClick}
-        className="relative w-full aspect-square overflow-hidden cursor-pointer mb-4"
-      >
-        <img
-          src={getSafeProductImage(product.image)}
-          alt={product.name}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-        />
+      <div className="relative aspect-[3/4] overflow-hidden bg-gray-50 border border-gray-100 mb-4 md:mb-6">
+        <Link to={`/${currentShop}/produto/${product.id}`} className="block w-full h-full">
+          <img 
+            src={getSafeProductImage(product.image)} 
+            alt={product.name}
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+          />
+        </Link>
         
-        {/* Heart Toggle */}
-        <button
-          onClick={handleToggleFavorite}
-          className={cn(
-            "absolute top-4 right-4 p-2 rounded-full shadow-md transition-all duration-300",
-            active
-              ? "bg-[#B89C6A] text-white scale-110"
-              : "bg-white/80 text-gray-400 hover:text-[#B89C6A] hover:bg-white"
-          )}
-        >
-          <Heart size={16} fill={active ? "currentColor" : "none"} />
-        </button>
+        {/* Badges e Botões Flutuantes */}
+        <div className="absolute top-3 right-3 flex flex-col gap-2">
+          <button 
+            onClick={() => toggleFavorite(product)}
+            className={cn(
+              "w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center shadow-sm transition-all duration-300",
+              isFavorite(product.id) 
+                ? "bg-red-50 text-red-500" 
+                : "bg-white/80 backdrop-blur-sm text-gray-400 hover:bg-white hover:text-red-500"
+            )}
+          >
+            <Heart size={18} fill={isFavorite(product.id) ? "currentColor" : "none"} />
+          </button>
+        </div>
+
+        {hasPromo && (
+          <div className="absolute top-3 left-3">
+            <span className="bg-[#B89C6A] text-white text-[9px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-none shadow-lg">
+              Oferta
+            </span>
+          </div>
+        )}
+
+        {/* Quick Add - Desktop Only */}
+        <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 bg-black/40 backdrop-blur-sm hidden md:block">
+          <button 
+            onClick={() => addToCart(product, 1)}
+            className="w-full bg-white text-black py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-[#B89C6A] hover:text-white transition-colors"
+          >
+            ADICIONAR AO CARRINHO
+          </button>
+        </div>
       </div>
 
       {/* Informações do Produto */}
-      <div className="flex flex-col items-center text-center px-2 space-y-1">
-        <h3 
-          onClick={handleProductClick}
-          className="font-serif text-sm md:text-base text-[#444] leading-tight cursor-pointer hover:text-[#B89C6A] transition-colors line-clamp-2 min-h-[2.5rem]"
+      <div className="flex flex-col flex-1 px-1">
+        <Link to={`/${currentShop}/produto/${product.id}`} className="mb-2">
+          <h3 className="text-[11px] md:text-sm font-serif font-light text-gray-800 line-clamp-2 hover:text-[#B89C6A] transition-colors uppercase tracking-wide">
+            {product.name}
+          </h3>
+        </Link>
+        
+        <div className="mt-auto space-y-0.5 min-h-[48px] flex flex-col justify-end">
+          {/* Preço Original (Apenas se houver promo, senão mantém espaço vazio para padronização) */}
+          <div className="h-4">
+            {hasPromo && (
+              <span className="text-[10px] md:text-xs text-gray-400 line-through font-light">
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price)}
+              </span>
+            )}
+          </div>
+
+          {/* Preço de Exibição */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm md:text-lg font-bold text-[#B89C6A]">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(displayPrice || 0)}
+            </span>
+          </div>
+        </div>
+
+        {/* Botão comprar Mobile */}
+        <button 
+          onClick={() => addToCart(product, 1)}
+          className="md:hidden mt-4 flex items-center justify-center gap-2 w-full border border-gray-100 py-2.5 text-[9px] font-bold uppercase tracking-widest text-gray-600 active:bg-gray-50 transition-colors"
         >
-          {product.name}
-        </h3>
-
-        <div className="flex flex-col items-center gap-0.5 mt-2">
-          <span className="font-bold text-sm md:text-lg text-[#1A365D]">
-            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price)}
-          </span>
-        </div>
-
-        {/* Botão Comprar */}
-        <div className="pt-4 w-full max-w-[160px]">
-          <Button 
-            onClick={handleProductClick}
-            variant="outline"
-            className="w-full rounded-none border-[#444] text-[#1A365D] font-serif uppercase text-[10px] md:text-xs tracking-widest hover:bg-[#444] hover:text-white transition-all py-6"
-          >
-            COMPRAR
-          </Button>
-        </div>
+          <ShoppingBag size={12} /> Comprar
+        </button>
       </div>
     </div>
   );
