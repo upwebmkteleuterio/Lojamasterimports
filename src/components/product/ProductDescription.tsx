@@ -8,30 +8,22 @@ interface ProductDescriptionProps {
 }
 
 export const ProductDescription = ({ name, description }: ProductDescriptionProps) => {
+  if (!description) return null;
+
   return (
     <section className="py-16 md:py-24 border-t border-gray-100 bg-[#fdfdfd]">
       <div className="container mx-auto px-4 max-w-4xl">
-        <h2 className="text-2xl md:text-3xl font-serif text-[#444] text-center mb-12">
-          {name}
+        <h2 className="text-2xl md:text-3xl font-serif text-[#444] text-center mb-12 uppercase tracking-widest">
+          Sobre o {name}
         </h2>
         
-        <div className="space-y-8 text-gray-600 leading-relaxed font-light text-center md:text-left">
-          <p>
-            O <strong>{name}</strong> da Diamond Store é a verdadeira expressão de elegância e sofisticação. 
-            Com design contemporâneo e refinado, cada detalhe foi meticulosamente pensado para oferecer beleza atemporal e brilho deslumbrante.
-          </p>
-          
-          <p className="italic">
-            {description}
-          </p>
-          
-          <p>
-            Ideal para ocasiões especiais ou para dar um toque de luxo ao look do dia a dia, este item é perfeito para quem deseja destacar sua personalidade com muito estilo. 
-            O acabamento impecável e a qualidade superior são marcas registradas da Diamond Store, garantindo durabilidade e conforto incomparáveis.
-          </p>
-          
-          <p className="font-serif text-[#333] text-lg text-center mt-12">
-            Brilhe com a Diamond Store, onde a elegância encontra o luxo em cada detalhe.
+        <div className="text-gray-600 leading-relaxed font-light text-justify md:text-left whitespace-pre-wrap">
+          {description}
+        </div>
+
+        <div className="mt-16 pt-8 border-t border-gray-50 text-center">
+          <p className="font-serif text-[#B89C6A] text-lg">
+            Qualidade e sofisticação Diamond Store
           </p>
         </div>
       </div>
