@@ -46,10 +46,22 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
 
       const items: OrderItem[] = (data || [])
-        .map(item => ({
-          ...item.products,
-          quantity: item.quantity
-        }))
+        .map(item => {
+          const p = item.products;
+          return {
+            id: p.id,
+            name: p.name,
+            price: Number(p.price),
+            image: p.main_image || '', // Mapeamento crucial aqui
+            categoryMother: p.category_mother_id,
+            subcategory: p.subcategory_id,
+            description: p.description,
+            stock: p.stock,
+            sku: p.sku,
+            active: p.is_active,
+            quantity: item.quantity
+          } as OrderItem;
+        })
         .filter(p => p.id !== null);
 
       setCart(items);

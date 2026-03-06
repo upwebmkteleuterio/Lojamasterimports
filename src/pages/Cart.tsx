@@ -4,6 +4,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { useCart } from '@/context/CartContext';
 import { Button } from '@/components/ui/button';
 import { Trash2, Minus, Plus, ArrowLeft, ShoppingCart } from 'lucide-react';
+import { getSafeProductImage } from '@/utils/imageHandler';
 
 const Cart = () => {
   const { cart, removeFromCart, updateQuantity, cartTotal } = useCart();
@@ -19,7 +20,7 @@ const Cart = () => {
           </div>
           <h2 className="text-2xl font-serif font-bold mb-2">Seu carrinho está vazio</h2>
           <p className="text-gray-500 mb-8">Parece que você ainda não adicionou nada.</p>
-          <Button onClick={() => navigate('/home')} className="rounded-full px-8">
+          <Button onClick={() => navigate('/feminine')} className="rounded-full px-8">
             Começar a Comprar
           </Button>
         </div>
@@ -40,7 +41,7 @@ const Cart = () => {
             {cart.map((item) => (
               <div key={item.id} className="bg-white p-4 rounded-2xl flex gap-4 items-center shadow-sm border border-gray-100">
                 <div className="w-24 h-24 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0">
-                  <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                  <img src={getSafeProductImage(item.image)} alt={item.name} className="w-full h-full object-cover" />
                 </div>
                 
                 <div className="flex-1 min-w-0">
@@ -74,7 +75,7 @@ const Cart = () => {
               </div>
             ))}
 
-            <Link to="/home" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-primary transition-colors mt-4">
+            <Link to="/feminine" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-primary transition-colors mt-4">
               <ArrowLeft size={16} /> Continuar comprando
             </Link>
           </div>
