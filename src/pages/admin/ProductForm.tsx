@@ -51,13 +51,11 @@ const ProductForm = () => {
   const persistenceKey = id ? `edit_product_${id}` : 'new_product_draft';
   const { data: formData, updateField, setData: setFormData } = usePersistence<any>(persistenceKey, initialFormData);
 
-  // Efeito para limpar o formulário ao entrar em "Novo Produto"
   useEffect(() => {
     if (!id) {
       diamondDebug('info', 'Iniciando formulário para NOVO produto. Limpando campos.');
       setFormData(initialFormData);
       setVariants([]);
-      // Limpa também o rascunho do localStorage para garantir que não venha lixo de cadastros cancelados
       localStorage.removeItem(`form_data_new_product_draft`);
     } else {
       diamondDebug('info', `ID detectado (${id}). Iniciando carregamento do produto.`);
@@ -116,6 +114,20 @@ const ProductForm = () => {
     }
   };
 
+  const handleGenerateSku = () => {
+    // Pega as 3 primeiras letras do nome ou 'PROD'
+    const prefix = formData.name 
+      ? formData.name.substring(0, 3).toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      : 'PROD';
+    
+    // Gera um sufixo aleatório de 5 caracteres
+    const random = Math.random().toString(36).substring(2, 7).toUpperCase();
+    const newSku = `${prefix}-${random}`;
+    
+    updateField('sku', newSku);
+    diamondDebug('info', `SKU gerado com sucesso: ${newSku}`);
+  };
+
   const handleSave = async () => {
     if (!formData.name || !formData.price || !formData.category_mother_id) {
       toast.error("Preencha os campos obrigatórios (*)");
@@ -124,7 +136,6 @@ const ProductForm = () => {
 
     setSaving(true);
     
-    // Tratamento de campos UNIQUE: Se estiver vazio, envia NULL para evitar erro de duplicidade no banco
     const payload = {
       ...formData,
       sku: formData.sku?.trim() === "" ? null : formData.sku,
@@ -193,7 +204,12 @@ const ProductForm = () => {
           <GeneralInfoSection name={formData.name} description={formData.description} isActive={formData.is_active} onChange={updateField} />
           <PricingSection costPrice={formData.cost_price} price={formData.price} promoPrice={formData.promo_price} onChange={updateField} />
           <Card className="rounded-3xl border-none shadow-sm bg-white overflow-hidden p-8">
-            <InventorySection sku={formData.sku} barcode={formData.barcode} onChange={updateField} />
+            <InventorySection 
+              sku={formData.sku} 
+              barcode={formData.barcode} 
+              onChange={updateField} 
+              onGenerateSku={handleGenerateSku}
+            />
           </Card>
           <ShippingSection weight={formData.weight} width={formData.width} height={formData.height} length={formData.length} onChange={updateField} />
           <VariationsSection availableVariations={availableVariations} variants={variants} onUpdateVariants={setVariants} mainProductData={formData} />
