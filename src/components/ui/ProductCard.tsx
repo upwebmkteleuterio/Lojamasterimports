@@ -30,12 +30,12 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           <img 
             src={getSafeProductImage(product.image)} 
             alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
           />
         </Link>
         
-        {/* Badges e Botões Flutuantes */}
-        <div className="absolute top-3 right-3 flex flex-col gap-2">
+        {/* Favoritar */}
+        <div className="absolute top-3 right-3 flex flex-col gap-2 z-10">
           <button 
             onClick={() => toggleFavorite(product)}
             className={cn(
@@ -50,22 +50,12 @@ export const ProductCard = ({ product }: ProductCardProps) => {
         </div>
 
         {hasPromo && (
-          <div className="absolute top-3 left-3">
+          <div className="absolute top-3 left-3 z-10">
             <span className="bg-[#B89C6A] text-white text-[9px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-none shadow-lg">
               Oferta
             </span>
           </div>
         )}
-
-        {/* Quick Add - Desktop Only */}
-        <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 bg-black/40 backdrop-blur-sm hidden md:block">
-          <button 
-            onClick={() => addToCart(product, 1)}
-            className="w-full bg-white text-black py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-[#B89C6A] hover:text-white transition-colors"
-          >
-            ADICIONAR AO CARRINHO
-          </button>
-        </div>
       </div>
 
       {/* Informações do Produto */}
@@ -76,8 +66,8 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           </h3>
         </Link>
         
-        <div className="mt-auto space-y-0.5 min-h-[48px] flex flex-col justify-end">
-          {/* Preço Original (Apenas se houver promo, senão mantém espaço vazio para padronização) */}
+        <div className="mt-auto space-y-0.5 min-h-[48px] flex flex-col justify-end mb-4">
+          {/* Preço Original (Apenas se houver promo) */}
           <div className="h-4">
             {hasPromo && (
               <span className="text-[10px] md:text-xs text-gray-400 line-through font-light">
@@ -94,12 +84,14 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           </div>
         </div>
 
-        {/* Botão comprar Mobile */}
+        {/* Botão Comprar Fixo */}
         <button 
           onClick={() => addToCart(product, 1)}
-          className="md:hidden mt-4 flex items-center justify-center gap-2 w-full border border-gray-100 py-2.5 text-[9px] font-bold uppercase tracking-widest text-gray-600 active:bg-gray-50 transition-colors"
+          className="flex items-center justify-center gap-2 w-full border border-gray-900 bg-white md:hover:bg-gray-900 md:hover:text-white py-3 text-[10px] font-bold uppercase tracking-widest text-gray-900 transition-all duration-300"
         >
-          <ShoppingBag size={12} /> Comprar
+          <ShoppingBag size={14} /> 
+          <span className="hidden md:inline">ADICIONAR AO CARRINHO</span>
+          <span className="md:hidden">COMPRAR</span>
         </button>
       </div>
     </div>
