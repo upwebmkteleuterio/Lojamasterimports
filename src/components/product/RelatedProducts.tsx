@@ -1,23 +1,41 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Product } from '@/types/store';
 import { ProductCard } from '@/components/ui/ProductCard';
 import { getProductsByMother } from '@/services/products';
 
 interface RelatedProductsProps {
   currentProductId: string;
-  categoryMother: 'pet' | 'feminine';
+  categoryMother: 'pet' | 'feminine' | string;
 }
 
 export const RelatedProducts = ({ currentProductId, categoryMother }: RelatedProductsProps) => {
-  // Busca produtos da mesma categoria mãe, excluindo o atual
-  const allRelated = getProductsByMother(categoryMother);
-  const related = allRelated
-    .filter(p => p.id !== currentProductId)
-    .slice(0, 4);
+  const [related, setRelated] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  if (related.length === 0) return null;
+  useEffect(() => {
+    const fetchRelated = async () => {
+      setLoading(true);
+      try {
+        const allRelated = await getProductsByMother(categoryMother as any);
+        const filtered = allRelated
+          .filter(p => p.id !== currentProductId)
+          .slice(0, 4);
+        setRelated(filtered);
+      } catch (error) {
+        console.error("Erro ao buscar produtos relacionados:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (categoryMother) {
+      fetchRelated();
+    }
+  }, [currentProductId, categoryMother]);
+
+  if (loading || related.length === 0) return null;
 
   return (
     <section className="py-12 md:py-20 bg-white border-t border-gray-50">
@@ -26,13 +44,6 @@ export const RelatedProducts = ({ currentProductId, categoryMother }: RelatedPro
           Veja também
         </h2>
         
-        {/* 
-            Mobile: 
-            - flex com overflow-x-auto para rolagem lateral.
-            - w-[calc(50%-0.75rem)] garante que caibam exatamente 2 itens (considerando o gap).
-            PC:
-            - grid padrão de 4 colunas.
-        */}
         <div className="flex overflow-x-auto no-scrollbar gap-4 pb-6 -mx-4 px-4 md:mx-0 md:px-0 md:grid md:grid-cols-4 md:gap-8 md:pb-0">
           {related.map(product => (
             <div 
