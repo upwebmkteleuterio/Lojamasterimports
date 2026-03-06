@@ -21,7 +21,9 @@ export const CategorizationSection = ({ nicheId, subcategoryId, stock, categorie
       </CardHeader>
       <CardContent className="p-6 space-y-6">
         <div className="space-y-2">
-          <Label className="text-xs font-bold uppercase text-gray-500">Nicho / Categoria Mãe</Label>
+          <Label className="text-xs font-bold uppercase text-gray-500 flex items-center gap-1">
+            Nicho / Categoria Mãe <span className="text-red-500 font-bold">*</span>
+          </Label>
           <select 
             value={nicheId} 
             onChange={e => onFieldChange('category_mother_id', e.target.value)}

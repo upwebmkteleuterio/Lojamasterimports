@@ -35,7 +35,9 @@ export const PricingSection = ({ costPrice, price, promoPrice, onChange }: Prici
           </div>
         </div>
         <div className="space-y-2">
-          <Label className="text-sm font-medium text-gray-600">Preço de venda</Label>
+          <Label className="text-sm font-medium text-gray-600 flex items-center gap-1">
+            Preço de venda <span className="text-red-500 font-bold">*</span>
+          </Label>
           <div className="relative flex items-center">
             <div className="absolute left-4 font-bold text-gray-400 text-sm">R$</div>
             <Input 
