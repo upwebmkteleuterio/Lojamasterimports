@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useMemo } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
 import { ProductCard } from '@/components/ui/ProductCard';
 import { getProductsBySubcategory } from '@/services/products';
@@ -19,6 +19,10 @@ const Category = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   
+  // Estados dos filtros
+  const [selectedPrices, setSelectedPrices] = useState<string[]>([]);
+  const [onlyInStock, setOnlyInStock] = useState(false);
+  
   const motherCategory = (shopType || 'feminine') as CategoryMother;
 
   useEffect(() => {
@@ -35,7 +39,7 @@ const Category = () => {
 
   const subcategories = motherCategory === 'pet' 
     ? [
-        { id: 'todos', name: 'Todos' },
+        { id: 'todos', name: 'Nossa Coleção' },
         { id: 'conforto', name: 'Conforto' },
         { id: 'higiene', name: 'Higiene' },
         { id: 'brinquedos', name: 'Brinquedos' },
@@ -43,13 +47,46 @@ const Category = () => {
         { id: 'saude', name: 'Saúde' }
       ]
     : [
-        { id: 'todos', name: 'Todos' },
+        { id: 'todos', name: 'Nossa Coleção' },
         { id: 'aneis', name: 'Anéis' },
         { id: 'brincos', name: 'Brincos' },
         { id: 'colares', name: 'Colares' },
         { id: 'pulseiras', name: 'Pulseiras' },
         { id: 'relogios', name: 'Relógios' }
       ];
+
+  // Nome da subcategoria ativa para o título
+  const activeSubName = useMemo(() => {
+    if (subId === 'todos') return 'Nossa Coleção';
+    return subcategories.find(s => s.id === subId)?.name || subId;
+  }, [subId, subcategories]);
+
+  // Lógica de filtragem funcional
+  const filteredProducts = useMemo(() => {
+    return products.filter(p => {
+      // Filtro de Estoque
+      if (onlyInStock && p.stock <= 0) return false;
+
+      // Filtro de Preço
+      if (selectedPrices.length > 0) {
+        const price = p.promotionalPrice && p.promotionalPrice > 0 ? p.promotionalPrice : p.price;
+        return selectedPrices.some(range => {
+          if (range === 'Até R$ 100') return price <= 100;
+          if (range === 'R$ 100 - R$ 500') return price > 100 && price <= 500;
+          if (range === 'R$ 500+') return price > 500;
+          return true;
+        });
+      }
+
+      return true;
+    });
+  }, [products, onlyInStock, selectedPrices]);
+
+  const handlePriceToggle = (range: string) => {
+    setSelectedPrices(prev => 
+      prev.includes(range) ? prev.filter(r => r !== range) : [...prev, range]
+    );
+  };
 
   const FilterContent = () => (
     <div className="space-y-10">
@@ -58,8 +95,15 @@ const Category = () => {
         <div className="space-y-4">
           {['Até R$ 100', 'R$ 100 - R$ 500', 'R$ 500+'].map((range) => (
             <label key={range} className="flex items-center gap-3 text-[11px] text-gray-500 cursor-pointer hover:text-black transition-colors group">
-              <input type="checkbox" className="w-4 h-4 rounded-none border-gray-300 text-[#B89C6A] focus:ring-0" />
-              <span className="group-hover:translate-x-1 transition-transform">{range}</span>
+              <input 
+                type="checkbox" 
+                checked={selectedPrices.includes(range)}
+                onChange={() => handlePriceToggle(range)}
+                className="w-4 h-4 rounded-none border-gray-300 text-[#B89C6A] focus:ring-0" 
+              />
+              <span className={cn("group-hover:translate-x-1 transition-transform", selectedPrices.includes(range) && "text-black font-bold")}>
+                {range}
+              </span>
             </label>
           ))}
         </div>
@@ -68,8 +112,13 @@ const Category = () => {
       <div>
         <h4 className="text-[10px] font-bold text-gray-900 uppercase tracking-widest mb-6">Disponibilidade</h4>
         <label className="flex items-center gap-3 text-[11px] text-gray-500 cursor-pointer">
-          <input type="checkbox" className="w-4 h-4 rounded-none border-gray-300 text-[#B89C6A] focus:ring-0" />
-          <span>Apenas em estoque</span>
+          <input 
+            type="checkbox" 
+            checked={onlyInStock}
+            onChange={(e) => setOnlyInStock(e.target.checked)}
+            className="w-4 h-4 rounded-none border-gray-300 text-[#B89C6A] focus:ring-0" 
+          />
+          <span className={cn(onlyInStock && "text-black font-bold")}>Apenas em estoque</span>
         </label>
       </div>
     </div>
@@ -116,10 +165,10 @@ const Category = () => {
             <header className="mb-8 md:mb-12 flex items-end justify-between border-b pb-6 md:pb-8">
               <div className="space-y-1">
                 <h1 className="text-2xl md:text-4xl font-serif font-light text-gray-900 capitalize leading-none">
-                  {subId === 'todos' ? 'Nossa Coleção' : subId}
+                  {activeSubName}
                 </h1>
                 <p className="text-[9px] md:text-[10px] uppercase tracking-widest text-gray-400 font-bold">
-                  {loading ? 'Carregando...' : `${products.length} itens encontrados`}
+                  {loading ? 'Carregando...' : `${filteredProducts.length} itens encontrados`}
                 </p>
               </div>
 
@@ -159,16 +208,19 @@ const Category = () => {
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 md:gap-x-8 gap-y-8 md:gap-y-16">
-                {products.map(product => (
+                {filteredProducts.map(product => (
                   <ProductCard key={product.id} product={product} />
                 ))}
                 
-                {products.length === 0 && (
+                {filteredProducts.length === 0 && (
                   <div className="col-span-full py-20 md:py-32 text-center">
-                    <p className="font-serif text-xl md:text-2xl text-gray-300 italic">Nenhum produto encontrado.</p>
-                    <Link to={`/${shopType}`} className="inline-block mt-6 md:mt-8 text-[9px] md:text-[10px] font-bold uppercase tracking-widest border-b border-black pb-1">
-                      Voltar para a Home
-                    </Link>
+                    <p className="font-serif text-xl md:text-2xl text-gray-300 italic">Nenhum produto encontrado com os filtros selecionados.</p>
+                    <button 
+                      onClick={() => { setSelectedPrices([]); setOnlyInStock(false); }}
+                      className="inline-block mt-6 md:mt-8 text-[9px] md:text-[10px] font-bold uppercase tracking-widest border-b border-black pb-1"
+                    >
+                      Limpar Filtros
+                    </button>
                   </div>
                 )}
               </div>
