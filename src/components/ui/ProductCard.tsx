@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Heart, ShoppingBag } from 'lucide-react';
+import { Heart } from 'lucide-react';
 import { Product } from '@/types/store';
 import { useCart } from '@/context/CartContext';
 import { useFavorites } from '@/context/FavoritesContext';
@@ -22,77 +22,75 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   const hasPromo = product.promotionalPrice && product.promotionalPrice > 0;
   const displayPrice = hasPromo ? product.promotionalPrice : product.price;
 
+  // Cálculo da porcentagem de desconto
+  const discountPercentage = hasPromo 
+    ? Math.round(((product.price - (product.promotionalPrice || 0)) / product.price) * 100)
+    : 0;
+
   return (
-    <div className="group relative flex flex-col h-full bg-white transition-all duration-500">
+    <div className="group flex flex-col h-full bg-white transition-all duration-500">
       {/* Imagem do Produto */}
-      <div className="relative aspect-[3/4] overflow-hidden bg-gray-50 border border-gray-100 mb-4 md:mb-6">
+      <div className="relative aspect-square overflow-hidden bg-[#F7F7F7] mb-5">
         <Link to={`/${currentShop}/produto/${product.id}`} className="block w-full h-full">
           <img 
             src={getSafeProductImage(product.image)} 
             alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+            className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
           />
         </Link>
         
-        {/* Favoritar */}
-        <div className="absolute top-3 right-3 flex flex-col gap-2 z-10">
-          <button 
-            onClick={() => toggleFavorite(product)}
-            className={cn(
-              "w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center shadow-sm transition-all duration-300",
-              isFavorite(product.id) 
-                ? "bg-red-50 text-red-500" 
-                : "bg-white/80 backdrop-blur-sm text-gray-400 hover:bg-white hover:text-red-500"
-            )}
-          >
-            <Heart size={18} fill={isFavorite(product.id) ? "currentColor" : "none"} />
-          </button>
-        </div>
+        {/* Favoritar - Discreto no canto */}
+        <button 
+          onClick={() => toggleFavorite(product)}
+          className={cn(
+            "absolute top-3 left-3 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 z-10",
+            isFavorite(product.id) ? "text-red-500" : "text-gray-300 hover:text-red-500"
+          )}
+        >
+          <Heart size={18} fill={isFavorite(product.id) ? "currentColor" : "none"} />
+        </button>
 
+        {/* Badge de Desconto - Canto superior direito (Ocre) */}
         {hasPromo && (
-          <div className="absolute top-3 left-3 z-10">
-            <span className="bg-[#B89C6A] text-white text-[9px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-none shadow-lg">
-              Oferta
-            </span>
+          <div className="absolute top-0 right-0 z-10">
+            <div className="bg-[#E5B343] text-white text-[11px] font-bold px-3 py-1.5 flex items-center justify-center">
+              -{discountPercentage}%
+            </div>
           </div>
         )}
       </div>
 
-      {/* Informações do Produto */}
-      <div className="flex flex-col flex-1 px-1">
-        <Link to={`/${currentShop}/produto/${product.id}`} className="mb-2">
-          <h3 className="text-[11px] md:text-sm font-serif font-light text-gray-800 line-clamp-2 hover:text-[#B89C6A] transition-colors uppercase tracking-wide">
+      {/* Informações do Produto Centralizadas */}
+      <div className="flex flex-col items-center text-center flex-1 px-2">
+        <Link to={`/${currentShop}/produto/${product.id}`} className="mb-3">
+          <h3 className="text-sm md:text-base font-serif text-[#705E1C] leading-tight hover:opacity-80 transition-opacity max-w-[200px]">
             {product.name}
           </h3>
         </Link>
         
-        <div className="mt-auto space-y-0.5 min-h-[48px] flex flex-col justify-end mb-4">
-          {/* Preço Original (Apenas se houver promo) */}
-          <div className="h-4">
+        <div className="mt-auto mb-6 flex flex-col items-center">
+          {/* Linha de Preços */}
+          <div className="flex items-center justify-center gap-2">
             {hasPromo && (
-              <span className="text-[10px] md:text-xs text-gray-400 line-through font-light">
+              <span className="text-[11px] md:text-[13px] text-gray-400 line-through font-light">
                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price)}
               </span>
             )}
-          </div>
-
-          {/* Preço de Exibição */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm md:text-lg font-bold text-[#B89C6A]">
+            <span className="text-sm md:text-base font-bold text-gray-800">
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(displayPrice || 0)}
             </span>
           </div>
         </div>
 
-        {/* Botão Comprar Fixo */}
-        <button 
-          onClick={() => addToCart(product, 1)}
-          className="flex items-center justify-center gap-2 w-full border border-gray-900 bg-white md:hover:bg-gray-900 md:hover:text-white py-3 text-[10px] font-bold uppercase tracking-widest text-gray-900 transition-all duration-300"
-        >
-          <ShoppingBag size={14} /> 
-          <span className="hidden md:inline">ADICIONAR AO CARRINHO</span>
-          <span className="md:hidden">COMPRAR</span>
-        </button>
+        {/* Botão Comprar - Estilo Borda Fina Centralizado */}
+        <div className="w-full flex justify-center pb-2">
+          <button 
+            onClick={() => addToCart(product, 1)}
+            className="w-[160px] h-[45px] border border-gray-800 bg-white text-gray-800 text-[12px] font-serif uppercase tracking-[0.1em] hover:bg-gray-800 hover:text-white transition-all duration-300"
+          >
+            COMPRAR
+          </button>
+        </div>
       </div>
     </div>
   );
