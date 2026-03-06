@@ -16,15 +16,21 @@ import {
 
 const Category = () => {
   const { shopType, subId } = useParams<{ shopType: string, subId: string }>();
-  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   
   const motherCategory = (shopType || 'feminine') as CategoryMother;
 
   useEffect(() => {
-    if (subId) {
-      setProducts(getProductsBySubcategory(motherCategory, subId));
-    }
+    const fetchProducts = async () => {
+      if (subId) {
+        setLoading(true);
+        const data = await getProductsBySubcategory(motherCategory, subId);
+        setProducts(data);
+        setLoading(false);
+      }
+    };
+    fetchProducts();
   }, [subId, motherCategory]);
 
   const subcategories = motherCategory === 'pet' 
@@ -73,7 +79,7 @@ const Category = () => {
     <div className="min-h-screen bg-white pb-32 md:pb-20">
       <Navbar />
       
-      {/* Lista Horizontal de Subcategorias - Apenas Mobile no layout final para evitar duplicidade no PC */}
+      {/* Lista Horizontal de Subcategorias */}
       <div className="border-b bg-gray-50/30 md:hidden">
         <div className="container mx-auto px-4 overflow-x-auto no-scrollbar py-3">
           <div className="flex items-center gap-4 whitespace-nowrap">
@@ -113,7 +119,7 @@ const Category = () => {
                   {subId === 'todos' ? 'Nossa Coleção' : subId}
                 </h1>
                 <p className="text-[9px] md:text-[10px] uppercase tracking-widest text-gray-400 font-bold">
-                  {products.length} itens encontrados
+                  {loading ? 'Carregando...' : `${products.length} itens encontrados`}
                 </p>
               </div>
 
@@ -145,20 +151,28 @@ const Category = () => {
               </div>
             </header>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 md:gap-x-8 gap-y-8 md:gap-y-16">
-              {products.map(product => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-              
-              {products.length === 0 && (
-                <div className="col-span-full py-20 md:py-32 text-center">
-                  <p className="font-serif text-xl md:text-2xl text-gray-300 italic">Nenhum produto encontrado.</p>
-                  <Link to={`/${shopType}`} className="inline-block mt-6 md:mt-8 text-[9px] md:text-[10px] font-bold uppercase tracking-widest border-b border-black pb-1">
-                    Voltar para a Home
-                  </Link>
-                </div>
-              )}
-            </div>
+            {loading ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 md:gap-x-8 gap-y-8 md:gap-y-16">
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                  <div key={i} className="aspect-[3/4] bg-gray-100 animate-pulse rounded-2xl" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 md:gap-x-8 gap-y-8 md:gap-y-16">
+                {products.map(product => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+                
+                {products.length === 0 && (
+                  <div className="col-span-full py-20 md:py-32 text-center">
+                    <p className="font-serif text-xl md:text-2xl text-gray-300 italic">Nenhum produto encontrado.</p>
+                    <Link to={`/${shopType}`} className="inline-block mt-6 md:mt-8 text-[9px] md:text-[10px] font-bold uppercase tracking-widest border-b border-black pb-1">
+                      Voltar para a Home
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

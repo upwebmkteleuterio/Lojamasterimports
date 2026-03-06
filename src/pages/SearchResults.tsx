@@ -7,7 +7,6 @@ import { ProductCard } from '@/components/ui/ProductCard';
 import { searchProducts } from '@/services/products';
 import { CategoryMother, Product } from '@/types/store';
 import { SlidersHorizontal, Search } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { 
   Sheet, 
   SheetContent, 
@@ -20,12 +19,19 @@ const SearchResults = () => {
   const { shopType } = useParams<{ shopType: string }>();
   const [searchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   
   const query = searchParams.get('q') || '';
   const motherCategory = (shopType || 'feminine') as CategoryMother;
 
   useEffect(() => {
-    setProducts(searchProducts(motherCategory, query));
+    const fetchResults = async () => {
+      setLoading(true);
+      const data = await searchProducts(motherCategory, query);
+      setProducts(data);
+      setLoading(false);
+    };
+    fetchResults();
   }, [query, motherCategory]);
 
   const FilterContent = () => (
@@ -65,7 +71,7 @@ const SearchResults = () => {
                   Resultados para: <span className="text-[#B89C6A] italic">"{query}"</span>
                 </h1>
                 <p className="text-[9px] md:text-[10px] uppercase tracking-widest text-gray-400 font-bold">
-                  {products.length} itens encontrados em {motherCategory === 'pet' ? 'Pet Shop' : 'Luxury Shop'}
+                  {loading ? 'Buscando...' : `${products.length} itens encontrados em ${motherCategory === 'pet' ? 'Pet Shop' : 'Luxury Shop'}`}
                 </p>
               </div>
 
@@ -86,23 +92,31 @@ const SearchResults = () => {
               </div>
             </header>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 md:gap-x-8 gap-y-8 md:gap-y-16">
-              {products.map(product => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-              
-              {products.length === 0 && (
-                <div className="col-span-full py-20 md:py-32 text-center">
-                  <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-300">
-                    <Search size={32} />
+            {loading ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 md:gap-x-8 gap-y-8 md:gap-y-16">
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                  <div key={i} className="aspect-[3/4] bg-gray-100 animate-pulse rounded-2xl" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 md:gap-x-8 gap-y-8 md:gap-y-16">
+                {products.map(product => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+                
+                {products.length === 0 && (
+                  <div className="col-span-full py-20 md:py-32 text-center">
+                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-300">
+                      <Search size={32} />
+                    </div>
+                    <p className="font-serif text-xl md:text-2xl text-gray-400 italic">Nenhum produto encontrado para sua busca.</p>
+                    <Link to={`/${shopType}`} className="inline-block mt-6 md:mt-8 text-[9px] md:text-[10px] font-bold uppercase tracking-widest border-b border-black pb-1">
+                      Voltar para a Home
+                    </Link>
                   </div>
-                  <p className="font-serif text-xl md:text-2xl text-gray-400 italic">Nenhum produto encontrado para sua busca.</p>
-                  <Link to={`/${shopType}`} className="inline-block mt-6 md:mt-8 text-[9px] md:text-[10px] font-bold uppercase tracking-widest border-b border-black pb-1">
-                    Voltar para a Home
-                  </Link>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
