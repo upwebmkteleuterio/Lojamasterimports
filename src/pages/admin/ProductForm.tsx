@@ -51,13 +51,23 @@ const ProductForm = () => {
   const persistenceKey = id ? `edit_product_${id}` : 'new_product_draft';
   const { data: formData, updateField, setData: setFormData } = usePersistence<any>(persistenceKey, initialFormData);
 
+  // Efeito para limpar o formulário ao entrar em "Novo Produto"
   useEffect(() => {
-    fetchSupportData();
-    if (id) {
+    if (!id) {
+      diamondDebug('info', 'Iniciando formulário para NOVO produto. Limpando campos.');
+      setFormData(initialFormData);
+      setVariants([]);
+      // Limpa também o rascunho do localStorage para garantir que não venha lixo de cadastros cancelados
+      localStorage.removeItem(`form_data_new_product_draft`);
+    } else {
       diamondDebug('info', `ID detectado (${id}). Iniciando carregamento do produto.`);
       fetchProduct();
     }
   }, [id]);
+
+  useEffect(() => {
+    fetchSupportData();
+  }, []);
 
   const fetchSupportData = async () => {
     try {
@@ -91,10 +101,7 @@ const ProductForm = () => {
       
       if (prod) {
         diamondDebug('success', 'Produto recuperado do banco de dados com sucesso.', prod);
-        // IMPORTANTE: Sobrescrevemos o formData com os dados do banco para evitar que o rascunho vazio apague as informações
         setFormData(prod);
-      } else {
-        diamondDebug('error', 'Produto não encontrado no banco de dados.');
       }
       
       diamondDebug('info', `Buscando variantes para o produto ID: ${id}`);
@@ -116,12 +123,21 @@ const ProductForm = () => {
     }
 
     setSaving(true);
-    diamondDebug('info', 'Iniciando processo de UPSERT no Supabase...', { payload: formData });
+    
+    // Tratamento de campos UNIQUE: Se estiver vazio, envia NULL para evitar erro de duplicidade no banco
+    const payload = {
+      ...formData,
+      sku: formData.sku?.trim() === "" ? null : formData.sku,
+      barcode: formData.barcode?.trim() === "" ? null : formData.barcode,
+      id: id || undefined
+    };
+
+    diamondDebug('info', 'Iniciando processo de UPSERT no Supabase...', { payload });
     
     try {
       const { data: savedProd, error: prodError } = await supabase
         .from('products')
-        .upsert({ ...formData, id: id || undefined })
+        .upsert(payload)
         .select()
         .single();
 
@@ -136,7 +152,9 @@ const ProductForm = () => {
           const variantsToSave = variants.map(v => ({ 
             ...v, 
             product_id: savedProd.id, 
-            id: undefined // Remove o ID antigo para não causar conflito no insert
+            id: undefined,
+            sku: v.sku?.trim() === "" ? null : v.sku,
+            barcode: v.barcode?.trim() === "" ? null : v.barcode
           }));
           
           diamondDebug('info', `Inserindo ${variantsToSave.length} variantes...`);
@@ -148,7 +166,6 @@ const ProductForm = () => {
       diamondDebug('success', 'Fluxo de salvamento finalizado com êxito.');
       toast.success("Produto salvo com sucesso!");
       
-      // Limpeza de rascunhos locais para não interferir na próxima edição
       localStorage.removeItem(`form_data_${persistenceKey}`);
       navigate('/adm/produtos');
     } catch (error: any) {
