@@ -84,8 +84,8 @@ export const useCategoryForm = (id: string | undefined) => {
           name: formData.name,
           is_active: formData.is_active,
           landing_banner: formData.landing_banner,
-          home_hero_banner: formData.home_hero_banner,
-          updated_at: new Date().toISOString()
+          home_hero_banner: formData.home_hero_banner
+          // Removido updated_at pois a coluna não existe no banco para esta tabela
         });
       
       if (catError) {
