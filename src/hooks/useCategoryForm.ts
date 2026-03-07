@@ -31,7 +31,7 @@ export const useCategoryForm = (id: string | undefined) => {
         .from('category_mothers')
         .select('*')
         .eq('id', id)
-        .single();
+        .maybeSingle();
       
       if (catError) throw catError;
       if (cat) setFormData(cat);
@@ -51,6 +51,7 @@ export const useCategoryForm = (id: string | undefined) => {
         })));
       }
     } catch (error: any) {
+      console.error('Erro ao carregar dados:', error);
       toast.error("Erro ao carregar dados: " + error.message);
     } finally {
       setLoading(false);
@@ -65,31 +66,50 @@ export const useCategoryForm = (id: string | undefined) => {
 
     setSaving(true);
     try {
-      // 1. Salvar Categoria Mãe
+      // 1. Salvar/Atualizar Categoria Mãe
       const { error: catError } = await supabase
         .from('category_mothers')
-        .upsert(formData);
+        .upsert({
+          id: formData.id,
+          name: formData.name,
+          is_active: formData.is_active,
+          landing_banner: formData.landing_banner,
+          home_hero_banner: formData.home_hero_banner,
+          updated_at: new Date().toISOString()
+        });
       
       if (catError) throw catError;
 
       // 2. Sincronizar Subcategorias
-      await supabase.from('subcategories').delete().eq('mother_id', formData.id);
+      // Deletar as que não estão mais na lista (se for uma edição)
+      if (id) {
+        const currentIds = subcategories.map(s => s.id.startsWith(`${formData.id}-`) ? s.id : `${formData.id}-${s.id}`);
+        const { error: delError } = await supabase
+          .from('subcategories')
+          .delete()
+          .eq('mother_id', formData.id)
+          .not('id', 'in', `(${currentIds.length > 0 ? currentIds.join(',') : 'none'})`);
+        
+        if (delError) console.warn("Erro ao limpar subcategorias antigas:", delError);
+      }
       
+      // 3. Inserir/Atualizar as subcategorias atuais
       if (subcategories.length > 0) {
-        const subsToInsert = subcategories.map(s => ({
+        const subsToUpsert = subcategories.map(s => ({
           id: s.id.startsWith(`${formData.id}-`) ? s.id : `${formData.id}-${s.id}`,
           name: s.name,
           image_url: s.image_url,
           mother_id: formData.id
         }));
 
-        const { error: subError } = await supabase.from('subcategories').insert(subsToInsert);
+        const { error: subError } = await supabase.from('subcategories').upsert(subsToUpsert);
         if (subError) throw subError;
       }
 
-      toast.success("Nicho e subcategorias atualizados com sucesso!");
+      toast.success("Dados salvos com sucesso no banco de dados!");
       onSuccess();
     } catch (error: any) {
+      console.error('Erro ao salvar no Supabase:', error);
       toast.error("Erro ao salvar: " + error.message);
     } finally {
       setSaving(false);

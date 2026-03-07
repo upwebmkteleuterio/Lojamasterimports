@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Trash2, Save, Image as ImageIcon } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useCategoryForm } from '@/hooks/useCategoryForm';
+import { toast } from 'sonner';
 
 const CategoryForm = () => {
   const { id } = useParams<{ id: string }>();
@@ -28,12 +29,18 @@ const CategoryForm = () => {
 
   const addSub = () => {
     if (!newSub.name.trim()) return;
+    
+    // Gera um slug limpo para o ID
     const subId = newSub.name.toLowerCase()
       .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
       .replace(/\s+/g, '-')
       .replace(/[^a-z0-9-]/g, ''); 
 
-    if (subcategories.find(s => s.id === subId)) return;
+    if (subcategories.find(s => s.id === subId)) {
+      toast.error("Esta subcategoria (ou uma com nome similar) já existe.");
+      return;
+    }
+
     setSubcategories([...subcategories, { 
       id: subId, 
       name: newSub.name.trim(), 
@@ -127,6 +134,7 @@ const CategoryForm = () => {
                     onChange={e => setNewSub({ ...newSub, name: e.target.value })} 
                     placeholder="Nome da subcategoria..." 
                     className="rounded-xl h-10 text-xs" 
+                    onKeyPress={(e) => e.key === 'Enter' && addSub()}
                   />
                 </div>
                 <div className="space-y-2">
@@ -156,8 +164,12 @@ const CategoryForm = () => {
                         </button>
                       </div>
                       <div className="flex gap-3 items-center">
-                        <div className="w-12 h-12 rounded-lg bg-gray-50 overflow-hidden flex-shrink-0 border border-gray-100">
-                          {s.image_url ? <img src={s.image_url} className="w-full h-full object-cover" alt="" /> : <ImageIcon size={14} className="m-auto text-gray-200 mt-4" />}
+                        <div className="w-12 h-12 rounded-lg bg-gray-50 overflow-hidden flex-shrink-0 border border-gray-100 flex items-center justify-center">
+                          {s.image_url ? (
+                            <img src={s.image_url} className="w-full h-full object-cover" alt="" />
+                          ) : (
+                            <ImageIcon size={14} className="text-gray-200" />
+                          )}
                         </div>
                         <Input 
                           value={s.image_url} 
