@@ -14,7 +14,7 @@ export const useCategoryForm = (id: string | undefined) => {
     home_hero_banner: ''
   });
 
-  const [subcategories, setSubcategories] = useState<{id: string, name: string}[]>([]);
+  const [subcategories, setSubcategories] = useState<{id: string, name: string, image_url: string}[]>([]);
 
   useEffect(() => {
     if (id) {
@@ -43,11 +43,11 @@ export const useCategoryForm = (id: string | undefined) => {
       
       if (subError) throw subError;
       if (subs) {
-        // Limpa o prefixo do ID para exibição na UI
         const prefix = `${id}-`;
         setSubcategories(subs.map(s => ({ 
           id: s.id.startsWith(prefix) ? s.id.slice(prefix.length) : s.id, 
-          name: s.name 
+          name: s.name,
+          image_url: s.image_url || ''
         })));
       }
     } catch (error: any) {
@@ -73,13 +73,13 @@ export const useCategoryForm = (id: string | undefined) => {
       if (catError) throw catError;
 
       // 2. Sincronizar Subcategorias
-      // Primeiro removemos as antigas para garantir limpeza
       await supabase.from('subcategories').delete().eq('mother_id', formData.id);
       
       if (subcategories.length > 0) {
         const subsToInsert = subcategories.map(s => ({
           id: s.id.startsWith(`${formData.id}-`) ? s.id : `${formData.id}-${s.id}`,
           name: s.name,
+          image_url: s.image_url,
           mother_id: formData.id
         }));
 

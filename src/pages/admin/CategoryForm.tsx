@@ -14,7 +14,7 @@ import { useCategoryForm } from '@/hooks/useCategoryForm';
 const CategoryForm = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [newSubName, setNewSubName] = useState('');
+  const [newSub, setNewSub] = useState({ name: '', image_url: '' });
   
   const { 
     formData, 
@@ -27,19 +27,27 @@ const CategoryForm = () => {
   } = useCategoryForm(id);
 
   const addSub = () => {
-    if (!newSubName.trim()) return;
-    const subId = newSubName.toLowerCase()
+    if (!newSub.name.trim()) return;
+    const subId = newSub.name.toLowerCase()
       .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
       .replace(/\s+/g, '-')
       .replace(/[^a-z0-9-]/g, ''); 
 
     if (subcategories.find(s => s.id === subId)) return;
-    setSubcategories([...subcategories, { id: subId, name: newSubName.trim() }]);
-    setNewSubName('');
+    setSubcategories([...subcategories, { 
+      id: subId, 
+      name: newSub.name.trim(), 
+      image_url: newSub.image_url.trim() 
+    }]);
+    setNewSub({ name: '', image_url: '' });
   };
 
   const removeSub = (idToRemove: string) => {
     setSubcategories(subcategories.filter(s => s.id !== idToRemove));
+  };
+
+  const updateSubImage = (idToUpdate: string, url: string) => {
+    setSubcategories(subcategories.map(s => s.id === idToUpdate ? { ...s, image_url: url } : s));
   };
 
   if (loading) return <AdminLayout title="Carregando...">...</AdminLayout>;
@@ -49,7 +57,7 @@ const CategoryForm = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         {/* Lado Esquerdo: Dados e Banners */}
-        <div className="lg:col-span-8 space-y-8">
+        <div className="lg:col-span-7 space-y-8">
           <Card className="rounded-3xl border-none shadow-sm bg-white overflow-hidden">
             <CardHeader className="bg-gray-50/50 border-b">
               <CardTitle className="text-sm font-bold uppercase text-gray-400">Dados do Nicho</CardTitle>
@@ -105,33 +113,59 @@ const CategoryForm = () => {
         </div>
 
         {/* Lado Direito: Subcategorias */}
-        <div className="lg:col-span-4">
+        <div className="lg:col-span-5">
           <Card className="rounded-3xl border-none shadow-sm bg-white overflow-hidden sticky top-24">
             <CardHeader className="bg-gray-50/50 border-b">
               <CardTitle className="text-sm font-bold uppercase text-gray-400">Subcategorias</CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-6">
-              <div className="flex gap-2">
-                <Input 
-                  value={newSubName} 
-                  onChange={e => setNewSubName(e.target.value)} 
-                  onKeyPress={e => e.key === 'Enter' && addSub()} 
-                  placeholder="Nova subcategoria..." 
-                  className="rounded-xl h-12" 
-                />
-                <Button onClick={addSub} className="bg-gray-900 rounded-xl w-12 h-12 p-0 text-white"><Plus size={20}/></Button>
+              <div className="space-y-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase text-gray-400">Nome</Label>
+                  <Input 
+                    value={newSub.name} 
+                    onChange={e => setNewSub({ ...newSub, name: e.target.value })} 
+                    placeholder="Nome da subcategoria..." 
+                    className="rounded-xl h-10 text-xs" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase text-gray-400">URL da Imagem</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      value={newSub.image_url} 
+                      onChange={e => setNewSub({ ...newSub, image_url: e.target.value })} 
+                      placeholder="https://..." 
+                      className="rounded-xl h-10 text-xs flex-1" 
+                    />
+                    <Button onClick={addSub} className="bg-gray-900 rounded-xl px-4 h-10 text-white"><Plus size={18}/></Button>
+                  </div>
+                </div>
               </div>
               
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {subcategories.length === 0 ? (
                   <p className="text-center py-8 text-xs text-gray-400 italic">Nenhuma subcategoria adicionada.</p>
                 ) : (
                   subcategories.map(s => (
-                    <div key={s.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl group border border-transparent hover:border-gray-200 transition-all">
-                      <span className="text-xs font-bold text-gray-700">{s.name}</span>
-                      <button onClick={() => removeSub(s.id)} className="text-gray-300 hover:text-red-500 transition-colors">
-                        <Trash2 size={16}/>
-                      </button>
+                    <div key={s.id} className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm space-y-3 group">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-gray-700">{s.name}</span>
+                        <button onClick={() => removeSub(s.id)} className="text-gray-300 hover:text-red-500 transition-colors">
+                          <Trash2 size={16}/>
+                        </button>
+                      </div>
+                      <div className="flex gap-3 items-center">
+                        <div className="w-12 h-12 rounded-lg bg-gray-50 overflow-hidden flex-shrink-0 border border-gray-100">
+                          {s.image_url ? <img src={s.image_url} className="w-full h-full object-cover" alt="" /> : <ImageIcon size={14} className="m-auto text-gray-200 mt-4" />}
+                        </div>
+                        <Input 
+                          value={s.image_url} 
+                          onChange={(e) => updateSubImage(s.id, e.target.value)}
+                          placeholder="URL da imagem..." 
+                          className="h-8 text-[10px] rounded-lg bg-gray-50/50 border-gray-100 flex-1"
+                        />
+                      </div>
                     </div>
                   ))
                 )}
