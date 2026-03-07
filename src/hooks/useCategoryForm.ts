@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { diamondDebug } from '@/utils/debug';
 
 export const useCategoryForm = (id: string | undefined) => {
   const [saving, setSaving] = useState(false);
@@ -26,6 +27,7 @@ export const useCategoryForm = (id: string | undefined) => {
 
   const fetchCategoryData = async () => {
     setLoading(true);
+    diamondDebug('info', `Iniciando carregamento de dados para o nicho: ${id}`);
     try {
       const { data: cat, error: catError } = await supabase
         .from('category_mothers')
@@ -34,7 +36,10 @@ export const useCategoryForm = (id: string | undefined) => {
         .maybeSingle();
       
       if (catError) throw catError;
-      if (cat) setFormData(cat);
+      if (cat) {
+        setFormData(cat);
+        diamondDebug('success', 'Nicho carregado com sucesso', cat);
+      }
 
       const { data: subs, error: subError } = await supabase
         .from('subcategories')
@@ -43,6 +48,7 @@ export const useCategoryForm = (id: string | undefined) => {
       
       if (subError) throw subError;
       if (subs) {
+        diamondDebug('info', `Carregadas ${subs.length} subcategorias`, subs);
         const prefix = `${id}-`;
         setSubcategories(subs.map(s => ({ 
           id: s.id.startsWith(prefix) ? s.id.slice(prefix.length) : s.id, 
@@ -51,7 +57,7 @@ export const useCategoryForm = (id: string | undefined) => {
         })));
       }
     } catch (error: any) {
-      console.error('Erro ao carregar dados:', error);
+      diamondDebug('error', 'Falha ao buscar dados no banco', error);
       toast.error("Erro ao carregar dados: " + error.message);
     } finally {
       setLoading(false);
@@ -65,6 +71,10 @@ export const useCategoryForm = (id: string | undefined) => {
     }
 
     setSaving(true);
+    diamondDebug('info', 'Iniciando processo de salvamento (UPSERT)...');
+    diamondDebug('info', 'Dados do nicho principal:', formData);
+    diamondDebug('info', 'Subcategorias em memória:', subcategories);
+
     try {
       // 1. Salvar/Atualizar Categoria Mãe
       const { error: catError } = await supabase
@@ -78,19 +88,29 @@ export const useCategoryForm = (id: string | undefined) => {
           updated_at: new Date().toISOString()
         });
       
-      if (catError) throw catError;
+      if (catError) {
+        diamondDebug('error', 'Erro ao salvar categoria mãe', catError);
+        throw catError;
+      }
 
       // 2. Sincronizar Subcategorias
-      // Deletar as que não estão mais na lista (se for uma edição)
+      const currentFullIds = subcategories.map(s => s.id.startsWith(`${formData.id}-`) ? s.id : `${formData.id}-${s.id}`);
+      
+      diamondDebug('info', 'IDs que devem permanecer no banco:', currentFullIds);
+
+      // Limpeza de órfãs
       if (id) {
-        const currentIds = subcategories.map(s => s.id.startsWith(`${formData.id}-`) ? s.id : `${formData.id}-${s.id}`);
         const { error: delError } = await supabase
           .from('subcategories')
           .delete()
           .eq('mother_id', formData.id)
-          .not('id', 'in', `(${currentIds.length > 0 ? currentIds.join(',') : 'none'})`);
+          .not('id', 'in', `(${currentFullIds.length > 0 ? currentFullIds.join(',') : 'none'})`);
         
-        if (delError) console.warn("Erro ao limpar subcategorias antigas:", delError);
+        if (delError) {
+          diamondDebug('error', 'Erro ao deletar subcategorias antigas', delError);
+        } else {
+          diamondDebug('success', 'Subcategorias obsoletas removidas com sucesso');
+        }
       }
       
       // 3. Inserir/Atualizar as subcategorias atuais
@@ -102,14 +122,21 @@ export const useCategoryForm = (id: string | undefined) => {
           mother_id: formData.id
         }));
 
+        diamondDebug('info', 'Enviando payload de subcategorias:', subsToUpsert);
+
         const { error: subError } = await supabase.from('subcategories').upsert(subsToUpsert);
-        if (subError) throw subError;
+        if (subError) {
+          diamondDebug('error', 'Erro no UPSERT das subcategorias', subError);
+          throw subError;
+        }
+        diamondDebug('success', 'Subcategorias sincronizadas com sucesso');
       }
 
-      toast.success("Dados salvos com sucesso no banco de dados!");
+      diamondDebug('success', 'PROCESSO FINALIZADO: Tudo salvo no Supabase!');
+      toast.success("Dados salvos com sucesso!");
       onSuccess();
     } catch (error: any) {
-      console.error('Erro ao salvar no Supabase:', error);
+      diamondDebug('error', 'FALHA NO SALVAMENTO', error);
       toast.error("Erro ao salvar: " + error.message);
     } finally {
       setSaving(false);
