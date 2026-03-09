@@ -11,7 +11,7 @@ import { ProductSidebar } from '@/components/product/ProductSidebar';
 import { ProductDescription } from '@/components/product/ProductDescription';
 import { ProductTabs } from '@/components/product/ProductTabs';
 import { RelatedProducts } from '@/components/product/RelatedProducts';
-import { Product } from '@/types/store';
+import { Product, ProductVariant } from '@/types/store';
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -19,13 +19,19 @@ const ProductDetail = () => {
   const { addToCart } = useCart();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Estado para controlar a imagem exibida (pode ser a do produto ou da variante)
+  const [activeImage, setActiveImage] = useState<string>('');
 
   useEffect(() => {
     const fetchProduct = async () => {
       if (id) {
         setLoading(true);
         const data = await getProductById(id);
-        setProduct(data || null);
+        if (data) {
+          setProduct(data);
+          setActiveImage(data.image);
+        }
         setLoading(false);
       }
     };
@@ -55,8 +61,15 @@ const ProductDetail = () => {
     );
   }
 
-  const handleAddToCart = (quantity: number) => {
+  const handleAddToCart = (quantity: number, selectedVariant?: ProductVariant) => {
+    // Aqui poderíamos passar a variante para o carrinho futuramente
     addToCart(product, quantity);
+  };
+
+  const handleVariantSelect = (variant: ProductVariant) => {
+    if (variant.main_image) {
+      setActiveImage(variant.main_image);
+    }
   };
 
   return (
@@ -65,21 +78,22 @@ const ProductDetail = () => {
       
       <main className="container mx-auto px-4 py-8 md:py-16">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 xl:gap-24 items-start">
-          {/* Galeria de Imagens */}
-          <ProductGallery image={product.image} name={product.name} />
+          {/* Passamos a activeImage para a galeria */}
+          <ProductGallery image={activeImage} name={product.name} />
 
-          {/* Sidebar de Informações e Ações */}
-          <ProductSidebar product={product} onAddToCart={handleAddToCart} />
+          {/* Sidebar agora notifica quando uma variante é selecionada */}
+          <div className="sidebar-container">
+            <ProductSidebar 
+              product={product} 
+              onAddToCart={handleAddToCart}
+              onVariantSelect={handleVariantSelect}
+            />
+          </div>
         </div>
       </main>
 
-      {/* Sugestões de Produtos (Veja também) */}
       <RelatedProducts currentProductId={product.id} categoryMother={product.categoryMother} />
-
-      {/* Descrição Detalhada */}
       <ProductDescription name={product.name} description={product.description} />
-
-      {/* Abas de Avaliação e Dúvidas */}
       <ProductTabs />
     </div>
   );

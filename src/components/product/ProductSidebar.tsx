@@ -10,13 +10,13 @@ import { cn } from '@/lib/utils';
 interface ProductSidebarProps {
   product: Product;
   onAddToCart: (quantity: number, selectedVariant?: ProductVariant) => void;
+  onVariantSelect?: (variant: ProductVariant) => void;
 }
 
-export const ProductSidebar = ({ product, onAddToCart }: ProductSidebarProps) => {
+export const ProductSidebar = ({ product, onAddToCart, onVariantSelect }: ProductSidebarProps) => {
   const [quantity, setQuantity] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
 
-  // Agrupa as variantes por nome de atributo (ex: "Cor", "Tamanho")
   const variationsMap = useMemo(() => {
     if (!product.variants || product.variants.length === 0) return null;
     
@@ -28,14 +28,15 @@ export const ProductSidebar = ({ product, onAddToCart }: ProductSidebarProps) =>
     return map;
   }, [product.variants]);
 
-  // Se houver variantes, os preços e imagens mudam baseados na seleção
+  const handleSelect = (variant: ProductVariant) => {
+    setSelectedVariant(variant);
+    if (onVariantSelect) onVariantSelect(variant);
+  };
+
   const currentPrice = selectedVariant ? selectedVariant.price : product.price;
   const currentPromoPrice = selectedVariant ? selectedVariant.promo_price : product.promotionalPrice;
   const hasPromo = currentPromoPrice && currentPromoPrice > 0;
   const displayPrice = hasPromo ? currentPromoPrice : currentPrice;
-
-  // Se uma variante com imagem for selecionada, ela deve ser a "capa"
-  // (A lógica de galeria pegará isso se passarmos via prop superior, mas aqui cuidamos do preço)
 
   return (
     <div className="flex flex-col">
@@ -54,7 +55,6 @@ export const ProductSidebar = ({ product, onAddToCart }: ProductSidebarProps) =>
         </span>
       </div>
 
-      {/* SELEÇÃO DE VARIANTES */}
       {variationsMap && (
         <div className="space-y-6 mb-10">
           {Object.entries(variationsMap).map(([attrName, options]) => (
@@ -64,10 +64,10 @@ export const ProductSidebar = ({ product, onAddToCart }: ProductSidebarProps) =>
                 {options.map((opt) => (
                   <button
                     key={opt.id || opt.option_name}
-                    onClick={() => setSelectedVariant(opt)}
+                    onClick={() => handleSelect(opt)}
                     className={cn(
                       "px-6 py-3 border text-xs font-bold transition-all relative",
-                      selectedVariant?.id === opt.id || selectedVariant?.option_name === opt.option_name
+                      (selectedVariant?.id === opt.id || selectedVariant?.option_name === opt.option_name)
                         ? "border-black bg-black text-white" 
                         : "border-gray-200 text-gray-500 hover:border-black"
                     )}
@@ -84,7 +84,6 @@ export const ProductSidebar = ({ product, onAddToCart }: ProductSidebarProps) =>
         </div>
       )}
 
-      {/* Ações */}
       <div className="flex items-center gap-3 md:gap-4 mb-10">
         <div className="flex items-center border border-gray-200 h-14 bg-white min-w-[120px] md:min-w-[140px]">
           <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="flex-1 flex items-center justify-center h-full text-gray-400 hover:text-black transition-colors">
@@ -105,7 +104,6 @@ export const ProductSidebar = ({ product, onAddToCart }: ProductSidebarProps) =>
         </Button>
       </div>
 
-      {/* Escassez Box */}
       <div className="border border-gray-100 p-8 text-center space-y-4 mb-10">
         <p className="font-serif text-[#333]">
           Apenas <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#333] text-white text-xs font-sans align-middle mx-1">
@@ -117,7 +115,6 @@ export const ProductSidebar = ({ product, onAddToCart }: ProductSidebarProps) =>
         </div>
       </div>
 
-      {/* Simular Frete */}
       <div className="space-y-4 pt-6 border-t border-gray-100">
         <div className="flex items-center gap-2 text-[#333] font-serif text-sm">
           <Truck size={18} />

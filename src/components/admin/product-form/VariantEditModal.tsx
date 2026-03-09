@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ProductVariant } from "@/types/store";
 import { formatCurrency, parseCurrencyInput } from "@/utils/currency";
-import { Truck, RotateCcw } from "lucide-react";
+import { Truck, RotateCcw, ImageIcon } from "lucide-react";
 import { useVariantEdit } from '@/hooks/useVariantEdit';
 
 interface VariantEditModalProps {
@@ -52,8 +52,32 @@ export const VariantEditModal = ({ isOpen, onClose, variant, onSave, mainProduct
              </Button>
           </div>
 
+          {/* ÁREA DA IMAGEM DA VARIAÇÃO */}
+          <div className="space-y-4 p-6 border border-[#B89C6A]/10 bg-[#B89C6A]/5 rounded-3xl">
+            <Label className="text-[10px] font-bold uppercase tracking-widest text-[#B89C6A] flex items-center gap-2">
+              <ImageIcon size={14} /> Imagem Específica desta Opção
+            </Label>
+            <div className="flex gap-4 items-center">
+              <div className="w-24 h-24 rounded-2xl bg-white border border-gray-100 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                {data.main_image ? (
+                  <img src={data.main_image} className="w-full h-full object-cover" alt="Preview" />
+                ) : (
+                  <ImageIcon size={24} className="text-gray-200" />
+                )}
+              </div>
+              <div className="flex-1 space-y-2">
+                <p className="text-[10px] text-gray-400">Cole o link da imagem que deve aparecer ao selecionar esta variação.</p>
+                <Input 
+                  value={data.main_image || ''} 
+                  onChange={e => setData({...data, main_image: e.target.value})}
+                  placeholder="https://..."
+                  className="h-10 rounded-xl bg-white border-gray-100"
+                />
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-3 gap-4">
-            {/* AGORA O PREÇO DE CUSTO É O PRIMEIRO CAMPO (ESQUERDA) */}
             <div className="space-y-2">
               <Label className="text-[10px] font-bold uppercase text-gray-400">Preço de custo</Label>
               <Input 
