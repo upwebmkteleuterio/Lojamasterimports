@@ -7,8 +7,19 @@ import { Trash2, Minus, Plus, ArrowLeft, ShoppingCart, Tag } from 'lucide-react'
 import { getSafeProductImage } from '@/utils/imageHandler';
 
 const Cart = () => {
-  const { cart, removeFromCart, updateQuantity, cartTotal } = useCart();
+  const { cart, removeFromCart, updateQuantity, cartTotal, loading } = useCart();
   const navigate = useNavigate();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="w-10 h-10 border-4 border-[#B89C6A] border-t-transparent rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  }
 
   if (cart.length === 0) {
     return (
@@ -40,7 +51,7 @@ const Cart = () => {
           <div className="lg:col-span-2 space-y-4">
             {cart.map((item) => (
               <div key={item.id} className="bg-white p-6 rounded-3xl flex gap-6 items-center shadow-sm border border-gray-100 animate-in fade-in slide-in-from-left-4">
-                {/* Imagem Inteligente: Prioriza a da variação */}
+                {/* Imagem Inteligente: Prioriza a da variação se ela existir */}
                 <div className="w-24 h-32 md:w-32 md:h-40 rounded-2xl overflow-hidden bg-gray-50 flex-shrink-0 border border-gray-50">
                   <img 
                     src={getSafeProductImage(item.selectedVariant?.main_image || item.image)} 

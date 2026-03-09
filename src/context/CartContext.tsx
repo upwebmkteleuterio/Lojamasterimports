@@ -59,12 +59,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           if (!p) return null;
 
+          // Monta o item garantindo que a variação tenha precedência na foto e preço
           return {
             id: item.id,
             productId: p.id,
             name: p.name,
-            price: Number(v ? v.price : p.price),
-            image: (v && v.main_image) ? v.main_image : (p.main_image || ''),
+            price: Number(v && v.price ? v.price : p.price),
+            image: (v && v.main_image && v.main_image !== '') ? v.main_image : (p.main_image || ''),
             categoryMother: p.category_mother_id,
             subcategory: p.subcategory_id,
             description: p.description,
@@ -132,13 +133,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (checkError) throw checkError;
 
       if (existing) {
-        diamondDebug('info', 'Item já existe. Atualizando quantidade.', { cart_id: existing.id });
+        diamondDebug('info', 'Item já existe no carrinho. Incrementando quantidade.', { cart_id: existing.id });
         await supabase
           .from('cart_items')
           .update({ quantity: existing.quantity + quantity })
           .eq('id', existing.id);
       } else {
-        diamondDebug('info', 'Criando nova entrada no banco.');
+        diamondDebug('info', 'Criando nova entrada de carrinho no Supabase.');
         await supabase
           .from('cart_items')
           .insert({ 
@@ -149,12 +150,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
       }
 
-      // IMPORTANTE: Aguarda a atualização e busca os dados novos
       await fetchCartFromDb();
       toast.success("Adicionado ao seu carrinho");
     } catch (error: any) {
       diamondDebug('error', 'Erro ao salvar no banco de dados', error);
-      toast.error("Erro ao salvar carrinho. Verifique se as colunas existem no banco.");
+      toast.error("Erro ao salvar carrinho.");
     }
   };
 
