@@ -12,6 +12,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useCategoryForm } from '@/hooks/useCategoryForm';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { diamondDebug } from '@/utils/debug';
 
 const CategoryForm = () => {
   const { id } = useParams<{ id: string }>();
@@ -51,8 +52,17 @@ const CategoryForm = () => {
   };
 
   const toggleFeatured = (idToToggle: string) => {
+    const sub = subcategories.find(s => s.id === idToToggle);
+    const newState = !sub?.is_featured;
+    
+    diamondDebug('info', `Clique no destaque detectado para: ${sub?.name}`, {
+      id: idToToggle,
+      estado_anterior: sub?.is_featured,
+      novo_estado_local: newState
+    });
+
     setSubcategories(subcategories.map(s => 
-      s.id === idToToggle ? { ...s, is_featured: !s.is_featured } : s
+      s.id === idToToggle ? { ...s, is_featured: newState } : s
     ));
   };
 
