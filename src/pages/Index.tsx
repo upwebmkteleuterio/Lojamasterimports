@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Truck, Gift, ShieldCheck, RotateCcw } from 'lucide-react';
 import { getProductsByMother } from '@/services/products';
 import { supabase } from '@/integrations/supabase/client';
+import { CategoryCarousel } from '@/components/home/CategoryCarousel';
 
 const Index = () => {
   const { shopType } = useParams<{ shopType: string }>();
@@ -27,32 +28,26 @@ const Index = () => {
     const loadPageData = async () => {
       setLoading(true);
       
-      // 1. Buscar dados do Nicho (Banners)
       const { data: niche, error } = await supabase
         .from('category_mothers')
         .select('*')
         .eq('id', shopType)
         .maybeSingle();
       
-      // Se o nicho não existir no banco, volta para a landing
       if (!niche || error) {
-        console.error("Nicho não encontrado ou erro:", error);
         navigate('/');
         return;
       }
 
       setNicheData(niche);
 
-      // 2. Buscar Subcategorias para o grid
       const { data: subs } = await supabase
         .from('subcategories')
         .select('*')
-        .eq('mother_id', shopType)
-        .limit(5);
+        .eq('mother_id', shopType);
       
       if (subs) setSubcategories(subs);
 
-      // 3. Buscar Produtos
       const productsData = await getProductsByMother(shopType as CategoryMother);
       setProducts(productsData);
       
@@ -62,7 +57,6 @@ const Index = () => {
     loadPageData();
   }, [shopType, navigate]);
 
-  // Se estiver carregando, mostra um estado neutro ou spinner
   if (loading && !nicheData) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-white">
@@ -97,22 +91,8 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Categorias Grid Dinâmico */}
-      {subcategories.length > 0 && (
-        <section className="py-12 md:py-20 container mx-auto px-4">
-          <h2 className="text-xl md:text-3xl font-serif text-center mb-8 md:mb-12 text-gray-800">Escolha por categorias</h2>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-8">
-            {subcategories.map((cat, i) => (
-              <Link key={i} to={`/${shopType}/categoria/${cat.id}`} className="group cursor-pointer text-center">
-                <div className="aspect-square overflow-hidden mb-3 md:mb-4 bg-gray-50 border border-gray-100 shadow-sm transition-transform hover:-translate-y-1">
-                  <img src={cat.image_url || "https://via.placeholder.com/400"} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                </div>
-                <span className="text-[9px] md:text-[10px] uppercase font-bold tracking-[0.2em] text-gray-500 group-hover:text-[#B89C6A]">{cat.name}</span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+      {/* Carrossel de Categorias Dinâmico */}
+      <CategoryCarousel categories={subcategories} shopType={shopType!} />
 
       {/* Carrossel de Produtos Dinâmico */}
       <section className="py-12 md:py-24 bg-[#fafafa]">
