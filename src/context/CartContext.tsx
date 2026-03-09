@@ -33,7 +33,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
-  // Função auxiliar para extrair objeto de joins que podem vir como array
   const getJoinedObject = (obj: any) => {
     if (!obj) return null;
     return Array.isArray(obj) ? obj[0] : obj;
@@ -60,20 +59,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
 
-      diamondDebug('info', `Dados brutos do banco recebidos (${data?.length || 0} linhas)`, data);
-
       const items: OrderItem[] = (data || [])
         .map(item => {
-          // Supabase pode retornar joins como arrays [object] ou object puro
           const p = getJoinedObject(item.products);
           const v = getJoinedObject(item.product_variants);
           
-          if (!p) {
-            diamondDebug('error', `Item de carrinho #${item.id} sem produto vinculado!`, item);
-            return null;
-          }
+          if (!p) return null;
 
-          const orderItem: any = {
+          return {
             id: item.id,
             productId: p.id,
             name: p.name,
@@ -88,10 +81,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             quantity: item.quantity,
             selectedVariant: v || undefined
           };
-          
-          return orderItem;
         })
-        .filter(item => item !== null);
+        .filter(item => item !== null) as OrderItem[];
 
       diamondDebug('success', `Processamento concluído: ${items.length} itens prontos para UI.`, items);
       setCart(items);
@@ -128,21 +119,20 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      // 1. Verificar duplicata
-      const query = supabase
+      // 1. Verificar duplicata usando a lógica correta de nulos
+      let checkQuery = supabase
         .from('cart_items')
         .select('id, quantity')
         .eq('user_id', user.id)
         .eq('product_id', product.id);
       
-      // Filtro especial para nulo no variant_id
       if (variant) {
-        query.eq('variant_id', variant.id);
+        checkQuery = checkQuery.eq('variant_id', variant.id);
       } else {
-        query.is('variant_id', null);
+        checkQuery = checkQuery.is('variant_id', null);
       }
 
-      const { data: existing, error: checkError } = await query.maybeSingle();
+      const { data: existing, error: checkError } = await checkQuery.maybeSingle();
 
       if (checkError) {
         diamondDebug('error', 'Erro ao verificar item existente', checkError);
@@ -166,15 +156,22 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             variant_id: variant ? variant.id : null,
             quantity 
           });
-        if (insError) throw insError;
+        
+        if (insError) {
+          diamondDebug('error', 'Falha ao processar adição no banco', insError);
+          // Se o erro for de restrição (23505), avisar o usuário sobre o SQL
+          if (insError.code === '23505') {
+            toast.error("Erro de banco: Você precisa atualizar as restrições da tabela cart_items no Supabase.");
+          }
+          throw insError;
+        }
       }
 
       diamondDebug('success', 'Operação no banco concluída. Recarregando estado...');
       await fetchCartFromDb();
       toast.success("Adicionado ao seu carrinho");
     } catch (error: any) {
-      diamondDebug('error', 'Falha ao processar adição no banco', error);
-      toast.error("Erro ao salvar no banco: " + error.message);
+      console.error(error);
     }
   };
 
@@ -192,7 +189,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { error } = await supabase.from('cart_items').delete().eq('id', cartItemId);
       if (error) throw error;
       setCart(prev => prev.filter(item => item.id !== cartItemId));
-      diamondDebug('success', `Item #${cartItemId} removido do banco.`);
     } catch (error) {
       toast.error("Erro ao remover item");
     }
