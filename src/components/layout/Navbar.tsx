@@ -136,20 +136,20 @@ export const Navbar = () => {
       </div>
 
       {!shouldHideElements && menuItems.length > 0 && (
-        <nav className="hidden md:block border-t overflow-x-auto no-scrollbar scroll-smooth">
+        <nav className="hidden md:block border-t">
           <div className="container mx-auto px-4">
-            <ul className="flex items-center justify-center gap-12 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-700 whitespace-nowrap">
-              <li className="flex items-center gap-2 cursor-pointer hover:text-[#B89C6A]">
+            <ul className="flex flex-wrap items-center justify-center gap-x-12 gap-y-4 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-700">
+              <li className="flex items-center gap-2 cursor-pointer hover:text-[#B89C6A] shrink-0">
                 <Menu size={14} /> Todas
               </li>
               {menuItems.map(item => (
-                <li key={item.id}>
+                <li key={item.id} className="shrink-0">
                   <Link to={`/${currentShop}/categoria/${item.id}`} className="hover:text-[#B89C6A] transition-colors">
                     {item.name}
                   </Link>
                 </li>
               ))}
-              <li className="cursor-pointer text-[#B89C6A] hover:opacity-80">Ofertas</li>
+              <li className="cursor-pointer text-[#B89C6A] hover:opacity-80 shrink-0">Ofertas</li>
             </ul>
           </div>
         </nav>
