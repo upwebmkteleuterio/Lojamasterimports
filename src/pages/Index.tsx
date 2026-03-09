@@ -87,7 +87,7 @@ const Index = () => {
         
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-xl text-center md:text-right ml-auto">
-            <h2 className="text-3xl md:text-7xl font-serif font-light text-[#B89C6A] mb-4 drop-shadow-md uppercase">
+            <h2 className="text-3xl md:text-7xl font-serif font-light text-white mb-4 drop-shadow-md uppercase">
                {nicheData?.name || "BEM-VINDO"}
             </h2>
             <p className="text-sm md:text-2xl text-white font-light mb-6 md:mb-10 tracking-wide italic drop-shadow-sm">

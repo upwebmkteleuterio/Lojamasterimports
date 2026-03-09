@@ -118,7 +118,7 @@ export const Navbar = () => {
             ))}
           </div>
 
-          <div className="md:hidden w-10" /> {/* Espaçador para centralizar a logo no mobile */}
+          <div className="md:hidden flex-1" /> {/* Espaçador para centralizar a logo no mobile */}
 
           {/* Centro - Logo */}
           <div className="flex justify-center flex-shrink-0">
