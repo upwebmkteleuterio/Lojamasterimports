@@ -8,6 +8,7 @@ import { useCart } from '@/context/CartContext';
 import { Input } from '@/components/ui/input';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 
 export const Navbar = () => {
   const { cartCount } = useCart();
@@ -17,11 +18,13 @@ export const Navbar = () => {
   const isMobile = useIsMobile();
   const [searchValue, setSearchValue] = useState("");
   const [menuItems, setMenuItems] = useState<{ id: string, name: string }[]>([]);
+  const [niches, setNiches] = useState<{ id: string, name: string }[]>([]);
   
   const currentShop = shopType || 'feminine';
   
   useEffect(() => {
     fetchSubcategories();
+    fetchNiches();
   }, [currentShop]);
 
   const fetchSubcategories = async () => {
@@ -35,6 +38,20 @@ export const Navbar = () => {
       setMenuItems(data || []);
     } catch (error) {
       console.error('Erro ao buscar subcategorias:', error);
+    }
+  };
+
+  const fetchNiches = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('category_mothers')
+        .select('id, name')
+        .eq('is_active', true);
+
+      if (error) throw error;
+      setNiches(data || []);
+    } catch (error) {
+      console.error('Erro ao buscar nichos:', error);
     }
   };
 
@@ -74,9 +91,25 @@ export const Navbar = () => {
 
       {/* Main Header */}
       <div className="container mx-auto px-4 py-4 md:py-6">
-        <div className="relative flex items-center justify-between md:grid md:grid-cols-3">
+        <div className="relative flex items-center justify-between md:grid md:grid-cols-3 items-center">
           
-          <div className="flex-1 md:block" />
+          {/* Navegação de Nichos - Desktop */}
+          <div className="hidden md:flex items-center gap-8">
+            {niches.map((niche) => (
+              <Link 
+                key={niche.id} 
+                to={`/${niche.id}`}
+                className={cn(
+                  "text-[10px] font-bold uppercase tracking-[0.2em] transition-all relative py-1",
+                  currentShop === niche.id 
+                    ? "text-[#B89C6A] after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[1px] after:bg-[#B89C6A]" 
+                    : "text-gray-400 hover:text-gray-900"
+                )}
+              >
+                {niche.name}
+              </Link>
+            ))}
+          </div>
 
           <div className="flex justify-center flex-shrink-0">
             <Link to={`/${currentShop}`} className="text-2xl md:text-3xl font-serif font-light tracking-[0.2em] text-[#B89C6A] hover:opacity-80 transition-opacity uppercase whitespace-nowrap">
@@ -139,9 +172,6 @@ export const Navbar = () => {
         <nav className="hidden md:block border-t">
           <div className="container mx-auto px-4">
             <ul className="flex flex-wrap items-center justify-center gap-x-12 gap-y-4 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-700">
-              <li className="flex items-center gap-2 cursor-pointer hover:text-[#B89C6A] shrink-0">
-                <Menu size={14} /> Todas
-              </li>
               {menuItems.map(item => (
                 <li key={item.id} className="shrink-0">
                   <Link to={`/${currentShop}/categoria/${item.id}`} className="hover:text-[#B89C6A] transition-colors">
