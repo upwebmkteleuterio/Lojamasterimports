@@ -123,7 +123,7 @@ export const Navbar = () => {
           {/* Centro - Logo */}
           <div className="flex justify-center flex-shrink-0">
             <Link to={`/${currentShop}`} className="block hover:opacity-80 transition-opacity">
-              <img src={logo} alt="Master Imports Logo" className="h-10 md:h-16 w-auto object-contain" />
+              <img src={logo} alt="Master Imports Logo" className="h-12 md:h-16 w-auto object-contain" />
             </Link>
           </div>
 
