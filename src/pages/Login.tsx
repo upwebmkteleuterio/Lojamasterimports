@@ -12,19 +12,23 @@ const Login = () => {
   const { session } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [storeName, setStoreName] = useState("Diamond Store");
+  const [storeName, setStoreName] = useState("Master Imports");
 
   // Verifica se o acesso veio da administração para ocultar o cadastro se necessário
   const isAdminPath = location.state?.from?.pathname?.startsWith('/adm');
 
   useEffect(() => {
     const fetchStoreConfig = async () => {
-      const { data } = await supabase
-        .from('store_configs')
-        .select('store_name')
-        .maybeSingle();
-      if (data?.store_name) {
-        setStoreName(data.store_name);
+      try {
+        const { data } = await supabase
+          .from('store_configs')
+          .select('store_name')
+          .maybeSingle();
+        if (data?.store_name) {
+          setStoreName(data.store_name);
+        }
+      } catch (e) {
+        console.error("Erro ao carregar nome da loja", e);
       }
     };
     fetchStoreConfig();
