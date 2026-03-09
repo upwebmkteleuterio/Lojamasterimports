@@ -33,9 +33,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
+  // Função auxiliar para extrair objeto de joins que podem vir como array
+  const getJoinedObject = (obj: any) => {
+    if (!obj) return null;
+    return Array.isArray(obj) ? obj[0] : obj;
+  };
+
   const fetchCartFromDb = async () => {
+    if (!user) return;
+    
     try {
-      diamondDebug('info', 'Sincronizando carrinho com Supabase...');
+      diamondDebug('info', 'Iniciando busca de itens no Supabase...');
       const { data, error } = await supabase
         .from('cart_items')
         .select(`
@@ -45,22 +53,27 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           products (*),
           product_variants:variant_id (*)
         `)
-        .eq('user_id', user?.id);
+        .eq('user_id', user.id);
 
       if (error) {
-        diamondDebug('error', 'Erro Supabase ao buscar carrinho', error);
+        diamondDebug('error', 'Falha na query SELECT do carrinho', error);
         throw error;
       }
 
+      diamondDebug('info', `Dados brutos do banco recebidos (${data?.length || 0} linhas)`, data);
+
       const items: OrderItem[] = (data || [])
         .map(item => {
-          const p = item.products;
-          const v = item.product_variants;
+          // Supabase pode retornar joins como arrays [object] ou object puro
+          const p = getJoinedObject(item.products);
+          const v = getJoinedObject(item.product_variants);
           
-          if (!p) return null;
+          if (!p) {
+            diamondDebug('error', `Item de carrinho #${item.id} sem produto vinculado!`, item);
+            return null;
+          }
 
-          // Monta o item garantindo que a variação tenha precedência na foto e preço
-          return {
+          const orderItem: any = {
             id: item.id,
             productId: p.id,
             name: p.name,
@@ -68,51 +81,44 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             image: (v && v.main_image && v.main_image !== '') ? v.main_image : (p.main_image || ''),
             categoryMother: p.category_mother_id,
             subcategory: p.subcategory_id,
-            description: p.description,
+            description: p.description || '',
             stock: v ? v.stock : p.stock,
             sku: v ? v.sku : p.sku,
             active: p.is_active,
             quantity: item.quantity,
             selectedVariant: v || undefined
-          } as any;
+          };
+          
+          return orderItem;
         })
         .filter(item => item !== null);
 
+      diamondDebug('success', `Processamento concluído: ${items.length} itens prontos para UI.`, items);
       setCart(items);
-      diamondDebug('success', `Carrinho atualizado: ${items.length} itens encontrados.`);
     } catch (error) {
-      diamondDebug('error', 'Falha crítica na atualização do carrinho', error);
+      diamondDebug('error', 'Erro crítico ao processar carrinho', error);
     } finally {
       setLoading(false);
     }
   };
 
   const addToCart = async (product: Product, quantity: number = 1, variant?: ProductVariant) => {
-    diamondDebug('info', `Tentando adicionar: ${product.name}`, { variant: variant?.option_name });
+    diamondDebug('info', `Fluxo addToCart iniciado para: ${product.name}`, { variant_id: variant?.id });
 
     if (!user) {
       setCart(prev => {
         const itemKey = variant ? `${product.id}-${variant.id}` : product.id;
         const existing = prev.find(item => item.id === itemKey);
-        
         let next;
         if (existing) {
-          next = prev.map(item => 
-            item.id === itemKey ? { ...item, quantity: item.quantity + quantity } : item
-          );
+          next = prev.map(item => item.id === itemKey ? { ...item, quantity: item.quantity + quantity } : item);
         } else {
-          const newItem: any = { 
-            id: itemKey,
-            productId: product.id,
-            name: product.name,
-            quantity, 
-            selectedVariant: variant,
-            price: variant ? variant.price : product.price,
+          next = [...prev, { 
+            id: itemKey, productId: product.id, name: product.name, quantity, 
+            selectedVariant: variant, price: variant ? variant.price : product.price,
             image: (variant && variant.main_image) ? variant.main_image : product.image,
-            categoryMother: product.categoryMother,
-            active: product.active
-          };
-          next = [...prev, newItem];
+            categoryMother: product.categoryMother, active: product.active
+          } as any];
         }
         localStorage.setItem('cart_guest', JSON.stringify(next));
         return next;
@@ -122,25 +128,37 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      const { data: existing, error: checkError } = await supabase
+      // 1. Verificar duplicata
+      const query = supabase
         .from('cart_items')
         .select('id, quantity')
         .eq('user_id', user.id)
-        .eq('product_id', product.id)
-        .filter('variant_id', variant ? 'eq' : 'is', variant ? variant.id : null)
-        .maybeSingle();
+        .eq('product_id', product.id);
+      
+      // Filtro especial para nulo no variant_id
+      if (variant) {
+        query.eq('variant_id', variant.id);
+      } else {
+        query.is('variant_id', null);
+      }
 
-      if (checkError) throw checkError;
+      const { data: existing, error: checkError } = await query.maybeSingle();
+
+      if (checkError) {
+        diamondDebug('error', 'Erro ao verificar item existente', checkError);
+        throw checkError;
+      }
 
       if (existing) {
-        diamondDebug('info', 'Item já existe no carrinho. Incrementando quantidade.', { cart_id: existing.id });
-        await supabase
+        diamondDebug('info', `Item existente encontrado (ID: ${existing.id}). Atualizando qtd...`);
+        const { error: updError } = await supabase
           .from('cart_items')
           .update({ quantity: existing.quantity + quantity })
           .eq('id', existing.id);
+        if (updError) throw updError;
       } else {
-        diamondDebug('info', 'Criando nova entrada de carrinho no Supabase.');
-        await supabase
+        diamondDebug('info', 'Nenhum item igual encontrado. Inserindo nova linha...');
+        const { error: insError } = await supabase
           .from('cart_items')
           .insert({ 
             user_id: user.id, 
@@ -148,13 +166,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             variant_id: variant ? variant.id : null,
             quantity 
           });
+        if (insError) throw insError;
       }
 
+      diamondDebug('success', 'Operação no banco concluída. Recarregando estado...');
       await fetchCartFromDb();
       toast.success("Adicionado ao seu carrinho");
     } catch (error: any) {
-      diamondDebug('error', 'Erro ao salvar no banco de dados', error);
-      toast.error("Erro ao salvar carrinho.");
+      diamondDebug('error', 'Falha ao processar adição no banco', error);
+      toast.error("Erro ao salvar no banco: " + error.message);
     }
   };
 
@@ -169,8 +189,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      await supabase.from('cart_items').delete().eq('id', cartItemId);
+      const { error } = await supabase.from('cart_items').delete().eq('id', cartItemId);
+      if (error) throw error;
       setCart(prev => prev.filter(item => item.id !== cartItemId));
+      diamondDebug('success', `Item #${cartItemId} removido do banco.`);
     } catch (error) {
       toast.error("Erro ao remover item");
     }
@@ -189,7 +211,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      await supabase.from('cart_items').update({ quantity }).eq('id', cartItemId);
+      const { error } = await supabase.from('cart_items').update({ quantity }).eq('id', cartItemId);
+      if (error) throw error;
       setCart(prev => prev.map(item => item.id === cartItemId ? { ...item, quantity } : item));
     } catch (error) {
       toast.error("Erro ao atualizar");
