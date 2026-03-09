@@ -77,7 +77,13 @@ const ProductDetail = () => {
       
       <main className="container mx-auto px-4 py-8 md:py-16">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 xl:gap-24 items-start">
-          <ProductGallery image={activeImage} name={product.name} />
+          <ProductGallery 
+            mainImage={product.image}
+            activeImage={activeImage}
+            gallery={product.gallery || []}
+            name={product.name}
+            onImageSelect={setActiveImage}
+          />
 
           <div className="sidebar-container">
             <ProductSidebar 

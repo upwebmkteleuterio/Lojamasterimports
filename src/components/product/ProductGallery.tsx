@@ -2,38 +2,55 @@
 
 import React from 'react';
 import { getSafeProductImage } from '@/utils/imageHandler';
+import { cn } from '@/lib/utils';
 
 interface ProductGalleryProps {
-  image: string;
+  mainImage: string;
+  activeImage: string;
+  gallery: string[];
   name: string;
+  onImageSelect: (url: string) => void;
 }
 
-export const ProductGallery = ({ image, name }: ProductGalleryProps) => {
-  const safeImage = getSafeProductImage(image);
+export const ProductGallery = ({ mainImage, activeImage, gallery, name, onImageSelect }: ProductGalleryProps) => {
+  // Combinamos a imagem principal com a galeria, removendo duplicatas ou vazios
+  const allImages = Array.from(new Set([mainImage, ...(gallery || [])])).filter(img => img && img.trim() !== "");
   
   return (
     <div className="space-y-4">
-      {/* Imagem Principal: Ajustada para aspect-square ou altura menor no mobile */}
-      <div className="bg-white border border-gray-100 overflow-hidden flex items-center justify-center h-[300px] md:h-[500px]">
+      {/* Imagem Principal em Destaque */}
+      <div className="bg-white border border-gray-100 overflow-hidden flex items-center justify-center h-[300px] md:h-[500px] rounded-none group">
         <img 
-          src={safeImage} 
+          src={getSafeProductImage(activeImage)} 
           alt={name} 
-          className="max-w-full max-h-full object-contain p-4" 
+          className="max-w-full max-h-full object-contain p-4 transition-transform duration-700 group-hover:scale-105" 
         />
       </div>
       
       {/* Miniaturas */}
-      <div className="grid grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="aspect-square border border-gray-100 cursor-pointer bg-gray-50 hover:border-[#D4AF37] transition-colors">
-            <img 
-              src={safeImage} 
-              className="w-full h-full object-cover opacity-60 hover:opacity-100 transition-opacity" 
-              alt={`${name} thumb ${i}`} 
-            />
-          </div>
-        ))}
-      </div>
+      {allImages.length > 1 && (
+        <div className="grid grid-cols-4 md:grid-cols-5 gap-3">
+          {allImages.map((img, i) => (
+            <button 
+              key={i} 
+              onClick={() => onImageSelect(img)}
+              className={cn(
+                "aspect-square border transition-all duration-300 bg-white overflow-hidden p-1",
+                activeImage === img ? "border-black" : "border-gray-100 hover:border-gray-300"
+              )}
+            >
+              <img 
+                src={getSafeProductImage(img)} 
+                className={cn(
+                  "w-full h-full object-contain transition-opacity",
+                  activeImage === img ? "opacity-100" : "opacity-60 hover:opacity-100"
+                )} 
+                alt={`${name} miniatura ${i + 1}`} 
+              />
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
