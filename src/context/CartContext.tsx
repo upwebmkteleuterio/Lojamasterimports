@@ -35,6 +35,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchCartFromDb = async () => {
     try {
+      diamondDebug('info', 'Sincronizando carrinho com Supabase...');
       const { data, error } = await supabase
         .from('cart_items')
         .select(`
@@ -46,13 +47,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         `)
         .eq('user_id', user?.id);
 
-      if (error) throw error;
+      if (error) {
+        diamondDebug('error', 'Erro Supabase ao buscar carrinho', error);
+        throw error;
+      }
 
       const items: OrderItem[] = (data || [])
         .map(item => {
           const p = item.products;
           const v = item.product_variants;
           
+          if (!p) return null;
+
           return {
             id: item.id,
             productId: p.id,
@@ -68,25 +74,24 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             quantity: item.quantity,
             selectedVariant: v || undefined
           } as any;
-        });
+        })
+        .filter(item => item !== null);
 
       setCart(items);
-      diamondDebug('success', `Carrinho sincronizado com o banco. ${items.length} itens.`);
+      diamondDebug('success', `Carrinho atualizado: ${items.length} itens encontrados.`);
     } catch (error) {
-      diamondDebug('error', 'Falha ao buscar carrinho no Supabase', error);
+      diamondDebug('error', 'Falha crítica na atualização do carrinho', error);
     } finally {
       setLoading(false);
     }
   };
 
   const addToCart = async (product: Product, quantity: number = 1, variant?: ProductVariant) => {
-    diamondDebug('info', `Iniciando adição: ${product.name}`, { variant_id: variant?.id });
+    diamondDebug('info', `Tentando adicionar: ${product.name}`, { variant: variant?.option_name });
 
     if (!user) {
       setCart(prev => {
-        // Para convidados, usamos um ID composto para evitar colisão de variações
         const itemKey = variant ? `${product.id}-${variant.id}` : product.id;
-        
         const existing = prev.find(item => item.id === itemKey);
         
         let next;
@@ -116,7 +121,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      // Verifica duplicata no banco considerando a variante
       const { data: existing, error: checkError } = await supabase
         .from('cart_items')
         .select('id, quantity')
@@ -128,13 +132,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (checkError) throw checkError;
 
       if (existing) {
-        diamondDebug('info', 'Item já existe no carrinho. Incrementando quantidade.', { id: existing.id });
+        diamondDebug('info', 'Item já existe. Atualizando quantidade.', { cart_id: existing.id });
         await supabase
           .from('cart_items')
           .update({ quantity: existing.quantity + quantity })
           .eq('id', existing.id);
       } else {
-        diamondDebug('info', 'Inserindo novo item no carrinho do banco.');
+        diamondDebug('info', 'Criando nova entrada no banco.');
         await supabase
           .from('cart_items')
           .insert({ 
@@ -145,11 +149,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
       }
 
+      // IMPORTANTE: Aguarda a atualização e busca os dados novos
       await fetchCartFromDb();
       toast.success("Adicionado ao seu carrinho");
     } catch (error: any) {
-      diamondDebug('error', 'Erro ao processar adição ao carrinho no banco', error);
-      toast.error("Erro ao salvar carrinho");
+      diamondDebug('error', 'Erro ao salvar no banco de dados', error);
+      toast.error("Erro ao salvar carrinho. Verifique se as colunas existem no banco.");
     }
   };
 
