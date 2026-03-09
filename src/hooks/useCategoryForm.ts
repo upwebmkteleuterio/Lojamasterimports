@@ -4,174 +4,98 @@ import { toast } from 'sonner';
 import { diamondDebug } from '@/utils/debug';
 import { Subcategory } from '@/types/store';
 
-export const useCategoryForm = (id: string | undefined) => {
+export const useCategoryForm = (motherId: string | undefined) => {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
-  
-  const [formData, setFormData] = useState({
-    id: '',
-    name: '',
-    is_active: true,
-    landing_banner: '',
-    home_hero_banner: ''
-  });
-
+  const [formData, setFormData] = useState({ id: '', name: '', is_active: true, landing_banner: '', home_hero_banner: '' });
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
 
   useEffect(() => {
-    if (id) {
-      fetchCategoryData();
-    } else {
-      setLoading(false);
-    }
-  }, [id]);
+    if (motherId) fetchCategoryData();
+  }, [motherId]);
 
   const fetchCategoryData = async () => {
     setLoading(true);
-    diamondDebug('info', `Sincronizando dados do banco para o nicho: ${id}`);
+    diamondDebug('info', `Buscando dados do nicho: ${motherId}`);
     try {
-      const { data: cat, error: catError } = await supabase
-        .from('category_mothers')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle();
-      
-      if (catError) throw catError;
-      if (cat) {
-        setFormData(cat);
-      }
+      const { data: cat } = await supabase.from('category_mothers').select('*').eq('id', motherId).maybeSingle();
+      if (cat) setFormData(cat);
 
-      const { data: subs, error: subError } = await supabase
-        .from('subcategories')
-        .select('*')
-        .eq('mother_id', id);
-      
-      if (subError) throw subError;
+      const { data: subs } = await supabase.from('subcategories').select('*').eq('mother_id', motherId).order('name');
       
       if (subs) {
-        const prefix = `${id}-`;
-        const mappedSubs = subs.map(s => ({ 
-          id: s.id.startsWith(prefix) ? s.id.slice(prefix.length) : s.id, 
+        setSubcategories(subs.map(s => ({ 
+          id: s.id, 
           name: s.name,
           image_url: s.image_url || '',
-          is_featured: s.is_featured === true 
-        }));
-        
-        diamondDebug('success', `Carregadas ${mappedSubs.length} subcategorias do banco.`);
-        setSubcategories(mappedSubs);
+          is_featured: !!s.is_featured 
+        })));
+        diamondDebug('success', `Carregadas ${subs.length} subcategorias do banco.`);
       }
-    } catch (error: any) {
-      diamondDebug('error', 'Falha ao buscar dados no banco', error);
-      toast.error("Erro ao carregar dados.");
+    } catch (error) {
+      diamondDebug('error', 'Falha ao carregar dados', error);
     } finally {
       setLoading(false);
     }
   };
 
   const handleSave = async (onSuccess: () => void) => {
-    const nicheId = formData.id?.trim();
-    if (!formData.name?.trim() || !nicheId) {
-      toast.error("Nome e URL amigável são obrigatórios");
-      return;
-    }
-
+    if (!formData.id) return;
     setSaving(true);
-    diamondDebug('info', 'Iniciando processo de salvamento...');
-
+    diamondDebug('info', 'Iniciando salvamento... (Nenhuma tentativa de exclusão será feita)');
+    
     try {
-      // 1. Upsert do Nicho (Categoria Mãe)
-      const { error: catError } = await supabase
-        .from('category_mothers')
-        .upsert({
-          id: nicheId,
-          name: formData.name.trim(),
-          is_active: formData.is_active,
-          landing_banner: formData.landing_banner,
-          home_hero_banner: formData.home_hero_banner
-        });
-      
-      if (catError) throw catError;
+      // Atualiza o nicho principal
+      await supabase.from('category_mothers').upsert(formData);
 
-      // 2. Sincronização de Subcategorias
-      // Pegamos o que existe no banco ANTES para comparar
-      const { data: dbItems } = await supabase
-        .from('subcategories')
-        .select('id, name')
-        .eq('mother_id', nicheId);
-
-      const existingInDb = dbItems || [];
-      const currentFullIds = subcategories.map(s => s.id.includes('-') ? s.id : `${nicheId}-${s.id}`);
-
-      // Identifica o que deve ser APAGADO (está no banco mas não na tela)
-      const idsToRemove = existingInDb
-        .map(db => db.id)
-        .filter(dbId => !currentFullIds.includes(dbId));
-
-      if (idsToRemove.length > 0) {
-        diamondDebug('info', `Verificando dependências para ${idsToRemove.length} itens remotos...`);
-        
-        // Verificação preventiva de produtos
-        const { data: linkedProducts } = await supabase
-          .from('products')
-          .select('id, subcategory_id')
-          .in('subcategory_id', idsToRemove);
-
-        if (linkedProducts && linkedProducts.length > 0) {
-          const problematicIds = Array.from(new Set(linkedProducts.map(p => p.subcategory_id)));
-          const problematicNames = existingInDb
-            .filter(s => problematicIds.includes(s.id))
-            .map(s => s.name);
-
-          diamondDebug('error', 'Exclusão bloqueada: Produtos vinculados detectados.', { problematicNames });
-          toast.error(`Ação bloqueada! As categorias "${problematicNames.join(', ')}" contêm produtos e não podem ser removidas.`);
-          
-          // FORÇAR RECARGA: Isso "destrava" o sistema trazendo os itens de volta pra tela
-          await fetchCategoryData();
-          setSaving(false);
-          return;
-        }
-
-        // Se não houver produtos, apaga
-        const { error: delError } = await supabase.from('subcategories').delete().in('id', idsToRemove);
-        if (delError) throw delError;
-      }
-
-      // 3. Salva/Atualiza o que sobrou (incluindo as estrelinhas)
-      const subsToUpsert = subcategories.map(s => ({
-        id: s.id.includes('-') ? s.id : `${nicheId}-${s.id}`,
+      // Prepara o payload das subcategorias que estão na tela
+      const payload = subcategories.map(s => ({
+        id: s.id,
         name: s.name.trim(),
         image_url: s.image_url || '',
-        mother_id: nicheId,
+        mother_id: formData.id,
         is_featured: !!s.is_featured
       }));
 
-      if (subsToUpsert.length > 0) {
-        const { error: subError } = await supabase.from('subcategories').upsert(subsToUpsert);
-        if (subError) throw subError;
+      // Apenas ATUALIZA ou ADICIONA. Nunca apaga nada do banco.
+      if (payload.length > 0) {
+        diamondDebug('info', `Enviando ${payload.length} itens para o Supabase (Upsert)...`);
+        const { error } = await supabase.from('subcategories').upsert(payload);
+        if (error) throw error;
       }
 
       diamondDebug('success', 'Salvamento concluído com sucesso.');
       toast.success("Alterações salvas!");
-      
-      // Recarrega para garantir que tudo esteja 100% sincronizado
-      await fetchCategoryData();
       onSuccess();
     } catch (error: any) {
-      diamondDebug('error', 'Erro crítico no salvamento', error);
-      toast.error("Ocorreu um erro. Recarregando dados de segurança...");
-      await fetchCategoryData(); // Tenta destravar a UI
+      diamondDebug('error', 'Falha no salvamento', error);
+      toast.error("Erro ao salvar. Verifique os logs.");
     } finally {
       setSaving(false);
     }
   };
 
-  return {
-    formData,
-    setFormData,
-    subcategories,
-    setSubcategories,
-    saving,
-    loading,
-    handleSave
+  // Função para deletar MANUALMENTE uma categoria (apenas via clique no ícone)
+  const deleteSubcategoryManual = async (id: string) => {
+    try {
+      // Verifica se há produtos
+      const { data: products } = await supabase.from('products').select('id').eq('subcategory_id', id).limit(1);
+      if (products && products.length > 0) {
+        toast.error("Não é possível remover: esta categoria contém produtos.");
+        return false;
+      }
+      
+      const { error } = await supabase.from('subcategories').delete().eq('id', id);
+      if (error) throw error;
+      
+      setSubcategories(prev => prev.filter(s => s.id !== id));
+      toast.success("Categoria removida do banco.");
+      return true;
+    } catch (err) {
+      toast.error("Erro ao tentar excluir.");
+      return false;
+    }
   };
+
+  return { formData, setFormData, subcategories, setSubcategories, saving, loading, handleSave, deleteSubcategoryManual };
 };
