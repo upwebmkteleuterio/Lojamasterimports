@@ -1,13 +1,14 @@
 "use client";
 
-import React from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { Heart } from 'lucide-react';
-import { Product } from '@/types/store';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Product, ProductVariant } from '@/types/store';
 import { useCart } from '@/context/CartContext';
 import { useFavorites } from '@/context/FavoritesContext';
-import { getSafeProductImage } from '@/utils/imageHandler';
+import { ShoppingBag, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getSafeProductImage } from '@/utils/imageHandler';
+import { VariationSelectionModal } from '@/components/product/VariationSelectionModal';
 
 interface ProductCardProps {
   product: Product;
@@ -16,82 +17,99 @@ interface ProductCardProps {
 export const ProductCard = ({ product }: ProductCardProps) => {
   const { addToCart } = useCart();
   const { toggleFavorite, isFavorite } = useFavorites();
-  const { shopType } = useParams<{ shopType: string }>();
-  
-  const currentShop = shopType || product.categoryMother || 'feminine';
-  const hasPromo = product.promotionalPrice && product.promotionalPrice > 0;
-  const displayPrice = hasPromo ? product.promotionalPrice : product.price;
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Cálculo da porcentagem de desconto
-  const discountPercentage = hasPromo 
-    ? Math.round(((product.price - (product.promotionalPrice || 0)) / product.price) * 100)
-    : 0;
+  const handleBuy = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Se tiver variações, abre o modal. Se não, adiciona direto.
+    if (product.variants && product.variants.length > 0) {
+      setIsModalOpen(true);
+    } else {
+      addToCart(product, 1);
+    }
+  };
+
+  const handleFavorite = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleFavorite(product);
+  };
+
+  const hasPromo = product.promotionalPrice && product.promotionalPrice > 0;
 
   return (
-    <div className="group flex flex-col h-full bg-white transition-all duration-500">
-      {/* Imagem do Produto - object-cover para preenchimento total */}
-      <div className="relative aspect-square overflow-hidden bg-[#F7F7F7] mb-5">
-        <Link to={`/${currentShop}/produto/${product.id}`} className="block w-full h-full">
+    <>
+      <Link 
+        to={`/${product.categoryMother}/produto/${product.id}`}
+        className="group block bg-white"
+      >
+        <div className="relative aspect-[3/4] overflow-hidden bg-gray-50 mb-4 md:mb-6">
           <img 
             src={getSafeProductImage(product.image)} 
-            alt={product.name}
+            alt={product.name} 
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
           />
-        </Link>
-        
-        {/* Favoritar - Discreto no canto */}
-        <button 
-          onClick={() => toggleFavorite(product)}
-          className={cn(
-            "absolute top-3 left-3 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 z-10",
-            isFavorite(product.id) ? "text-red-500" : "text-gray-300 hover:text-red-500"
-          )}
-        >
-          <Heart size={18} fill={isFavorite(product.id) ? "currentColor" : "none"} />
-        </button>
-
-        {/* Badge de Desconto - Canto superior direito (Ocre) */}
-        {hasPromo && (
-          <div className="absolute top-0 right-0 z-10">
-            <div className="bg-[#E5B343] text-white text-[11px] font-bold px-3 py-1.5 flex items-center justify-center">
-              -{discountPercentage}%
+          
+          {/* Badge de Promoção */}
+          {hasPromo && (
+            <div className="absolute top-4 left-4 bg-red-500 text-white text-[9px] font-bold px-3 py-1 uppercase tracking-widest">
+              Oferta
             </div>
-          </div>
-        )}
-      </div>
+          )}
 
-      {/* Informações do Produto Centralizadas */}
-      <div className="flex flex-col items-center text-center flex-1 px-2">
-        <Link to={`/${currentShop}/produto/${product.id}`} className="mb-3">
-          <h3 className="text-sm md:text-base font-serif text-[#705E1C] leading-tight hover:opacity-80 transition-opacity max-w-[200px]">
+          {/* Botão de Favorito */}
+          <button 
+            onClick={handleFavorite}
+            className={cn(
+              "absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all bg-white shadow-sm hover:scale-110 active:scale-95",
+              isFavorite(product.id) ? "text-red-500" : "text-gray-400"
+            )}
+          >
+            <Heart size={18} fill={isFavorite(product.id) ? "currentColor" : "none"} strokeWidth={1.5} />
+          </button>
+
+          {/* Botão Quick Add no Hover */}
+          <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 bg-gradient-to-t from-black/20 to-transparent hidden md:block">
+            <button 
+              onClick={handleBuy}
+              className="w-full bg-white text-black py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-[#D4AF37] hover:text-white transition-colors flex items-center justify-center gap-2"
+            >
+              <ShoppingBag size={14} /> Adicionar
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-1 text-center md:text-left">
+          <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#B89C6A] mb-1">
+            {product.subcategory || 'Luxury'}
+          </p>
+          <h3 className="text-sm md:text-base font-serif font-light text-gray-800 leading-tight group-hover:text-[#B89C6A] transition-colors line-clamp-1">
             {product.name}
           </h3>
-        </Link>
-        
-        <div className="mt-auto mb-6 flex flex-col items-center">
-          {/* Linha de Preços */}
-          <div className="flex items-center justify-center gap-2">
+          <div className="flex flex-col md:flex-row items-center md:items-end gap-1 md:gap-3 mt-2">
+            <span className="text-sm md:text-lg font-bold text-gray-900">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(hasPromo ? product.promotionalPrice! : product.price)}
+            </span>
             {hasPromo && (
-              <span className="text-[11px] md:text-[13px] text-gray-400 line-through font-light">
+              <span className="text-[10px] md:text-xs text-gray-400 line-through font-light mb-0.5">
                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price)}
               </span>
             )}
-            <span className="text-sm md:text-base font-bold text-gray-800">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(displayPrice || 0)}
-            </span>
           </div>
         </div>
+      </Link>
 
-        {/* Botão Comprar - Estilo Borda Fina Centralizado */}
-        <div className="w-full flex justify-center pb-2">
-          <button 
-            onClick={() => addToCart(product, 1)}
-            className="w-[160px] h-[45px] border border-gray-800 bg-white text-gray-800 text-[12px] font-serif uppercase tracking-[0.1em] hover:bg-gray-800 hover:text-white transition-all duration-300"
-          >
-            COMPRAR
-          </button>
-        </div>
-      </div>
-    </div>
+      {/* Modal de seleção rápida caso tenha variações */}
+      <VariationSelectionModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        product={product}
+        onConfirm={(variant) => {
+          addToCart(product, 1);
+        }}
+      />
+    </>
   );
 };

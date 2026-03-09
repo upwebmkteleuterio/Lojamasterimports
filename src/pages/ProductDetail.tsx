@@ -12,6 +12,7 @@ import { ProductDescription } from '@/components/product/ProductDescription';
 import { ProductTabs } from '@/components/product/ProductTabs';
 import { RelatedProducts } from '@/components/product/RelatedProducts';
 import { Product, ProductVariant } from '@/types/store';
+import { VariationSelectionModal } from '@/components/product/VariationSelectionModal';
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -19,8 +20,7 @@ const ProductDetail = () => {
   const { addToCart } = useCart();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
-  
-  // Estado para controlar a imagem exibida (pode ser a do produto ou da variante)
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeImage, setActiveImage] = useState<string>('');
 
   useEffect(() => {
@@ -62,7 +62,6 @@ const ProductDetail = () => {
   }
 
   const handleAddToCart = (quantity: number, selectedVariant?: ProductVariant) => {
-    // Aqui poderíamos passar a variante para o carrinho futuramente
     addToCart(product, quantity);
   };
 
@@ -78,15 +77,14 @@ const ProductDetail = () => {
       
       <main className="container mx-auto px-4 py-8 md:py-16">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 xl:gap-24 items-start">
-          {/* Passamos a activeImage para a galeria */}
           <ProductGallery image={activeImage} name={product.name} />
 
-          {/* Sidebar agora notifica quando uma variante é selecionada */}
           <div className="sidebar-container">
             <ProductSidebar 
               product={product} 
               onAddToCart={handleAddToCart}
               onVariantSelect={handleVariantSelect}
+              onRequestSelection={() => setIsModalOpen(true)}
             />
           </div>
         </div>
@@ -95,6 +93,17 @@ const ProductDetail = () => {
       <RelatedProducts currentProductId={product.id} categoryMother={product.categoryMother} />
       <ProductDescription name={product.name} description={product.description} />
       <ProductTabs />
+
+      {/* Modal de auxílio na escolha */}
+      <VariationSelectionModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        product={product}
+        onConfirm={(variant) => {
+          handleVariantSelect(variant);
+          handleAddToCart(1, variant);
+        }}
+      />
     </div>
   );
 };

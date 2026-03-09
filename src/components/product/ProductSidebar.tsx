@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Minus, Plus, Truck, Check } from 'lucide-react';
+import { Minus, Plus, Truck, Check, AlertCircle } from 'lucide-react';
 import { Product, ProductVariant } from '@/types/store';
 import { cn } from '@/lib/utils';
 
@@ -11,9 +11,10 @@ interface ProductSidebarProps {
   product: Product;
   onAddToCart: (quantity: number, selectedVariant?: ProductVariant) => void;
   onVariantSelect?: (variant: ProductVariant) => void;
+  onRequestSelection?: () => void;
 }
 
-export const ProductSidebar = ({ product, onAddToCart, onVariantSelect }: ProductSidebarProps) => {
+export const ProductSidebar = ({ product, onAddToCart, onVariantSelect, onRequestSelection }: ProductSidebarProps) => {
   const [quantity, setQuantity] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
 
@@ -31,6 +32,14 @@ export const ProductSidebar = ({ product, onAddToCart, onVariantSelect }: Produc
   const handleSelect = (variant: ProductVariant) => {
     setSelectedVariant(variant);
     if (onVariantSelect) onVariantSelect(variant);
+  };
+
+  const handleBuyClick = () => {
+    if (variationsMap && !selectedVariant) {
+      if (onRequestSelection) onRequestSelection();
+      return;
+    }
+    onAddToCart(quantity, selectedVariant || undefined);
   };
 
   const currentPrice = selectedVariant ? selectedVariant.price : product.price;
@@ -66,7 +75,7 @@ export const ProductSidebar = ({ product, onAddToCart, onVariantSelect }: Produc
                     key={opt.id || opt.option_name}
                     onClick={() => handleSelect(opt)}
                     className={cn(
-                      "px-6 py-3 border text-xs font-bold transition-all relative",
+                      "px-6 py-3 border text-xs font-bold transition-all relative rounded-none",
                       (selectedVariant?.id === opt.id || selectedVariant?.option_name === opt.option_name)
                         ? "border-black bg-black text-white" 
                         : "border-gray-200 text-gray-500 hover:border-black"
@@ -96,11 +105,17 @@ export const ProductSidebar = ({ product, onAddToCart, onVariantSelect }: Produc
         </div>
         
         <Button 
-          onClick={() => onAddToCart(quantity, selectedVariant || undefined)}
-          disabled={variationsMap && !selectedVariant}
-          className="flex-1 h-14 rounded-none bg-[#D4AF37] hover:bg-[#b8962d] text-white font-bold text-sm md:text-lg tracking-widest disabled:opacity-50 disabled:bg-gray-200"
+          onClick={handleBuyClick}
+          className={cn(
+            "flex-1 h-14 rounded-none font-bold text-sm md:text-lg tracking-widest transition-all",
+            (variationsMap && !selectedVariant) 
+              ? "bg-gray-100 text-gray-400 hover:bg-gray-200" 
+              : "bg-[#D4AF37] hover:bg-[#b8962d] text-white"
+          )}
         >
-          {variationsMap && !selectedVariant ? 'SELECIONE UMA OPÇÃO' : 'COMPRAR'}
+          {variationsMap && !selectedVariant ? (
+            <span className="flex items-center gap-2"><AlertCircle size={18} /> SELECIONE UMA OPÇÃO</span>
+          ) : 'COMPRAR'}
         </Button>
       </div>
 
