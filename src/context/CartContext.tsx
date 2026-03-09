@@ -3,6 +3,7 @@ import { Product, OrderItem, ProductVariant } from '@/types/store';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
+import { diamondDebug } from '@/utils/debug';
 
 interface CartContextType {
   cart: OrderItem[];
@@ -53,7 +54,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const v = item.product_variants;
           
           return {
-            id: item.id, // Usamos o ID do item no carrinho para manipulação
+            id: item.id,
             productId: p.id,
             name: p.name,
             price: Number(v ? v.price : p.price),
@@ -70,36 +71,40 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
 
       setCart(items);
+      diamondDebug('success', `Carrinho sincronizado com o banco. ${items.length} itens.`);
     } catch (error) {
-      console.error('Erro ao buscar carrinho:', error);
+      diamondDebug('error', 'Falha ao buscar carrinho no Supabase', error);
     } finally {
       setLoading(false);
     }
   };
 
   const addToCart = async (product: Product, quantity: number = 1, variant?: ProductVariant) => {
+    diamondDebug('info', `Iniciando adição: ${product.name}`, { variant_id: variant?.id });
+
     if (!user) {
       setCart(prev => {
-        // Busca se já existe o mesmo produto com a mesma variante
-        const existing = prev.find(item => 
-          item.id === product.id && 
-          item.selectedVariant?.id === variant?.id
-        );
+        // Para convidados, usamos um ID composto para evitar colisão de variações
+        const itemKey = variant ? `${product.id}-${variant.id}` : product.id;
+        
+        const existing = prev.find(item => item.id === itemKey);
         
         let next;
         if (existing) {
           next = prev.map(item => 
-            (item.id === product.id && item.selectedVariant?.id === variant?.id) 
-              ? { ...item, quantity: item.quantity + quantity } 
-              : item
+            item.id === itemKey ? { ...item, quantity: item.quantity + quantity } : item
           );
         } else {
-          const newItem: OrderItem = { 
-            ...product, 
+          const newItem: any = { 
+            id: itemKey,
+            productId: product.id,
+            name: product.name,
             quantity, 
             selectedVariant: variant,
             price: variant ? variant.price : product.price,
-            image: (variant && variant.main_image) ? variant.main_image : product.image
+            image: (variant && variant.main_image) ? variant.main_image : product.image,
+            categoryMother: product.categoryMother,
+            active: product.active
           };
           next = [...prev, newItem];
         }
@@ -111,8 +116,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      // Verifica se já existe o par produto+variante no banco
-      const { data: existing } = await supabase
+      // Verifica duplicata no banco considerando a variante
+      const { data: existing, error: checkError } = await supabase
         .from('cart_items')
         .select('id, quantity')
         .eq('user_id', user.id)
@@ -120,12 +125,16 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .filter('variant_id', variant ? 'eq' : 'is', variant ? variant.id : null)
         .maybeSingle();
 
+      if (checkError) throw checkError;
+
       if (existing) {
+        diamondDebug('info', 'Item já existe no carrinho. Incrementando quantidade.', { id: existing.id });
         await supabase
           .from('cart_items')
           .update({ quantity: existing.quantity + quantity })
           .eq('id', existing.id);
       } else {
+        diamondDebug('info', 'Inserindo novo item no carrinho do banco.');
         await supabase
           .from('cart_items')
           .insert({ 
@@ -139,6 +148,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await fetchCartFromDb();
       toast.success("Adicionado ao seu carrinho");
     } catch (error: any) {
+      diamondDebug('error', 'Erro ao processar adição ao carrinho no banco', error);
       toast.error("Erro ao salvar carrinho");
     }
   };

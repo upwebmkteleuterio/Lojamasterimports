@@ -13,6 +13,7 @@ import { ProductTabs } from '@/components/product/ProductTabs';
 import { RelatedProducts } from '@/components/product/RelatedProducts';
 import { Product, ProductVariant } from '@/types/store';
 import { VariationSelectionModal } from '@/components/product/VariationSelectionModal';
+import { diamondDebug } from '@/utils/debug';
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -31,6 +32,7 @@ const ProductDetail = () => {
         if (data) {
           setProduct(data);
           setActiveImage(data.image);
+          diamondDebug('success', `Produto ${data.name} carregado.`);
         }
         setLoading(false);
       }
@@ -62,7 +64,9 @@ const ProductDetail = () => {
   }
 
   const handleAddToCart = (quantity: number, selectedVariant?: ProductVariant) => {
-    addToCart(product, quantity);
+    diamondDebug('info', `Adicionando ao carrinho: ${product.name}`, { quantity, variant: selectedVariant?.option_name });
+    // CORREÇÃO: Passando o terceiro argumento (variant)
+    addToCart(product, quantity, selectedVariant);
   };
 
   const handleVariantSelect = (variant: ProductVariant) => {
