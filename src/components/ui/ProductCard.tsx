@@ -1,115 +1,103 @@
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { Product, ProductVariant } from '@/types/store';
-import { useCart } from '@/context/CartContext';
+import { Product } from '@/types/store';
 import { useFavorites } from '@/context/FavoritesContext';
-import { ShoppingBag, Heart } from 'lucide-react';
+import { Heart, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getSafeProductImage } from '@/utils/imageHandler';
-import { VariationSelectionModal } from '@/components/product/VariationSelectionModal';
 
 interface ProductCardProps {
   product: Product;
 }
 
 export const ProductCard = ({ product }: ProductCardProps) => {
-  const { addToCart } = useCart();
-  const { toggleFavorite, isFavorite } = useFavorites();
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const favorite = isFavorite(product.id);
 
-  const handleBuy = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const hasDiscount = product.promotionalPrice && product.promotionalPrice > 0;
+  const discountPercentage = hasDiscount 
+    ? Math.round(((product.price - product.promotionalPrice!) / product.price) * 100) 
+    : 0;
 
-    // Se tiver variações, abre o modal. Se não, adiciona direto.
-    if (product.variants && product.variants.length > 0) {
-      setIsModalOpen(true);
-    } else {
-      addToCart(product, 1);
-    }
+  const formatPrice = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(value);
   };
-
-  const handleFavorite = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    toggleFavorite(product);
-  };
-
-  const hasPromo = product.promotionalPrice && product.promotionalPrice > 0;
 
   return (
-    <>
-      <Link 
-        to={`/${product.categoryMother}/produto/${product.id}`}
-        className="group block bg-white"
-      >
-        <div className="relative aspect-[3/4] overflow-hidden bg-gray-50 mb-4 md:mb-6">
-          <img 
-            src={getSafeProductImage(product.image)} 
-            alt={product.name} 
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-          />
-          
-          {/* Badge de Promoção */}
-          {hasPromo && (
-            <div className="absolute top-4 left-4 bg-red-500 text-white text-[9px] font-bold px-3 py-1 uppercase tracking-widest">
-              Oferta
-            </div>
-          )}
-
-          {/* Botão de Favorito */}
-          <button 
-            onClick={handleFavorite}
-            className={cn(
-              "absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all bg-white shadow-sm hover:scale-110 active:scale-95",
-              isFavorite(product.id) ? "text-red-500" : "text-gray-400"
-            )}
-          >
-            <Heart size={18} fill={isFavorite(product.id) ? "currentColor" : "none"} strokeWidth={1.5} />
-          </button>
-
-          {/* Botão Quick Add no Hover */}
-          <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 bg-gradient-to-t from-black/20 to-transparent hidden md:block">
-            <button 
-              onClick={handleBuy}
-              className="w-full bg-white text-black py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-[#D4AF37] hover:text-white transition-colors flex items-center justify-center gap-2"
-            >
-              <ShoppingBag size={14} /> Adicionar
-            </button>
-          </div>
+    <div className="group relative flex flex-col bg-white overflow-hidden transition-all duration-500 hover:shadow-[0_20px_40px_rgba(0,0,0,0.04)] rounded-[2rem] border border-gray-50">
+      {/* Badge de Desconto */}
+      {hasDiscount && (
+        <div className="absolute top-4 left-4 z-10">
+          <span className="bg-[#B89C6A] text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-sm">
+            {discountPercentage}% OFF
+          </span>
         </div>
+      )}
 
-        <div className="space-y-1 text-center md:text-left">
-          <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#B89C6A] mb-1">
-            {product.subcategory || 'Luxury'}
-          </p>
-          <h3 className="text-sm md:text-base font-serif font-light text-gray-800 leading-tight group-hover:text-[#B89C6A] transition-colors line-clamp-1">
-            {product.name}
-          </h3>
-          <div className="flex flex-col md:flex-row items-center md:items-end gap-1 md:gap-3 mt-2">
-            <span className="text-sm md:text-lg font-bold text-gray-900">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(hasPromo ? product.promotionalPrice! : product.price)}
-            </span>
-            {hasPromo && (
-              <span className="text-[10px] md:text-xs text-gray-400 line-through font-light mb-0.5">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price)}
-              </span>
-            )}
+      {/* Botão de Favoritar */}
+      <button 
+        onClick={(e) => {
+          e.preventDefault();
+          toggleFavorite(product);
+        }}
+        className={cn(
+          "absolute top-4 right-4 z-10 w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 backdrop-blur-md",
+          favorite 
+            ? "bg-[#B89C6A] text-white" 
+            : "bg-white/80 text-gray-400 hover:text-[#B89C6A] hover:bg-white"
+        )}
+      >
+        <Heart size={18} fill={favorite ? "currentColor" : "none"} strokeWidth={1.5} />
+      </button>
+
+      {/* Container da Imagem */}
+      <Link to={`/${product.categoryMother}/produto/${product.id}`} className="block relative aspect-[4/5] overflow-hidden bg-[#FDFDFD]">
+        <img 
+          src={getSafeProductImage(product.image)} 
+          alt={product.name}
+          className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+        />
+        
+        {/* Overlay de Ação Rápida */}
+        <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+          <div className="w-full translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
+            <div className="bg-white/90 backdrop-blur-sm py-3 rounded-2xl flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-900 shadow-xl">
+              <ShoppingBag size={14} /> Ver Detalhes
+            </div>
           </div>
         </div>
       </Link>
 
-      {/* Modal de seleção rápida caso tenha variações */}
-      <VariationSelectionModal 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        product={product}
-        onConfirm={(variant) => {
-          addToCart(product, 1);
-        }}
-      />
-    </>
+      {/* Informações */}
+      <div className="p-6 flex flex-col items-center text-center space-y-3">
+        <Link to={`/${product.categoryMother}/produto/${product.id}`} className="block">
+          <h3 className="text-sm font-serif text-gray-800 hover:text-[#B89C6A] transition-colors line-clamp-2 min-h-[40px] leading-relaxed">
+            {product.name}
+          </h3>
+        </Link>
+
+        <div className="flex flex-col items-center gap-1">
+          {hasDiscount ? (
+            <>
+              <span className="text-xs text-gray-300 line-through font-light">
+                {formatPrice(product.price)}
+              </span>
+              <span className="text-lg font-bold text-[#B89C6A]">
+                {formatPrice(product.promotionalPrice!)}
+              </span>
+            </>
+          ) : (
+            <span className="text-lg font-bold text-gray-900">
+              {formatPrice(product.price)}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
