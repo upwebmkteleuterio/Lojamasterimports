@@ -55,7 +55,7 @@ export const useCategoryForm = (id: string | undefined) => {
           id: s.id.startsWith(prefix) ? s.id.slice(prefix.length) : s.id, 
           name: s.name,
           image_url: s.image_url || '',
-          is_featured: s.is_featured === true // Garantindo boolean
+          is_featured: s.is_featured === true 
         })));
       }
     } catch (error: any) {
@@ -73,7 +73,7 @@ export const useCategoryForm = (id: string | undefined) => {
     }
 
     setSaving(true);
-    diamondDebug('info', 'Iniciando processo de salvamento (UPSERT)...');
+    diamondDebug('info', 'Iniciando processo de salvamento...');
 
     try {
       // 1. Salva Categoria Mãe
@@ -91,36 +91,43 @@ export const useCategoryForm = (id: string | undefined) => {
       diamondDebug('success', 'Categoria mãe salva/atualizada.');
 
       // 2. Trata Subcategorias
-      const currentFullIds = subcategories.map(s => s.id.startsWith(`${formData.id}-`) ? s.id : `${formData.id}-${s.id}`);
+      const subsToUpsert = subcategories.map(s => ({
+        id: s.id.startsWith(`${formData.id}-`) ? s.id : `${formData.id}-${s.id}`,
+        name: s.name,
+        image_url: s.image_url,
+        mother_id: formData.id,
+        is_featured: !!s.is_featured // Força boolean
+      }));
 
-      // Deleta as que não estão mais na lista
+      diamondDebug('info', 'Payload de subcategorias preparado para UPSERT', subsToUpsert);
+
+      // Deleta as que não estão mais na lista (Lógica Corrigida)
       if (id) {
-        diamondDebug('info', 'Limpando subcategorias removidas da lista...');
-        await supabase
+        const currentFullIds = subsToUpsert.map(s => s.id);
+        diamondDebug('info', 'Limpando subcategorias removidas...', { mantendo: currentFullIds });
+        
+        const deleteQuery = supabase
           .from('subcategories')
           .delete()
-          .eq('mother_id', formData.id)
-          .not('id', 'in', `(${currentFullIds.length > 0 ? currentFullIds.join(',') : 'none'})`);
+          .eq('mother_id', formData.id);
+
+        if (currentFullIds.length > 0) {
+          await deleteQuery.not('id', 'in', currentFullIds);
+        } else {
+          await deleteQuery;
+        }
       }
       
-      if (subcategories.length > 0) {
-        const subsToUpsert = subcategories.map(s => ({
-          id: s.id.startsWith(`${formData.id}-`) ? s.id : `${formData.id}-${s.id}`,
-          name: s.name,
-          image_url: s.image_url,
-          mother_id: formData.id,
-          is_featured: s.is_featured === true // Salva explicitamente
-        }));
-
-        diamondDebug('info', 'Enviando subcategorias para UPSERT no banco...', subsToUpsert);
+      if (subsToUpsert.length > 0) {
         const { error: subError } = await supabase.from('subcategories').upsert(subsToUpsert);
         if (subError) {
           diamondDebug('error', 'Erro ao dar upsert nas subcategorias', subError);
           throw subError;
         }
+        diamondDebug('success', 'Subcategorias sincronizadas com sucesso.');
       }
 
-      diamondDebug('success', 'PROCESSO DE SALVAMENTO CONCLUÍDO COM ÊXITO.');
+      diamondDebug('success', 'PROCESSO FINALIZADO.');
       toast.success("Dados salvos com sucesso!");
       onSuccess();
     } catch (error: any) {
