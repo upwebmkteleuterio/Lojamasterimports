@@ -3,7 +3,7 @@ import { Product, ProductVariant } from '@/types/store';
 
 /**
  * Mapeia as colunas da planilha Excel para o objeto de produto e suas variantes.
- * Segue a ordem exata fornecida pelo usuário.
+ * Ignora linhas de metadados e cabeçalho da Shopee.
  */
 export const parseExcelProducts = async (file: File): Promise<any[]> => {
   return new Promise((resolve, reject) => {
@@ -16,41 +16,41 @@ export const parseExcelProducts = async (file: File): Promise<any[]> => {
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         
-        // Converte para array de arrays (linhas)
         const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
         
-        // Remove o cabeçalho
-        const dataRows = rows.slice(1);
+        // Filtra linhas vazias ou que sejam cabeçalhos/metadados da Shopee
+        const dataRows = rows.filter(row => {
+          const id = row[0]?.toString().toLowerCase();
+          return id && id !== 'media_info' && id !== 'id do produto' && row[2];
+        });
 
         const mappedProducts = dataRows.map((row) => {
-          if (!row[2]) return null; // Pula se não tiver nome
-
-          // 1. Mapeamento de Imagens da Galeria (Colunas 5 a 12)
+          // 1. Galeria (Colunas 5 a 12)
           const gallery = [];
           for (let i = 5; i <= 12; i++) {
-            if (row[i]) gallery.push(row[i]);
+            if (row[i] && typeof row[i] === 'string' && row[i].startsWith('http')) {
+              gallery.push(row[i]);
+            }
           }
 
-          // 2. Mapeamento do Produto Principal
-          const product: Partial<Product> = {
+          // 2. Produto Principal
+          const product = {
             id: row[0]?.toString(),
             name: row[2]?.toString(),
-            categoryMother: row[3]?.toString() || 'feminine',
-            image: row[4]?.toString() || '',
+            subcategory_name: row[3]?.toString(), // Nome temporário para criar no banco
+            main_image: row[4]?.toString() || '',
             gallery: gallery,
-            description: '', // Não consta na planilha enviada
-            price: 0, // Será definido manual ou via variantes
-            active: true,
-            stock: 0
+            description: '',
+            price: 19.90, // Valor padrão solicitado
+            stock: 999,   // Valor padrão solicitado
+            is_active: true
           };
 
-          // 3. Mapeamento de Variantes (Inicia na Coluna 15 - Nome da Variação 1)
+          // 3. Variantes (Coluna 15 em diante)
           const variationName = row[15]?.toString();
-          const variants: Partial<ProductVariant>[] = [];
+          const variants: any[] = [];
 
-          if (variationName) {
-            // Pares de Opção Nome + Opção Imagem começam na coluna 16
-            // São 14 opções possíveis conforme a descrição
+          if (variationName && variationName.toLowerCase() !== 'nome da variação 1') {
             for (let i = 0; i < 14; i++) {
               const nameIdx = 16 + (i * 2);
               const imgIdx = 17 + (i * 2);
@@ -58,14 +58,15 @@ export const parseExcelProducts = async (file: File): Promise<any[]> => {
               const optName = row[nameIdx]?.toString();
               const optImg = row[imgIdx]?.toString();
 
-              if (optName) {
+              if (optName && optName.toLowerCase() !== 'opção 1 de nome') {
                 variants.push({
                   attribute_name: variationName,
                   option_name: optName,
-                  main_image: optImg || product.image,
+                  main_image: optImg || product.main_image,
                   is_active: true,
-                  price: 0,
-                  stock: 0
+                  price: 19.90,
+                  stock: 999,
+                  sku: `${product.id}-${i}`
                 });
               }
             }
@@ -73,10 +74,9 @@ export const parseExcelProducts = async (file: File): Promise<any[]> => {
 
           return {
             product,
-            variationReference: variationName,
             variants
           };
-        }).filter(p => p !== null);
+        });
 
         resolve(mappedProducts);
       } catch (err) {
