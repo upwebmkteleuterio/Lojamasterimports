@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useParams, useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingCart, User, Search, Menu, Phone, MapPin } from 'lucide-react';
+import { ShoppingCart, User, Search, Menu, Phone, MapPin, ChevronRight, LayoutGrid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,13 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import logo from '@/assets/logo.jpg';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 export const Navbar = () => {
   const { cartCount } = useCart();
@@ -63,13 +70,12 @@ export const Navbar = () => {
     }
   };
 
-  // Lógica específica: Ocultar Navbar completa no Mobile para a página de Produto
+  // Ocultar Navbar completa no Mobile para a página de Produto (conforme pedido anterior)
   const isProductPage = location.pathname.includes('/produto/');
   if (isMobile && isProductPage) {
     return null;
   }
 
-  // Páginas onde a busca e o menu de categorias devem ser ocultados (apenas fluxo de finalização)
   const pagesWithoutSearch = ['/carrinho', '/checkout'];
   const shouldHideElements = pagesWithoutSearch.includes(location.pathname);
 
@@ -92,10 +98,10 @@ export const Navbar = () => {
 
       {/* Main Header */}
       <div className="container mx-auto px-4 py-4 md:py-6">
-        <div className="relative flex items-center justify-between md:grid md:grid-cols-3 items-center">
+        <div className="flex items-center justify-between">
           
-          {/* Navegação de Nichos - Desktop */}
-          <div className="hidden md:flex items-center gap-3">
+          {/* Lado Esquerdo - Desktop (Nichos) / Mobile (Espaçador) */}
+          <div className="flex-1 hidden md:flex items-center gap-3">
             {niches.map((niche) => (
               <Link 
                 key={niche.id} 
@@ -112,28 +118,112 @@ export const Navbar = () => {
             ))}
           </div>
 
+          <div className="md:hidden w-10" /> {/* Espaçador para centralizar a logo no mobile */}
+
+          {/* Centro - Logo */}
           <div className="flex justify-center flex-shrink-0">
             <Link to={`/${currentShop}`} className="block hover:opacity-80 transition-opacity">
-              <img src={logo} alt="Master Imports Logo" className="h-12 md:h-16 w-auto object-contain" />
+              <img src={logo} alt="Master Imports Logo" className="h-10 md:h-16 w-auto object-contain" />
             </Link>
           </div>
 
+          {/* Lado Direito - Ações */}
           <div className="flex-1 flex items-center justify-end gap-2 md:gap-4">
-            <div className="hidden md:flex items-center gap-4">
-              {!shouldHideElements && (
-                <form onSubmit={handleSearch} className="relative w-64 flex items-center mr-2">
-                  <Input
-                    placeholder="Pesquisar..."
-                    value={searchValue}
-                    onChange={(e) => setSearchValue(e.target.value)}
-                    className="rounded-full border-gray-100 bg-gray-50/50 focus-visible:ring-1 focus-visible:ring-[#B89C6A] h-9 text-xs pr-10"
-                  />
-                  <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                    <Search size={14} />
-                  </button>
-                </form>
-              )}
+            {/* Busca Desktop */}
+            {!shouldHideElements && (
+              <form onSubmit={handleSearch} className="hidden md:relative md:flex items-center w-64 mr-2">
+                <Input
+                  placeholder="Pesquisar..."
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
+                  className="rounded-full border-gray-100 bg-gray-50/50 focus-visible:ring-1 focus-visible:ring-[#B89C6A] h-9 text-xs pr-10"
+                />
+                <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  <Search size={14} />
+                </button>
+              </form>
+            )}
 
+            {/* Menu Mobile Trigger */}
+            {!shouldHideElements && (
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="md:hidden text-gray-700 h-9 w-9">
+                    <Menu size={24} />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[300px] p-0 flex flex-col rounded-l-[32px] border-none">
+                  <SheetHeader className="p-6 border-b border-gray-50 text-left">
+                    <SheetTitle className="text-xs font-bold uppercase tracking-[0.2em] text-[#B89C6A] flex items-center gap-2">
+                      <LayoutGrid size={16} /> Navegação
+                    </SheetTitle>
+                  </SheetHeader>
+                  
+                  <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                    {/* Switcher de Mundos no Mobile */}
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Alterar Loja</p>
+                      <div className="flex flex-col gap-2">
+                        {niches.map(niche => (
+                          <Link 
+                            key={niche.id} 
+                            to={`/${niche.id}`}
+                            className={cn(
+                              "flex items-center justify-between p-4 rounded-2xl border text-xs font-bold uppercase tracking-widest transition-all",
+                              currentShop === niche.id 
+                                ? "bg-[#B89C6A] border-[#B89C6A] text-white" 
+                                : "bg-gray-50 border-gray-100 text-gray-500"
+                            )}
+                          >
+                            {niche.name}
+                            {currentShop === niche.id && <ChevronRight size={14} />}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Categorias Internas */}
+                    <div className="space-y-4">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Departamentos</p>
+                      <ul className="space-y-1">
+                        {menuItems.map(item => (
+                          <li key={item.id}>
+                            <Link 
+                              to={`/${currentShop}/categoria/${item.id}`}
+                              className="flex items-center justify-between p-4 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-2xl transition-colors"
+                            >
+                              {item.name}
+                              <ChevronRight size={14} className="text-gray-300" />
+                            </Link>
+                          </li>
+                        ))}
+                        <li>
+                          <Link 
+                            to={`/${currentShop}/categoria/todos`}
+                            className="flex items-center justify-between p-4 text-sm font-bold text-[#B89C6A] hover:bg-gray-50 rounded-2xl transition-colors"
+                          >
+                            Ver tudo
+                            <ChevronRight size={14} />
+                          </Link>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="p-6 border-t border-gray-50 space-y-4">
+                    <Link to="/minha-conta" className="flex items-center gap-3 text-sm font-bold text-gray-700">
+                      <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400">
+                        <User size={20} />
+                      </div>
+                      Minha Conta
+                    </Link>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            )}
+
+            {/* Ícones Desktop */}
+            <div className="hidden md:flex items-center gap-2">
               <Link to="/minha-conta">
                 <Button variant="ghost" size="icon" className="text-gray-700 hover:text-[#B89C6A] h-9 w-9">
                   <User size={20} strokeWidth={1.5} />
@@ -154,6 +244,7 @@ export const Navbar = () => {
           </div>
         </div>
 
+        {/* Busca Mobile (Abaixo da logo) */}
         {!shouldHideElements && (
           <form onSubmit={handleSearch} className="md:hidden mt-4 relative w-full">
             <Input 
@@ -169,6 +260,7 @@ export const Navbar = () => {
         )}
       </div>
 
+      {/* Menu Desktop Categorias */}
       {!shouldHideElements && menuItems.length > 0 && (
         <nav className="hidden md:block border-t">
           <div className="container mx-auto px-4">
