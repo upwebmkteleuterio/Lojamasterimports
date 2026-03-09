@@ -8,7 +8,6 @@ import { FavoritesProvider } from "./context/FavoritesContext";
 import { AuthProvider } from "./context/AuthContext";
 import { useAuthStore } from "./store/useAuthStore";
 import { MobileNavbar } from "./components/layout/MobileNavbar";
-import { DebugInspector } from "./components/admin/DebugInspector";
 import ScrollToTop from "./components/ScrollToTop";
 import Landing from "./pages/Landing";
 import Index from "./pages/Index";
@@ -98,7 +97,6 @@ const AppContent = () => {
         <Route path="*" element={<NotFound />} />
       </Routes>
       {!isAdmin && <MobileNavbar />}
-      <DebugInspector />
     </>
   );
 };
