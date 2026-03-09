@@ -94,16 +94,16 @@ export const Navbar = () => {
         <div className="relative flex items-center justify-between md:grid md:grid-cols-3 items-center">
           
           {/* Navegação de Nichos - Desktop */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-3">
             {niches.map((niche) => (
               <Link 
                 key={niche.id} 
                 to={`/${niche.id}`}
                 className={cn(
-                  "text-[10px] font-bold uppercase tracking-[0.2em] transition-all relative py-1",
+                  "flex items-center justify-center px-5 h-9 rounded-full border text-[9px] font-bold uppercase tracking-[0.15em] transition-all",
                   currentShop === niche.id 
-                    ? "text-[#B89C6A] after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[1px] after:bg-[#B89C6A]" 
-                    : "text-gray-400 hover:text-gray-900"
+                    ? "bg-white border-[#B89C6A] text-[#B89C6A] shadow-sm" 
+                    : "bg-gray-50/50 border-gray-100 text-gray-400 hover:text-gray-900 hover:bg-white hover:border-gray-200"
                 )}
               >
                 {niche.name}
