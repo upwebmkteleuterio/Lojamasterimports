@@ -38,7 +38,6 @@ export const useCategoryForm = (id: string | undefined) => {
       
       if (catError) throw catError;
       if (cat) {
-        diamondDebug('success', 'Nicho carregado com sucesso', cat);
         setFormData(cat);
       }
 
@@ -49,7 +48,6 @@ export const useCategoryForm = (id: string | undefined) => {
       
       if (subError) throw subError;
       if (subs) {
-        diamondDebug('info', `Localizadas ${subs.length} subcategorias no banco`, subs);
         const prefix = `${id}-`;
         setSubcategories(subs.map(s => ({ 
           id: s.id.startsWith(prefix) ? s.id.slice(prefix.length) : s.id, 
@@ -60,7 +58,7 @@ export const useCategoryForm = (id: string | undefined) => {
       }
     } catch (error: any) {
       diamondDebug('error', 'Falha ao buscar dados no banco', error);
-      toast.error("Erro ao carregar dados: " + error.message);
+      toast.error("Erro ao carregar dados.");
     } finally {
       setLoading(false);
     }
@@ -73,7 +71,7 @@ export const useCategoryForm = (id: string | undefined) => {
     }
 
     setSaving(true);
-    diamondDebug('info', 'Iniciando processo de salvamento...');
+    diamondDebug('info', 'Iniciando processo de salvamento de Categoria...');
 
     try {
       // 1. Salva Categoria Mãe
@@ -88,51 +86,72 @@ export const useCategoryForm = (id: string | undefined) => {
         });
       
       if (catError) throw catError;
-      diamondDebug('success', 'Categoria mãe salva/atualizada.');
 
-      // 2. Trata Subcategorias
+      // 2. Prepara Subcategorias
       const subsToUpsert = subcategories.map(s => ({
-        id: s.id.startsWith(`${formData.id}-`) ? s.id : `${formData.id}-${s.id}`,
+        id: s.id.includes('-') ? s.id : `${formData.id}-${s.id}`,
         name: s.name,
         image_url: s.image_url,
         mother_id: formData.id,
-        is_featured: !!s.is_featured // Força boolean
+        is_featured: !!s.is_featured
       }));
 
-      diamondDebug('info', 'Payload de subcategorias preparado para UPSERT', subsToUpsert);
-
-      // Deleta as que não estão mais na lista (Lógica Corrigida)
+      // 3. Limpeza de Removidas
       if (id) {
         const currentFullIds = subsToUpsert.map(s => s.id);
-        diamondDebug('info', 'Limpando subcategorias removidas...', { mantendo: currentFullIds });
+        diamondDebug('info', 'Sincronizando subcategorias...', { mantendo: currentFullIds });
         
-        const deleteQuery = supabase
+        // Buscamos o que existe no banco agora para comparar
+        const { data: existingInDb } = await supabase
           .from('subcategories')
-          .delete()
+          .select('id')
           .eq('mother_id', formData.id);
+        
+        const idsToRemove = (existingInDb || [])
+          .map(s => s.id)
+          .filter(dbId => !currentFullIds.includes(dbId));
 
-        if (currentFullIds.length > 0) {
-          await deleteQuery.not('id', 'in', currentFullIds);
-        } else {
-          await deleteQuery;
+        if (idsToRemove.length > 0) {
+          diamondDebug('info', `Tentando excluir ${idsToRemove.length} subcategorias:`, idsToRemove);
+          
+          const { error: deleteError } = await supabase
+            .from('subcategories')
+            .delete()
+            .in('id', idsToRemove);
+
+          if (deleteError) {
+            diamondDebug('error', 'FALHA NA EXCLUSÃO DE SUBCATEGORIA', {
+              code: deleteError.code,
+              message: deleteError.message,
+              details: deleteError.details,
+              hint: deleteError.hint
+            });
+            
+            if (deleteError.code === '23503') {
+              toast.error("Não foi possível excluir uma subcategoria pois existem produtos vinculados a ela.");
+              throw new Error("Violação de integridade: produtos vinculados.");
+            }
+            throw deleteError;
+          }
+          diamondDebug('success', 'Subcategorias removidas com sucesso.');
         }
       }
       
+      // 4. Upsert das novas/editadas
       if (subsToUpsert.length > 0) {
         const { error: subError } = await supabase.from('subcategories').upsert(subsToUpsert);
-        if (subError) {
-          diamondDebug('error', 'Erro ao dar upsert nas subcategorias', subError);
-          throw subError;
-        }
-        diamondDebug('success', 'Subcategorias sincronizadas com sucesso.');
+        if (subError) throw subError;
       }
 
-      diamondDebug('success', 'PROCESSO FINALIZADO.');
-      toast.success("Dados salvos com sucesso!");
+      diamondDebug('success', 'Nicho e subcategorias atualizados com êxito.');
+      toast.success("Salvo com sucesso!");
       onSuccess();
     } catch (error: any) {
-      diamondDebug('error', 'FALHA NO SALVAMENTO', error);
-      toast.error("Erro ao salvar: " + error.message);
+      diamondDebug('error', 'FALHA NO PROCESSO DE SALVAMENTO', error);
+      // O toast de erro específico já foi dado acima se for 23503
+      if (!error.message.includes("Violação")) {
+        toast.error("Erro ao salvar alterações.");
+      }
     } finally {
       setSaving(false);
     }
