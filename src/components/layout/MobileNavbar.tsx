@@ -11,12 +11,12 @@ export const MobileNavbar = () => {
   const { cartCount } = useCart();
   const { shopType } = useParams<{ shopType: string }>();
   
-  const currentShop = shopType || 'feminine';
+  const currentShop = shopType || 'cuidadosfemininos';
 
   const navItems = [
     { label: 'Home', icon: Home, path: `/${currentShop}` },
-    { label: 'Pet', icon: Dog, path: '/pet' },
-    { label: 'Mulher', icon: Sparkles, path: '/feminine' },
+    { label: 'Pet', icon: Dog, path: '/petshop' },
+    { label: 'Mulher', icon: Sparkles, path: '/cuidadosfemininos' },
     { label: 'Carrinho', icon: ShoppingCart, path: '/carrinho', badge: cartCount },
     { label: 'Você', icon: User, path: '/minha-conta' },
   ];

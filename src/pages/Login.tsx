@@ -4,7 +4,7 @@ import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Navbar } from '@/components/layout/Navbar';
 
@@ -12,9 +12,23 @@ const Login = () => {
   const { session } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [storeName, setStoreName] = useState("Diamond Store");
 
   // Verifica se o acesso veio da administração para ocultar o cadastro se necessário
   const isAdminPath = location.state?.from?.pathname?.startsWith('/adm');
+
+  useEffect(() => {
+    const fetchStoreConfig = async () => {
+      const { data } = await supabase
+        .from('store_configs')
+        .select('store_name')
+        .maybeSingle();
+      if (data?.store_name) {
+        setStoreName(data.store_name);
+      }
+    };
+    fetchStoreConfig();
+  }, []);
 
   useEffect(() => {
     if (session) {
@@ -30,15 +44,14 @@ const Login = () => {
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-md bg-white p-10 rounded-[40px] shadow-sm border border-gray-100">
           <div className="text-center mb-10">
-            <h1 className="text-2xl font-serif font-bold text-[#B89C6A] uppercase tracking-[0.2em]">Diamond Store</h1>
-            <p className="text-gray-400 text-xs mt-2 font-bold uppercase tracking-widest">Acesso Restrito</p>
+            <h1 className="text-2xl font-serif font-bold text-[#B89C6A] uppercase tracking-[0.2em]">{storeName}</h1>
+            <p className="text-gray-400 text-xs mt-2 font-bold uppercase tracking-widest">Acesso do Cliente</p>
           </div>
           
           <Auth
             supabaseClient={supabase}
             providers={[]}
-            // Se vier da ADM, podemos forçar apenas o login via view="sign_in" ou deixar o padrão
-            view={isAdminPath ? "sign_in" : "sign_in"} 
+            view="sign_in" 
             appearance={{
               theme: ThemeSupa,
               variables: {
@@ -54,6 +67,7 @@ const Login = () => {
                 button: 'rounded-full h-14 font-bold uppercase tracking-widest text-[10px] transition-all hover:scale-[1.02]',
                 input: 'rounded-2xl h-14 bg-gray-50 border-gray-100 focus:bg-white',
                 label: 'text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4 mb-2',
+                anchor: 'text-[10px] font-bold uppercase tracking-widest text-[#B89C6A] hover:text-[#A68B5B] no-underline transition-colors mt-4 block text-center',
               }
             }}
             localization={{
@@ -63,7 +77,7 @@ const Login = () => {
                   password_label: 'Sua Senha',
                   button_label: 'ENTRAR NA CONTA',
                   loading_button_label: 'AUTENTICANDO...',
-                  link_text: 'Já tem uma conta? Entre',
+                  link_text: 'Não tem uma conta? Cadastre-se agora',
                   email_input_placeholder: 'exemplo@email.com',
                   password_input_placeholder: '******',
                 },
@@ -72,8 +86,14 @@ const Login = () => {
                   password_label: 'Crie uma senha forte',
                   button_label: 'CRIAR MINHA CONTA',
                   loading_button_label: 'CADASTRANDO...',
-                  link_text: 'Não tem conta? Cadastre-se',
+                  link_text: 'Já tem conta? Entre por aqui',
                 },
+                forgotten_password: {
+                  link_text: 'Esqueceu sua senha?',
+                  email_label: 'E-mail cadastrado',
+                  button_label: 'ENVIAR LINK DE RECUPERAÇÃO',
+                  loading_button_label: 'ENVIANDO...',
+                }
               },
             }}
             theme="light"
@@ -81,7 +101,7 @@ const Login = () => {
 
           {isAdminPath && (
             <p className="mt-8 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-              Apenas administradores autorizados.
+              Área restrita para administradores autorizados.
             </p>
           )}
         </div>
