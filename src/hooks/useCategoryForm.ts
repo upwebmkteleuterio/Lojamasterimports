@@ -28,7 +28,7 @@ export const useCategoryForm = (id: string | undefined) => {
 
   const fetchCategoryData = async () => {
     setLoading(true);
-    diamondDebug('info', `Iniciando carregamento de dados para o nicho: ${id}`);
+    diamondDebug('info', `Sincronizando dados do banco para o nicho: ${id}`);
     try {
       const { data: cat, error: catError } = await supabase
         .from('category_mothers')
@@ -96,15 +96,12 @@ export const useCategoryForm = (id: string | undefined) => {
         is_featured: !!s.is_featured
       }));
 
-      // 3. Limpeza de Removidas
+      // 3. Limpeza de Removidas com Verificação
       if (id) {
         const currentFullIds = subsToUpsert.map(s => s.id);
-        diamondDebug('info', 'Sincronizando subcategorias...', { mantendo: currentFullIds });
-        
-        // Buscamos o que existe no banco agora para comparar
         const { data: existingInDb } = await supabase
           .from('subcategories')
-          .select('id')
+          .select('id, name')
           .eq('mother_id', formData.id);
         
         const idsToRemove = (existingInDb || [])
@@ -112,28 +109,38 @@ export const useCategoryForm = (id: string | undefined) => {
           .filter(dbId => !currentFullIds.includes(dbId));
 
         if (idsToRemove.length > 0) {
-          diamondDebug('info', `Tentando excluir ${idsToRemove.length} subcategorias:`, idsToRemove);
-          
+          // BLOQUEIO PREVENTIVO: Verifica se há produtos usando esses IDs
+          const { data: linkedProducts } = await supabase
+            .from('products')
+            .select('id, subcategory_id')
+            .in('subcategory_id', idsToRemove);
+
+          if (linkedProducts && linkedProducts.length > 0) {
+            const problematicIds = Array.from(new Set(linkedProducts.map(p => p.subcategory_id)));
+            const problematicNames = (existingInDb || [])
+              .filter(s => problematicIds.includes(s.id))
+              .map(s => s.name);
+
+            diamondDebug('error', 'Tentativa de exclusão bloqueada: Produtos vinculados', { problematicNames });
+            toast.error(`Não é possível excluir: "${problematicNames.join(', ')}" pois existem produtos vinculados.`);
+            
+            // Recarrega para restaurar o item na lista da UI
+            await fetchCategoryData();
+            setSaving(false);
+            return; 
+          }
+
           const { error: deleteError } = await supabase
             .from('subcategories')
             .delete()
             .in('id', idsToRemove);
 
           if (deleteError) {
-            diamondDebug('error', 'FALHA NA EXCLUSÃO DE SUBCATEGORIA', {
-              code: deleteError.code,
-              message: deleteError.message,
-              details: deleteError.details,
-              hint: deleteError.hint
-            });
-            
-            if (deleteError.code === '23503') {
-              toast.error("Não foi possível excluir uma subcategoria pois existem produtos vinculados a ela.");
-              throw new Error("Violação de integridade: produtos vinculados.");
-            }
+            diamondDebug('error', 'Erro inesperado na exclusão', deleteError);
+            toast.error("Erro ao remover subcategorias. Sincronizando dados...");
+            await fetchCategoryData();
             throw deleteError;
           }
-          diamondDebug('success', 'Subcategorias removidas com sucesso.');
         }
       }
       
@@ -148,10 +155,6 @@ export const useCategoryForm = (id: string | undefined) => {
       onSuccess();
     } catch (error: any) {
       diamondDebug('error', 'FALHA NO PROCESSO DE SALVAMENTO', error);
-      // O toast de erro específico já foi dado acima se for 23503
-      if (!error.message.includes("Violação")) {
-        toast.error("Erro ao salvar alterações.");
-      }
     } finally {
       setSaving(false);
     }
