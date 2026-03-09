@@ -7,8 +7,8 @@ export interface ProductVariation {
 }
 
 export interface ProductVariant {
-  id?: string;
-  product_id?: string;
+  id: string;
+  product_id: string;
   attribute_name: string;
   option_name: string;
   sku: string;
@@ -49,6 +49,7 @@ export interface Product {
 
 export interface OrderItem extends Product {
   quantity: number;
+  selectedVariant?: ProductVariant; // Variação escolhida pelo cliente
 }
 
 export interface CustomerData {

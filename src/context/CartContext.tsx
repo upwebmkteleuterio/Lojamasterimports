@@ -1,14 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Product, OrderItem } from '@/types/store';
+import { Product, OrderItem, ProductVariant } from '@/types/store';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 
 interface CartContextType {
   cart: OrderItem[];
-  addToCart: (product: Product, quantity?: number) => Promise<void>;
-  removeFromCart: (productId: string) => Promise<void>;
-  updateQuantity: (productId: string, quantity: number) => Promise<void>;
+  addToCart: (product: Product, quantity?: number, variant?: ProductVariant) => Promise<void>;
+  removeFromCart: (cartItemId: string) => Promise<void>;
+  updateQuantity: (cartItemId: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
   cartCount: number;
   cartTotal: number;
@@ -22,7 +22,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
-  // 1. Carregar carrinho inicial
   useEffect(() => {
     if (user) {
       fetchCartFromDb();
@@ -38,8 +37,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data, error } = await supabase
         .from('cart_items')
         .select(`
+          id,
           quantity,
-          products (*)
+          variant_id,
+          products (*),
+          product_variants:variant_id (*)
         `)
         .eq('user_id', user?.id);
 
@@ -48,21 +50,24 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const items: OrderItem[] = (data || [])
         .map(item => {
           const p = item.products;
+          const v = item.product_variants;
+          
           return {
-            id: p.id,
+            id: item.id, // Usamos o ID do item no carrinho para manipulação
+            productId: p.id,
             name: p.name,
-            price: Number(p.price),
-            image: p.main_image || '', // Mapeamento crucial aqui
+            price: Number(v ? v.price : p.price),
+            image: (v && v.main_image) ? v.main_image : (p.main_image || ''),
             categoryMother: p.category_mother_id,
             subcategory: p.subcategory_id,
             description: p.description,
-            stock: p.stock,
-            sku: p.sku,
+            stock: v ? v.stock : p.stock,
+            sku: v ? v.sku : p.sku,
             active: p.is_active,
-            quantity: item.quantity
-          } as OrderItem;
-        })
-        .filter(p => p.id !== null);
+            quantity: item.quantity,
+            selectedVariant: v || undefined
+          } as any;
+        });
 
       setCart(items);
     } catch (error) {
@@ -72,17 +77,31 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const addToCart = async (product: Product, quantity: number = 1) => {
+  const addToCart = async (product: Product, quantity: number = 1, variant?: ProductVariant) => {
     if (!user) {
       setCart(prev => {
-        const existing = prev.find(item => item.id === product.id);
+        // Busca se já existe o mesmo produto com a mesma variante
+        const existing = prev.find(item => 
+          item.id === product.id && 
+          item.selectedVariant?.id === variant?.id
+        );
+        
         let next;
         if (existing) {
           next = prev.map(item => 
-            item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item
+            (item.id === product.id && item.selectedVariant?.id === variant?.id) 
+              ? { ...item, quantity: item.quantity + quantity } 
+              : item
           );
         } else {
-          next = [...prev, { ...product, quantity }];
+          const newItem: OrderItem = { 
+            ...product, 
+            quantity, 
+            selectedVariant: variant,
+            price: variant ? variant.price : product.price,
+            image: (variant && variant.main_image) ? variant.main_image : product.image
+          };
+          next = [...prev, newItem];
         }
         localStorage.setItem('cart_guest', JSON.stringify(next));
         return next;
@@ -92,21 +111,29 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      const existing = cart.find(item => item.id === product.id);
-      
+      // Verifica se já existe o par produto+variante no banco
+      const { data: existing } = await supabase
+        .from('cart_items')
+        .select('id, quantity')
+        .eq('user_id', user.id)
+        .eq('product_id', product.id)
+        .filter('variant_id', variant ? 'eq' : 'is', variant ? variant.id : null)
+        .maybeSingle();
+
       if (existing) {
-        const newQty = existing.quantity + quantity;
-        const { error } = await supabase
+        await supabase
           .from('cart_items')
-          .update({ quantity: newQty })
-          .eq('user_id', user.id)
-          .eq('product_id', product.id);
-        if (error) throw error;
+          .update({ quantity: existing.quantity + quantity })
+          .eq('id', existing.id);
       } else {
-        const { error } = await supabase
+        await supabase
           .from('cart_items')
-          .insert({ user_id: user.id, product_id: product.id, quantity });
-        if (error) throw error;
+          .insert({ 
+            user_id: user.id, 
+            product_id: product.id, 
+            variant_id: variant ? variant.id : null,
+            quantity 
+          });
       }
 
       await fetchCartFromDb();
@@ -116,10 +143,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const removeFromCart = async (productId: string) => {
+  const removeFromCart = async (cartItemId: string) => {
     if (!user) {
       setCart(prev => {
-        const next = prev.filter(item => item.id !== productId);
+        const next = prev.filter(item => item.id !== cartItemId);
         localStorage.setItem('cart_guest', JSON.stringify(next));
         return next;
       });
@@ -127,19 +154,19 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      await supabase.from('cart_items').delete().eq('user_id', user.id).eq('product_id', productId);
-      setCart(prev => prev.filter(item => item.id !== productId));
+      await supabase.from('cart_items').delete().eq('id', cartItemId);
+      setCart(prev => prev.filter(item => item.id !== cartItemId));
     } catch (error) {
       toast.error("Erro ao remover item");
     }
   };
 
-  const updateQuantity = async (productId: string, quantity: number) => {
-    if (quantity <= 0) return removeFromCart(productId);
+  const updateQuantity = async (cartItemId: string, quantity: number) => {
+    if (quantity <= 0) return removeFromCart(cartItemId);
 
     if (!user) {
       setCart(prev => {
-        const next = prev.map(item => item.id === productId ? { ...item, quantity } : item);
+        const next = prev.map(item => item.id === cartItemId ? { ...item, quantity } : item);
         localStorage.setItem('cart_guest', JSON.stringify(next));
         return next;
       });
@@ -147,8 +174,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      await supabase.from('cart_items').update({ quantity }).eq('user_id', user.id).eq('product_id', productId);
-      setCart(prev => prev.map(item => item.id === productId ? { ...item, quantity } : item));
+      await supabase.from('cart_items').update({ quantity }).eq('id', cartItemId);
+      setCart(prev => prev.map(item => item.id === cartItemId ? { ...item, quantity } : item));
     } catch (error) {
       toast.error("Erro ao atualizar");
     }
