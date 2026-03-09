@@ -7,6 +7,7 @@ import { getSafeProductImage } from '@/utils/imageHandler';
 import { Heart } from 'lucide-react';
 import { useFavorites } from '@/context/FavoritesContext';
 import { cn } from '@/lib/utils';
+import { Button } from './button';
 
 interface ProductCardProps {
   product: Product;
@@ -18,44 +19,76 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   const currentShop = shopType || 'feminine';
 
   const isFav = isFavorite(product.id);
+  
+  // Cálculo do percentual de desconto
+  const hasPromo = product.promotionalPrice && product.promotionalPrice > 0 && product.promotionalPrice < product.price;
+  const discountPercent = hasPromo 
+    ? Math.round(((product.price - product.promotionalPrice!) / product.price) * 100)
+    : 0;
 
   return (
-    <div className="group animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="relative aspect-[3/4] overflow-hidden mb-4 md:mb-6 bg-gray-50 rounded-2xl">
+    <div className="group animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col items-center">
+      {/* Container da Imagem */}
+      <div className="relative aspect-square w-full overflow-hidden mb-6 bg-gray-50 rounded-none">
         <Link to={`/${currentShop}/produto/${product.id}`} className="block w-full h-full">
           <img 
             src={getSafeProductImage(product.image)} 
             alt={product.name} 
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+            className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
           />
         </Link>
+        
+        {/* Selo de Desconto */}
+        {hasPromo && (
+          <div className="absolute top-0 right-0 bg-[#D4AF37] text-white text-[10px] font-bold px-3 py-1.5 uppercase tracking-wider">
+            -{discountPercent}%
+          </div>
+        )}
+
+        {/* Favorito */}
         <button 
           onClick={(e) => {
             e.preventDefault();
             toggleFavorite(product);
           }}
           className={cn(
-            "absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all bg-white/80 backdrop-blur-sm shadow-sm",
-            isFav ? "text-red-500" : "text-gray-400 hover:text-red-500"
+            "absolute top-4 left-4 w-8 h-8 rounded-full flex items-center justify-center transition-all bg-white/80 backdrop-blur-sm shadow-sm opacity-0 group-hover:opacity-100",
+            isFav ? "text-red-500 opacity-100" : "text-gray-400 hover:text-red-500"
           )}
         >
           <Heart size={16} fill={isFav ? "currentColor" : "none"} />
         </button>
       </div>
       
-      <Link to={`/${currentShop}/produto/${product.id}`} className="space-y-1 md:space-y-2 block text-center md:text-left px-1">
-        <h3 className="text-[11px] md:text-sm font-serif text-gray-800 line-clamp-1 group-hover:text-[#B89C6A] transition-colors">{product.name}</h3>
-        <div className="flex flex-col md:flex-row md:items-center gap-0 md:gap-2 justify-center md:justify-start">
-          <span className="text-sm md:text-lg font-bold text-[#B89C6A]">
-            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.promotionalPrice || product.price)}
-          </span>
-          {product.promotionalPrice && (
+      {/* Informações do Produto */}
+      <Link to={`/${currentShop}/produto/${product.id}`} className="space-y-3 block text-center px-2 flex-1">
+        <h3 className="text-sm md:text-base font-serif text-[#555] leading-relaxed h-12 flex items-center justify-center">
+          {product.name}
+        </h3>
+        
+        <div className="flex flex-col items-center gap-1">
+          {hasPromo && (
             <span className="text-[10px] md:text-xs text-gray-400 line-through font-light">
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price)}
             </span>
           )}
+          <span className="text-sm md:text-lg font-bold text-[#333]">
+            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.promotionalPrice || product.price)}
+          </span>
         </div>
       </Link>
+
+      {/* Botão Comprar */}
+      <div className="mt-6 w-full max-w-[180px]">
+        <Link to={`/${currentShop}/produto/${product.id}`}>
+          <Button 
+            variant="outline" 
+            className="w-full rounded-none border-gray-900 text-gray-900 font-serif uppercase text-[10px] tracking-[0.2em] h-12 hover:bg-gray-900 hover:text-white transition-all"
+          >
+            COMPRAR
+          </Button>
+        </Link>
+      </div>
     </div>
   );
 };
