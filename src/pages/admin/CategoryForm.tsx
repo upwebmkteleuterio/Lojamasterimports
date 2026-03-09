@@ -7,10 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Trash2, Save, Image as ImageIcon } from 'lucide-react';
+import { Plus, Trash2, Save, Image as ImageIcon, Star } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useCategoryForm } from '@/hooks/useCategoryForm';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 const CategoryForm = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,23 +31,29 @@ const CategoryForm = () => {
   const addSub = () => {
     if (!newSub.name.trim()) return;
     
-    // Gera um slug limpo para o ID
     const subId = newSub.name.toLowerCase()
       .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
       .replace(/\s+/g, '-')
       .replace(/[^a-z0-9-]/g, ''); 
 
     if (subcategories.find(s => s.id === subId)) {
-      toast.error("Esta subcategoria (ou uma com nome similar) já existe.");
+      toast.error("Esta subcategoria já existe.");
       return;
     }
 
     setSubcategories([...subcategories, { 
       id: subId, 
       name: newSub.name.trim(), 
-      image_url: newSub.image_url.trim() 
+      image_url: newSub.image_url.trim(),
+      is_featured: false
     }]);
     setNewSub({ name: '', image_url: '' });
+  };
+
+  const toggleFeatured = (idToToggle: string) => {
+    setSubcategories(subcategories.map(s => 
+      s.id === idToToggle ? { ...s, is_featured: !s.is_featured } : s
+    ));
   };
 
   const removeSub = (idToRemove: string) => {
@@ -62,8 +69,6 @@ const CategoryForm = () => {
   return (
     <AdminLayout title={id ? "Editar Nicho" : "Novo Nicho"}>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* Lado Esquerdo: Dados e Banners */}
         <div className="lg:col-span-7 space-y-8">
           <Card className="rounded-3xl border-none shadow-sm bg-white overflow-hidden">
             <CardHeader className="bg-gray-50/50 border-b">
@@ -94,14 +99,9 @@ const CategoryForm = () => {
             <CardContent className="p-8 space-y-8">
               <div className="space-y-4">
                 <Label className="text-xs font-bold uppercase text-gray-500 flex items-center gap-2">
-                  <ImageIcon size={14} /> Banner da Landing Page (Escolha de Nichos)
+                  <ImageIcon size={14} /> Banner da Landing Page
                 </Label>
                 <Input value={formData.landing_banner} onChange={e => setFormData({...formData, landing_banner: e.target.value})} placeholder="https://..." className="rounded-2xl h-12" />
-                {formData.landing_banner && (
-                  <div className="h-32 w-full rounded-2xl overflow-hidden border border-gray-100 bg-gray-50">
-                    <img src={formData.landing_banner} className="w-full h-full object-cover" alt="Landing Preview" />
-                  </div>
-                )}
               </div>
 
               <div className="space-y-4 pt-4 border-t border-gray-50">
@@ -109,17 +109,11 @@ const CategoryForm = () => {
                   <ImageIcon size={14} /> Banner Principal (Home do Nicho)
                 </Label>
                 <Input value={formData.home_hero_banner} onChange={e => setFormData({...formData, home_hero_banner: e.target.value})} placeholder="https://..." className="rounded-2xl h-12" />
-                {formData.home_hero_banner && (
-                  <div className="h-48 w-full rounded-2xl overflow-hidden border border-gray-100 bg-gray-50">
-                    <img src={formData.home_hero_banner} className="w-full h-full object-cover" alt="Hero Preview" />
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Lado Direito: Subcategorias */}
         <div className="lg:col-span-5">
           <Card className="rounded-3xl border-none shadow-sm bg-white overflow-hidden sticky top-24">
             <CardHeader className="bg-gray-50/50 border-b">
@@ -152,35 +146,43 @@ const CategoryForm = () => {
               </div>
               
               <div className="space-y-3">
-                {subcategories.length === 0 ? (
-                  <p className="text-center py-8 text-xs text-gray-400 italic">Nenhuma subcategoria adicionada.</p>
-                ) : (
-                  subcategories.map(s => (
-                    <div key={s.id} className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm space-y-3 group">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-gray-700">{s.name}</span>
-                        <button onClick={() => removeSub(s.id)} className="text-gray-300 hover:text-red-500 transition-colors">
-                          <Trash2 size={16}/>
-                        </button>
-                      </div>
-                      <div className="flex gap-3 items-center">
-                        <div className="w-12 h-12 rounded-lg bg-gray-50 overflow-hidden flex-shrink-0 border border-gray-100 flex items-center justify-center">
-                          {s.image_url ? (
-                            <img src={s.image_url} className="w-full h-full object-cover" alt="" />
-                          ) : (
-                            <ImageIcon size={14} className="text-gray-200" />
+                {subcategories.map(s => (
+                  <div key={s.id} className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm space-y-3 group">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => toggleFeatured(s.id)}
+                          className={cn(
+                            "p-1.5 rounded-lg transition-all",
+                            s.is_featured ? "bg-amber-50 text-amber-500" : "text-gray-300 hover:text-amber-400"
                           )}
-                        </div>
-                        <Input 
-                          value={s.image_url} 
-                          onChange={(e) => updateSubImage(s.id, e.target.value)}
-                          placeholder="URL da imagem..." 
-                          className="h-8 text-[10px] rounded-lg bg-gray-50/50 border-gray-100 flex-1"
-                        />
+                          title={s.is_featured ? "Remover do destaque" : "Colocar em destaque na Home"}
+                        >
+                          <Star size={16} fill={s.is_featured ? "currentColor" : "none"} />
+                        </button>
+                        <span className="text-xs font-bold text-gray-700">{s.name}</span>
                       </div>
+                      <button onClick={() => removeSub(s.id)} className="text-gray-300 hover:text-red-500 transition-colors">
+                        <Trash2 size={16}/>
+                      </button>
                     </div>
-                  ))
-                )}
+                    <div className="flex gap-3 items-center">
+                      <div className="w-12 h-12 rounded-lg bg-gray-50 overflow-hidden flex-shrink-0 border border-gray-100 flex items-center justify-center">
+                        {s.image_url ? (
+                          <img src={s.image_url} className="w-full h-full object-cover" alt="" />
+                        ) : (
+                          <ImageIcon size={14} className="text-gray-200" />
+                        )}
+                      </div>
+                      <Input 
+                        value={s.image_url} 
+                        onChange={(e) => updateSubImage(s.id, e.target.value)}
+                        placeholder="URL da imagem..." 
+                        className="h-8 text-[10px] rounded-lg bg-gray-50/50 border-gray-100 flex-1"
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>

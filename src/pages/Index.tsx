@@ -3,13 +3,14 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
-import { CategoryMother, Product } from '@/types/store';
+import { CategoryMother, Product, Subcategory } from '@/types/store';
 import { ProductCard } from '@/components/ui/ProductCard';
 import { Button } from '@/components/ui/button';
 import { Truck, Gift, ShieldCheck, RotateCcw } from 'lucide-react';
 import { getProductsByMother } from '@/services/products';
 import { supabase } from '@/integrations/supabase/client';
 import { CategoryCarousel } from '@/components/home/CategoryCarousel';
+import { FeaturedSubcategorySection } from '@/components/home/FeaturedSubcategorySection';
 
 const Index = () => {
   const { shopType } = useParams<{ shopType: string }>();
@@ -17,7 +18,8 @@ const Index = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [nicheData, setNicheData] = useState<any>(null);
-  const [subcategories, setSubcategories] = useState<any[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const [featuredSubs, setFeaturedSubs] = useState<Subcategory[]>([]);
 
   useEffect(() => {
     if (!shopType) {
@@ -46,7 +48,11 @@ const Index = () => {
         .select('*')
         .eq('mother_id', shopType);
       
-      if (subs) setSubcategories(subs);
+      if (subs) {
+        setSubcategories(subs);
+        // Filtra apenas as marcadas como destaque
+        setFeaturedSubs(subs.filter(s => s.is_featured));
+      }
 
       const productsData = await getProductsByMother(shopType as CategoryMother);
       setProducts(productsData);
@@ -91,10 +97,8 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Carrossel de Categorias Dinâmico */}
       <CategoryCarousel categories={subcategories} shopType={shopType!} />
 
-      {/* Carrossel de Produtos Dinâmico */}
       <section className="py-12 md:py-24 bg-[#fafafa]">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center mb-8 md:mb-12">
@@ -113,14 +117,21 @@ const Index = () => {
                 <ProductCard key={product.id} product={product} />
               ))
             )}
-            {!loading && products.length === 0 && (
-              <div className="col-span-full py-20 text-center text-gray-400 font-serif italic">Nenhum produto cadastrado neste nicho.</div>
-            )}
           </div>
         </div>
       </section>
 
-      {/* Selos de Confiança */}
+      {/* Renderização das Subcategorias em Destaque (Stack vertical) */}
+      <div className="featured-sections">
+        {featuredSubs.map(sub => (
+          <FeaturedSubcategorySection 
+            key={sub.id} 
+            subcategory={sub} 
+            shopType={shopType!} 
+          />
+        ))}
+      </div>
+
       <section className="border-t border-b py-8 md:py-10 bg-[#fdfdfd]">
         <div className="container mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4">
           <div className="flex flex-col items-center text-center gap-2 md:gap-3">

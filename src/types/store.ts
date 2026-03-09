@@ -2,8 +2,16 @@ export type CategoryMother = 'pet' | 'feminine' | string;
 
 export interface ProductVariation {
   id: string;
-  name: string; // Ex: Cor, Tamanho
-  options: string[]; // Ex: ['Azul', 'Verde']
+  name: string;
+  options: string[];
+}
+
+export interface Subcategory {
+  id: string;
+  name: string;
+  image_url: string;
+  mother_id?: string;
+  is_featured?: boolean;
 }
 
 export interface ProductVariant {
@@ -49,7 +57,7 @@ export interface Product {
 
 export interface OrderItem extends Product {
   quantity: number;
-  selectedVariant?: ProductVariant; // Variação escolhida pelo cliente
+  selectedVariant?: ProductVariant;
 }
 
 export interface CustomerData {
