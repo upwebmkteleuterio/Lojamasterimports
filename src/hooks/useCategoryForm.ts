@@ -65,7 +65,9 @@ export const useCategoryForm = (id: string | undefined) => {
   };
 
   const handleSave = async (onSuccess: () => void) => {
-    if (!formData.name || !formData.id) {
+    // Validação rigorosa do ID do nicho
+    const nicheId = formData.id?.trim();
+    if (!formData.name?.trim() || !nicheId) {
       toast.error("Nome e URL amigável são obrigatórios");
       return;
     }
@@ -78,8 +80,8 @@ export const useCategoryForm = (id: string | undefined) => {
       const { error: catError } = await supabase
         .from('category_mothers')
         .upsert({
-          id: formData.id,
-          name: formData.name,
+          id: nicheId,
+          name: formData.name.trim(),
           is_active: formData.is_active,
           landing_banner: formData.landing_banner,
           home_hero_banner: formData.home_hero_banner
@@ -87,14 +89,19 @@ export const useCategoryForm = (id: string | undefined) => {
       
       if (catError) throw catError;
 
-      // 2. Prepara Subcategorias
-      const subsToUpsert = subcategories.map(s => ({
-        id: s.id.includes('-') ? s.id : `${formData.id}-${s.id}`,
-        name: s.name,
-        image_url: s.image_url,
-        mother_id: formData.id,
-        is_featured: !!s.is_featured
-      }));
+      // 2. Prepara Subcategorias garantindo que mother_id nunca seja nulo
+      const subsToUpsert = subcategories.map(s => {
+        const subId = s.id.includes('-') ? s.id : `${nicheId}-${s.id}`;
+        return {
+          id: subId,
+          name: s.name.trim(),
+          image_url: s.image_url || '',
+          mother_id: nicheId, // Usando a constante validada
+          is_featured: !!s.is_featured
+        };
+      });
+
+      diamondDebug('info', 'Payload de subcategorias preparado:', subsToUpsert);
 
       // 3. Limpeza de Removidas com Verificação
       if (id) {
@@ -102,14 +109,13 @@ export const useCategoryForm = (id: string | undefined) => {
         const { data: existingInDb } = await supabase
           .from('subcategories')
           .select('id, name')
-          .eq('mother_id', formData.id);
+          .eq('mother_id', nicheId);
         
         const idsToRemove = (existingInDb || [])
           .map(s => s.id)
           .filter(dbId => !currentFullIds.includes(dbId));
 
         if (idsToRemove.length > 0) {
-          // BLOQUEIO PREVENTIVO: Verifica se há produtos usando esses IDs
           const { data: linkedProducts } = await supabase
             .from('products')
             .select('id, subcategory_id')
@@ -121,10 +127,7 @@ export const useCategoryForm = (id: string | undefined) => {
               .filter(s => problematicIds.includes(s.id))
               .map(s => s.name);
 
-            diamondDebug('error', 'Tentativa de exclusão bloqueada: Produtos vinculados', { problematicNames });
             toast.error(`Não é possível excluir: "${problematicNames.join(', ')}" pois existem produtos vinculados.`);
-            
-            // Recarrega para restaurar o item na lista da UI
             await fetchCategoryData();
             setSaving(false);
             return; 
@@ -135,19 +138,17 @@ export const useCategoryForm = (id: string | undefined) => {
             .delete()
             .in('id', idsToRemove);
 
-          if (deleteError) {
-            diamondDebug('error', 'Erro inesperado na exclusão', deleteError);
-            toast.error("Erro ao remover subcategorias. Sincronizando dados...");
-            await fetchCategoryData();
-            throw deleteError;
-          }
+          if (deleteError) throw deleteError;
         }
       }
       
       // 4. Upsert das novas/editadas
       if (subsToUpsert.length > 0) {
         const { error: subError } = await supabase.from('subcategories').upsert(subsToUpsert);
-        if (subError) throw subError;
+        if (subError) {
+          diamondDebug('error', 'Erro ao salvar subcategorias no banco:', subError);
+          throw subError;
+        }
       }
 
       diamondDebug('success', 'Nicho e subcategorias atualizados com êxito.');
@@ -155,6 +156,7 @@ export const useCategoryForm = (id: string | undefined) => {
       onSuccess();
     } catch (error: any) {
       diamondDebug('error', 'FALHA NO PROCESSO DE SALVAMENTO', error);
+      toast.error("Erro técnico ao salvar. Verifique o Monitor de Diagnóstico.");
     } finally {
       setSaving(false);
     }
