@@ -68,7 +68,7 @@ export const DebugInspector = () => {
             <p className="leading-relaxed text-gray-200">{log.message}</p>
             {log.data && (
               <details className="mt-2">
-                <summary className="text-[9px] text-gray-500 cursor-pointer hover:text-gray-300 uppercase font-bold tracking-tighter">Ver JSON da resposta</summary>
+                <summary className="text-[9px] text-gray-500 cursor-pointer hover:text-gray-300 uppercase font-bold tracking-tighter">Ver JSON bruto enviado</summary>
                 <pre className="mt-2 p-3 bg-black/60 rounded-xl text-[9px] overflow-x-auto text-blue-300 border border-gray-800">
                   {JSON.stringify(log.data, null, 2)}
                 </pre>

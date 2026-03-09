@@ -55,7 +55,7 @@ export const AdminLayout = ({ children, title, actions }: AdminLayoutProps) => {
         </div>
       </main>
 
-      {/* Inspetor de Debug fixo no Layout para evitar problemas de contexto */}
+      {/* Monitor de Diagnóstico Fixo */}
       <DebugInspector />
     </div>
   );
