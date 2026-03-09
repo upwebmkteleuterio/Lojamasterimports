@@ -82,16 +82,21 @@ const Index = () => {
           className="absolute inset-0 w-full h-full object-cover"
           alt="Hero"
         />
-        <div className="absolute inset-0 bg-black/10" />
+        {/* Filtro preto leve para contraste */}
+        <div className="absolute inset-0 bg-black/30" />
+        
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-xl text-center md:text-right ml-auto">
-            <h2 className="text-3xl md:text-7xl font-serif font-light text-[#B89C6A] mb-4 drop-shadow-sm uppercase">
+            <h2 className="text-3xl md:text-7xl font-serif font-light text-[#B89C6A] mb-4 drop-shadow-md uppercase">
                {nicheData?.name || "BEM-VINDO"}
             </h2>
-            <p className="text-sm md:text-2xl text-gray-700 font-light mb-6 md:mb-10 tracking-wide italic">
+            <p className="text-sm md:text-2xl text-white font-light mb-6 md:mb-10 tracking-wide italic drop-shadow-sm">
               {shopType === 'pet' ? "O luxo que seu melhor amigo merece." : "Elegância e sofisticação em cada detalhe."}
             </p>
-            <Button variant="outline" className="rounded-none border-[#B89C6A] text-[#B89C6A] px-8 md:px-12 py-4 md:py-7 text-[10px] md:text-sm font-bold tracking-[0.2em] hover:bg-[#B89C6A] hover:text-white transition-all bg-white/50 backdrop-blur-sm">
+            <Button 
+              variant="default" 
+              className="rounded-none border-none bg-white text-black px-8 md:px-12 py-4 md:py-7 text-[10px] md:text-sm font-bold tracking-[0.2em] hover:bg-gray-100 transition-all shadow-xl"
+            >
               CONFIRA A COLEÇÃO
             </Button>
           </div>
