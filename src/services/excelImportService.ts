@@ -1,9 +1,8 @@
 import * as XLSX from 'xlsx';
-import { Product, ProductVariant } from '@/types/store';
 
 /**
  * Mapeia as colunas da planilha Excel para o objeto de produto e suas variantes.
- * Ignora linhas de metadados e cabeçalho da Shopee.
+ * Ignora rigorosamente cabeçalhos técnicos (et_title...) e metadados.
  */
 export const parseExcelProducts = async (file: File): Promise<any[]> => {
   return new Promise((resolve, reject) => {
@@ -18,13 +17,18 @@ export const parseExcelProducts = async (file: File): Promise<any[]> => {
         
         const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
         
-        // Filtra linhas vazias ou que sejam cabeçalhos/metadados da Shopee
+        // Filtra linhas que são cabeçalhos ou campos técnicos da Shopee
         const dataRows = rows.filter(row => {
-          const id = row[0]?.toString().toLowerCase();
-          return id && id !== 'media_info' && id !== 'id do produto' && row[2];
+          const firstCol = row[0]?.toString().toLowerCase();
+          if (!firstCol || firstCol === 'media_info' || firstCol === 'id do produto' || firstCol.startsWith('et_title')) {
+            return false;
+          }
+          return row[2]; // Deve ter nome do produto
         });
 
         const mappedProducts = dataRows.map((row) => {
+          const productId = row[0]?.toString();
+          
           // 1. Galeria (Colunas 5 a 12)
           const gallery = [];
           for (let i = 5; i <= 12; i++) {
@@ -35,14 +39,14 @@ export const parseExcelProducts = async (file: File): Promise<any[]> => {
 
           // 2. Produto Principal
           const product = {
-            id: row[0]?.toString(),
+            id: productId,
             name: row[2]?.toString(),
-            subcategory_name: row[3]?.toString(), // Nome temporário para criar no banco
+            subcategory_name: row[3]?.toString(),
             main_image: row[4]?.toString() || '',
             gallery: gallery,
             description: '',
-            price: 19.90, // Valor padrão solicitado
-            stock: 999,   // Valor padrão solicitado
+            price: 19.90,
+            stock: 999,
             is_active: true
           };
 
@@ -50,23 +54,30 @@ export const parseExcelProducts = async (file: File): Promise<any[]> => {
           const variationName = row[15]?.toString();
           const variants: any[] = [];
 
-          if (variationName && variationName.toLowerCase() !== 'nome da variação 1') {
-            for (let i = 0; i < 14; i++) {
+          // Só processa se a coluna 15 não for o título da Shopee
+          if (variationName && !variationName.startsWith('et_title')) {
+            for (let i = 0; i < 15; i++) {
               const nameIdx = 16 + (i * 2);
               const imgIdx = 17 + (i * 2);
               
               const optName = row[nameIdx]?.toString();
               const optImg = row[imgIdx]?.toString();
 
-              if (optName && optName.toLowerCase() !== 'opção 1 de nome') {
+              if (optName && !optName.startsWith('et_title')) {
                 variants.push({
                   attribute_name: variationName,
                   option_name: optName,
                   main_image: optImg || product.main_image,
                   is_active: true,
                   price: 19.90,
+                  cost_price: 10.00,
+                  promo_price: 0,
                   stock: 999,
-                  sku: `${product.id}-${i}`
+                  sku: `${productId}-${i}`,
+                  weight: 0.5,
+                  height: 10,
+                  width: 10,
+                  length: 10
                 });
               }
             }

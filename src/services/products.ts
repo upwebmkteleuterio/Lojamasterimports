@@ -1,9 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
-import { Product, CategoryMother } from '@/types/store';
+import { Product, CategoryMother, ProductVariant } from '@/types/store';
 
-/**
- * Mapeia o objeto do Supabase para o nosso tipo Product da aplicação
- */
 const mapDbToProduct = (dbItem: any): Product => ({
   id: dbItem.id,
   name: dbItem.name,
@@ -23,48 +20,16 @@ const mapDbToProduct = (dbItem: any): Product => ({
   length: dbItem.length ? Number(dbItem.length) : undefined,
   width: dbItem.width ? Number(dbItem.width) : undefined,
   height: dbItem.height ? Number(dbItem.height) : undefined,
+  variants: dbItem.product_variants || [] // Adicionado carregamento de variantes
 });
-
-export const getProductsByMother = async (mother: CategoryMother): Promise<Product[]> => {
-  const { data, error } = await supabase
-    .from('products')
-    .select('*')
-    .eq('category_mother_id', mother)
-    .eq('is_active', true);
-
-  if (error) {
-    console.error('Erro ao buscar produtos:', error);
-    return [];
-  }
-
-  return (data || []).map(mapDbToProduct);
-};
-
-export const getProductsBySubcategory = async (mother: CategoryMother, sub: string): Promise<Product[]> => {
-  let query = supabase
-    .from('products')
-    .select('*')
-    .eq('category_mother_id', mother)
-    .eq('is_active', true);
-
-  if (sub !== 'todos') {
-    query = query.eq('subcategory_id', sub);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    console.error('Erro ao buscar produtos por subcategoria:', error);
-    return [];
-  }
-
-  return (data || []).map(mapDbToProduct);
-};
 
 export const getProductById = async (id: string): Promise<Product | undefined> => {
   const { data, error } = await supabase
     .from('products')
-    .select('*')
+    .select(`
+      *,
+      product_variants (*)
+    `)
     .eq('id', id)
     .single();
 
@@ -76,20 +41,28 @@ export const getProductById = async (id: string): Promise<Product | undefined> =
   return data ? mapDbToProduct(data) : undefined;
 };
 
-export const searchProducts = async (mother: CategoryMother, queryStr: string): Promise<Product[]> => {
-  if (!queryStr.trim()) return getProductsByMother(mother);
-  
+// ... keep existing code (rest of the file)
+export const getProductsByMother = async (mother: CategoryMother): Promise<Product[]> => {
   const { data, error } = await supabase
     .from('products')
     .select('*')
     .eq('category_mother_id', mother)
-    .eq('is_active', true)
-    .or(`name.ilike.%${queryStr}%,description.ilike.%${queryStr}%`);
+    .eq('is_active', true);
+  if (error) return [];
+  return (data || []).map(mapDbToProduct);
+};
 
-  if (error) {
-    console.error('Erro na busca de produtos:', error);
-    return [];
-  }
+export const getProductsBySubcategory = async (mother: CategoryMother, sub: string): Promise<Product[]> => {
+  let query = supabase.from('products').select('*').eq('category_mother_id', mother).eq('is_active', true);
+  if (sub !== 'todos') query = query.eq('subcategory_id', sub);
+  const { data, error } = await query;
+  if (error) return [];
+  return (data || []).map(mapDbToProduct);
+};
 
+export const searchProducts = async (mother: CategoryMother, queryStr: string): Promise<Product[]> => {
+  if (!queryStr.trim()) return getProductsByMother(mother);
+  const { data, error } = await supabase.from('products').select('*').eq('category_mother_id', mother).eq('is_active', true).or(`name.ilike.%${queryStr}%,description.ilike.%${queryStr}%`);
+  if (error) return [];
   return (data || []).map(mapDbToProduct);
 };
