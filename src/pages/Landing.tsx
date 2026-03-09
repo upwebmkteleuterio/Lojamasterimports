@@ -40,7 +40,8 @@ const Landing = () => {
   }
 
   return (
-    <div className="flex flex-col md:flex-row h-screen w-full overflow-hidden">
+    /* h-[calc(100vh-64px)] desconta os 64px (h-16) da MobileNavbar no celular */
+    <div className="flex flex-col md:flex-row h-[calc(100vh-64px)] md:h-screen w-full overflow-hidden bg-white">
       {niches.length > 0 ? (
         niches.map((niche, index) => (
           <div 
