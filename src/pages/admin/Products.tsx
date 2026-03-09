@@ -3,16 +3,18 @@
 import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit3, Trash2, Package } from 'lucide-react';
+import { Plus, Edit3, Trash2, FileSpreadsheet } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { getSafeProductImage } from '@/utils/imageHandler';
+import { ProductImportModal } from '@/components/admin/import/ProductImportModal';
 
 const Products = () => {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   useEffect(() => {
     fetchProducts();
@@ -52,11 +54,20 @@ const Products = () => {
   };
 
   const Actions = (
-    <Link to="/adm/produtos/novo">
-      <Button className="bg-[#B89C6A] hover:bg-[#A68B5B] rounded-full px-6 font-bold text-xs uppercase tracking-widest gap-2">
-        <Plus size={16} /> Novo Produto
+    <div className="flex gap-3">
+      <Button 
+        onClick={() => setIsImportModalOpen(true)}
+        variant="outline"
+        className="border-gray-200 text-gray-500 hover:text-[#B89C6A] hover:border-[#B89C6A] rounded-full px-6 font-bold text-xs uppercase tracking-widest gap-2 transition-all"
+      >
+        <FileSpreadsheet size={16} /> Importar Excel
       </Button>
-    </Link>
+      <Link to="/adm/produtos/novo">
+        <Button className="bg-[#B89C6A] hover:bg-[#A68B5B] rounded-full px-6 font-bold text-xs uppercase tracking-widest gap-2">
+          <Plus size={16} /> Novo Produto
+        </Button>
+      </Link>
+    </div>
   );
 
   return (
@@ -139,6 +150,11 @@ const Products = () => {
           </table>
         </div>
       </div>
+
+      <ProductImportModal 
+        isOpen={isImportModalOpen} 
+        onClose={() => setIsImportModalOpen(false)} 
+      />
     </AdminLayout>
   );
 };
