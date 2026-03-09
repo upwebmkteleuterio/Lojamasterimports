@@ -62,9 +62,9 @@ export const FeaturedSubcategorySection = ({ subcategory, shopType }: FeaturedSu
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
           
-          {/* Coluna Esquerda: Imagem Lateral Mais Alongada (Portait 3:5) */}
+          {/* Coluna Esquerda: Imagem de Campanha Alta (2:3) */}
           <div className="lg:col-span-5 relative group">
-            <Link to={`/${shopType}/categoria/${subcategory.id}`} className="block relative aspect-[3/5] md:aspect-[4/6] overflow-hidden rounded-sm shadow-2xl shadow-black/5">
+            <Link to={`/${shopType}/categoria/${subcategory.id}`} className="block relative aspect-[2/3] overflow-hidden rounded-sm shadow-2xl shadow-black/5">
               <img 
                 src={getSafeProductImage(subcategory.image_url)} 
                 alt={subcategory.name}
@@ -85,11 +85,11 @@ export const FeaturedSubcategorySection = ({ subcategory, shopType }: FeaturedSu
             </Link>
           </div>
 
-          {/* Coluna Direita: Grade com produtos mais curtos que se alinham à altura da esquerda */}
+          {/* Coluna Direita: Grade com produtos quadrados que se alinham à altura da esquerda */}
           <div className="lg:col-span-7">
-            <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:gap-y-14">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-12 md:gap-y-16">
               {loading ? (
-                [1,2,3,4].map(i => <div key={i} className="aspect-[16/10] bg-gray-50 animate-pulse rounded-sm" />)
+                [1,2,3,4].map(i => <div key={i} className="aspect-square bg-gray-50 animate-pulse rounded-sm" />)
               ) : (
                 products.map(product => (
                   <FeaturedProductCard key={product.id} product={product} />
