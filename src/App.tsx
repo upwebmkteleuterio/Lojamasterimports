@@ -70,7 +70,10 @@ const AppContent = () => {
         
         {/* Rotas Dinâmicas por Nicho */}
         <Route path="/:shopType" element={<Index />} />
-        <Route path="/:shopType/categoria/:subId" element={<Category />} />
+        
+        {/* CORREÇÃO: Usando '*' para permitir subIds com barras (/) sem dar 404 */}
+        <Route path="/:shopType/categoria/*" element={<Category />} />
+        
         <Route path="/:shopType/produto/:id" element={<ProductDetail />} />
         <Route path="/:shopType/busca" element={<SearchResults />} />
         
