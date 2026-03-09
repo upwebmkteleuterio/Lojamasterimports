@@ -103,11 +103,13 @@ const Index = () => {
                <Link to={`/${shopType}/categoria/todos`} className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-primary transition-colors">Ver todos</Link>
             </div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-x-8 gap-y-12">
             {loading ? (
-              [1,2,3,4].map(i => <div key={i} className="aspect-[3/4] bg-gray-100 animate-pulse rounded-2xl" />)
+              [1,2,3,4,5,6,7,8,9,10,11,12].map(i => (
+                <div key={i} className="aspect-square bg-gray-100 animate-pulse" />
+              ))
             ) : (
-              products.slice(0, 4).map(product => (
+              products.slice(0, 12).map(product => (
                 <ProductCard key={product.id} product={product} />
               ))
             )}
