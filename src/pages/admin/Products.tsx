@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit3, Trash2, FileSpreadsheet } from 'lucide-react';
+import { Plus, Edit3, Trash2, FileSpreadsheet, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -11,31 +11,39 @@ import { toast } from 'sonner';
 import { getSafeProductImage } from '@/utils/imageHandler';
 import { ProductImportModal } from '@/components/admin/import/ProductImportModal';
 import { DeleteNicheProducts } from '@/components/admin/import/DeleteNicheProducts';
+import { diamondDebug } from '@/utils/debug';
 
 const Products = () => {
   const [products, setProducts] = useState<any[]>([]);
+  const [niches, setNiches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   useEffect(() => {
-    fetchProducts();
+    fetchInitialData();
   }, []);
 
-  const fetchProducts = async () => {
+  const fetchInitialData = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Busca produtos
+      const { data: prods } = await supabase
         .from('products')
-        .select(`
-          *,
-          category_mothers (name)
-        `)
+        .select(`*, category_mothers (name)`)
         .order('created_at', { ascending: false });
+      
+      setProducts(prods || []);
 
-      if (error) throw error;
-      setProducts(data || []);
+      // Busca nichos reais para criar os botões de limpeza
+      const { data: catMothers } = await supabase
+        .from('category_mothers')
+        .select('id, name');
+      
+      setNiches(catMothers || []);
+      diamondDebug('info', 'Nichos carregados para o painel de limpeza:', catMothers);
+      
     } catch (error: any) {
-      toast.error("Erro ao carregar produtos: " + error.message);
+      toast.error("Erro ao carregar dados: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -43,12 +51,11 @@ const Products = () => {
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Tem certeza que deseja excluir este produto?")) return;
-    
     try {
       const { error } = await supabase.from('products').delete().eq('id', id);
       if (error) throw error;
       setProducts(products.filter(p => p.id !== id));
-      toast.success("Produto removido do banco de dados");
+      toast.success("Produto removido");
     } catch (error: any) {
       toast.error("Erro ao deletar: " + error.message);
     }
@@ -74,19 +81,19 @@ const Products = () => {
   return (
     <AdminLayout title="Produtos" actions={Actions}>
       <div className="space-y-8">
-        {/* Painel de Controle Rápido */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <DeleteNicheProducts 
-            nicheId="pet" 
-            nicheName="Pet Shop" 
-            onSuccess={fetchProducts} 
-          />
-          <DeleteNicheProducts 
-            nicheId="feminine" 
-            nicheName="Jóias/Feminino" 
-            onSuccess={fetchProducts} 
-          />
-        </div>
+        {/* Painel de Controle Dinâmico */}
+        {niches.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {niches.map(niche => (
+              <DeleteNicheProducts 
+                key={niche.id}
+                nicheId={niche.id} 
+                nicheName={niche.name} 
+                onSuccess={fetchInitialData} 
+              />
+            ))}
+          </div>
+        )}
 
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
@@ -158,7 +165,7 @@ const Products = () => {
                 ) : (
                   <tr>
                     <td colSpan={6} className="px-8 py-20 text-center text-gray-400 italic">
-                      Catálogo vazio no banco de dados.
+                      Catálogo vazio. Use o botão acima para importar ou criar novos produtos.
                     </td>
                   </tr>
                 )}
