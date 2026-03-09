@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import logo from '@/assets/logo.jpg';
 
 export const Navbar = () => {
   const { cartCount } = useCart();
@@ -80,7 +81,7 @@ export const Navbar = () => {
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1"><Phone size={12} /> Atendimento: (99) 9999-9999</span>
           </div>
-          <p>Diamond Store - Qualidade e Confiança.</p>
+          <p>Master Imports - Qualidade e Confiança.</p>
           <div className="flex items-center gap-4">
              <Link to="/minha-conta" className="flex items-center gap-1 hover:text-[#B89C6A] transition-colors">
                <MapPin size={12} /> Rastreie seu pedido
@@ -112,8 +113,8 @@ export const Navbar = () => {
           </div>
 
           <div className="flex justify-center flex-shrink-0">
-            <Link to={`/${currentShop}`} className="text-2xl md:text-3xl font-serif font-light tracking-[0.2em] text-[#B89C6A] hover:opacity-80 transition-opacity uppercase whitespace-nowrap">
-              {currentShop === 'pet' ? 'Diamond Pet' : 'Diamon'}
+            <Link to={`/${currentShop}`} className="block hover:opacity-80 transition-opacity">
+              <img src={logo} alt="Master Imports Logo" className="h-12 md:h-16 w-auto object-contain" />
             </Link>
           </div>
 

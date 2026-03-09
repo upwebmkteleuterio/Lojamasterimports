@@ -11,6 +11,7 @@ import { getProductsByMother } from '@/services/products';
 import { supabase } from '@/integrations/supabase/client';
 import { CategoryCarousel } from '@/components/home/CategoryCarousel';
 import { FeaturedSubcategorySection } from '@/components/home/FeaturedSubcategorySection';
+import logo from '@/assets/logo.jpg';
 
 const Index = () => {
   const { shopType } = useParams<{ shopType: string }>();
@@ -151,7 +152,7 @@ const Index = () => {
           <div className="flex flex-col items-center text-center gap-2 md:gap-3">
             <ShieldCheck size={24} strokeWidth={1} className="text-[#B89C6A]" />
             <div>
-              <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest">Garantia Diamond</p>
+              <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest">Garantia Master</p>
               <p className="text-[8px] md:text-[9px] text-gray-400">enviado junto ao pacote</p>
             </div>
           </div>
@@ -168,10 +169,10 @@ const Index = () => {
       <footer className="bg-white pt-12 md:pt-20 pb-10 border-t">
         <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-12 text-center md:text-left">
           <div className="md:col-span-1">
-            <h3 className="text-xl md:text-2xl font-serif text-[#B89C6A] mb-4 md:mb-6">DIAMON</h3>
+            <img src={logo} alt="Master Imports" className="h-12 md:h-16 w-auto object-contain mb-6 mx-auto md:mx-0" />
             <p className="text-[10px] md:text-xs text-gray-400 leading-loose">
-               {shopType === 'pet' ? "Tudo para o seu melhor amigo." : "Valorize a joia que você é."}
-               <br /> Copyright © 2026 Diamond LTDA.
+               Qualidade e sofisticação em importados.
+               <br /> Copyright © 2026 Master Imports.
             </p>
           </div>
         </div>
