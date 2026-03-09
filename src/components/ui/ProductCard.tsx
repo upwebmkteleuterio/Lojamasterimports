@@ -27,10 +27,10 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     : 0;
 
   return (
-    <div className="group animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col items-center">
-      {/* Container da Imagem */}
-      <div className="relative aspect-square w-full overflow-hidden mb-6 bg-gray-50 rounded-none">
-        <Link to={`/${currentShop}/produto/${product.id}`} className="block w-full h-full">
+    <div className="group animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col items-center w-full">
+      {/* Container da Imagem - Forçado a ser Quadrado Perfeito */}
+      <div className="relative w-full pt-[100%] overflow-hidden mb-6 bg-gray-50 rounded-none">
+        <Link to={`/${currentShop}/produto/${product.id}`} className="absolute inset-0 w-full h-full">
           <img 
             src={getSafeProductImage(product.image)} 
             alt={product.name} 
@@ -40,7 +40,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
         
         {/* Selo de Desconto */}
         {hasPromo && (
-          <div className="absolute top-0 right-0 bg-[#D4AF37] text-white text-[10px] font-bold px-3 py-1.5 uppercase tracking-wider">
+          <div className="absolute top-0 right-0 bg-[#D4AF37] text-white text-[10px] font-bold px-3 py-1.5 uppercase tracking-wider z-10">
             -{discountPercent}%
           </div>
         )}
@@ -52,7 +52,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
             toggleFavorite(product);
           }}
           className={cn(
-            "absolute top-4 left-4 w-8 h-8 rounded-full flex items-center justify-center transition-all bg-white/80 backdrop-blur-sm shadow-sm opacity-0 group-hover:opacity-100",
+            "absolute top-4 left-4 w-8 h-8 rounded-full flex items-center justify-center transition-all bg-white/80 backdrop-blur-sm shadow-sm opacity-0 group-hover:opacity-100 z-10",
             isFav ? "text-red-500 opacity-100" : "text-gray-400 hover:text-red-500"
           )}
         >
@@ -61,8 +61,8 @@ export const ProductCard = ({ product }: ProductCardProps) => {
       </div>
       
       {/* Informações do Produto */}
-      <Link to={`/${currentShop}/produto/${product.id}`} className="space-y-3 block text-center px-2 flex-1">
-        <h3 className="text-sm md:text-base font-serif text-[#555] leading-relaxed h-12 flex items-center justify-center">
+      <Link to={`/${currentShop}/produto/${product.id}`} className="space-y-3 block text-center px-2 flex-1 w-full">
+        <h3 className="text-sm md:text-base font-serif text-[#555] leading-relaxed h-12 flex items-center justify-center line-clamp-2">
           {product.name}
         </h3>
         
