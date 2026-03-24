@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit3, Trash2, FileSpreadsheet, RefreshCw } from 'lucide-react';
+import { Plus, Edit3, Trash2, FileSpreadsheet, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -12,12 +12,14 @@ import { getSafeProductImage } from '@/utils/imageHandler';
 import { ProductImportModal } from '@/components/admin/import/ProductImportModal';
 import { DeleteNicheProducts } from '@/components/admin/import/DeleteNicheProducts';
 import { diamondDebug } from '@/utils/debug';
+import { Input } from '@/components/ui/input';
 
 const Products = () => {
   const [products, setProducts] = useState<any[]>([]);
   const [niches, setNiches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     fetchInitialData();
@@ -61,6 +63,10 @@ const Products = () => {
     }
   };
 
+  const filteredProducts = products.filter(product => 
+    product.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   const Actions = (
     <div className="flex gap-3">
       <Button 
@@ -95,6 +101,19 @@ const Products = () => {
           </div>
         )}
 
+        {/* Barra de Busca */}
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4">
+          <div className="relative max-w-md">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <Input 
+              placeholder="Buscar produto pelo nome..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-12 h-12 bg-gray-50 border-none rounded-2xl text-sm focus-visible:ring-1 focus-visible:ring-[#B89C6A]"
+            />
+          </div>
+        </div>
+
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left">
@@ -111,8 +130,8 @@ const Products = () => {
               <tbody className="divide-y divide-gray-50">
                 {loading ? (
                   <tr><td colSpan={6} className="px-8 py-20 text-center text-gray-400">Carregando catálogo...</td></tr>
-                ) : products.length > 0 ? (
-                  products.map((product) => (
+                ) : filteredProducts.length > 0 ? (
+                  filteredProducts.map((product) => (
                     <tr key={product.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-8 py-5">
                         <div className="flex items-center gap-4">
@@ -165,7 +184,7 @@ const Products = () => {
                 ) : (
                   <tr>
                     <td colSpan={6} className="px-8 py-20 text-center text-gray-400 italic">
-                      Catálogo vazio. Use o botão acima para importar ou criar novos produtos.
+                      {searchTerm ? `Nenhum produto encontrado para "${searchTerm}"` : "Catálogo vazio. Use o botão acima para importar ou criar novos produtos."}
                     </td>
                   </tr>
                 )}
