@@ -1,0 +1,323 @@
+import React, { useState, useEffect } from 'react';
+import { AdminLayout } from '@/components/admin/AdminLayout';
+import { supabase } from '@/integrations/supabase/client';
+import { 
+  DollarSign, 
+  TrendingUp, 
+  Calendar as CalendarIcon, 
+  ArrowUpRight, 
+  ArrowDownRight,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  Package,
+  Loader2,
+  BadgePercent
+} from 'lucide-react';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
+import { toast } from 'sonner';
+import { Order } from '@/types/store';
+import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
+const ITEMS_PER_PAGE = 10;
+
+const Finance = () => {
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  
+  // Totais do Banco (Independente de paginação)
+  const [financialStats, setFinancialStats] = useState({
+    totalRevenue: 0,
+    totalProfit: 0,
+    totalCosts: 0,
+    orderCount: 0
+  });
+
+  const [selectedMonth, setSelectedMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
+
+  useEffect(() => {
+    fetchFinanceData();
+  }, [selectedMonth, currentPage]);
+
+  const fetchFinanceData = async () => {
+    setLoading(true);
+    try {
+      const startDate = startOfMonth(parseISO(`${selectedMonth}-01`)).toISOString();
+      const endDate = endOfMonth(parseISO(`${selectedMonth}-01`)).toISOString();
+
+      // 1. Buscar Totais (Todos os pedidos 'Pago' no mês) para o resumo
+      const { data: allPaidOrders, error: statsError } = await supabase
+        .from('orders')
+        .select('total, items, shipping_cost')
+        .eq('status', 'Pago')
+        .gte('created_at', startDate)
+        .lte('created_at', endDate);
+
+      if (statsError) throw statsError;
+
+      let revenue = 0;
+      let totalCost = 0;
+      
+      allPaidOrders?.forEach(order => {
+        revenue += Number(order.total);
+        
+        // Calcular custos dos itens do pedido
+        const items = order.items as any[];
+        items.forEach(item => {
+          // Usa cost_price da variante ou do produto principal salvo no snapshot do item
+          const cost = Number(item.selectedVariant?.cost_price || item.cost_price || 0);
+          totalCost += cost * item.quantity;
+        });
+
+        // Somar custo de frete (se houver custo para a loja, por enquanto estamos usando shipping_cost como o que o cliente pagou)
+        // Se shipping_cost for o que o cliente pagou, ele entra na receita. 
+        // O custo real do frete para a loja ainda não temos campo específico, 
+        // então subtraímos o que foi definido como custo fixo ou zero por enquanto.
+      });
+
+      setFinancialStats({
+        totalRevenue: revenue,
+        totalCosts: totalCost,
+        totalProfit: revenue - totalCost,
+        orderCount: allPaidOrders?.length || 0
+      });
+
+      // 2. Buscar Dados Paginados para a tabela
+      const from = (currentPage - 1) * ITEMS_PER_PAGE;
+      const to = from + ITEMS_PER_PAGE - 1;
+
+      const { data, error, count } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact' })
+        .eq('status', 'Pago')
+        .gte('created_at', startDate)
+        .lte('created_at', endDate)
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
+      if (error) throw error;
+      
+      setOrders(data || []);
+      setTotalCount(count || 0);
+
+    } catch (error: any) {
+      toast.error('Erro ao buscar dados financeiros: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  };
+
+  // Gerar lista de últimos 12 meses para o filtro
+  const monthOptions = Array.from({ length: 12 }).map((_, i) => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - i);
+    return {
+      value: format(date, 'yyyy-MM'),
+      label: format(date, 'MMMM yyyy', { locale: ptBR })
+    };
+  });
+
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+
+  return (
+    <AdminLayout title="Financeiro">
+      <div className="space-y-8">
+        
+        {/* Cabeçalho com Filtro de Mês */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+              <CalendarIcon size={16} /> Período de Apuração
+            </h2>
+          </div>
+          <Select value={selectedMonth} onValueChange={(val) => { setSelectedMonth(val); setCurrentPage(1); }}>
+            <SelectTrigger className="w-full md:w-[240px] rounded-2xl border-gray-100 bg-white h-12">
+              <div className="flex items-center gap-2">
+                <Filter size={16} className="text-gray-400" />
+                <SelectValue placeholder="Selecione o mês" />
+              </div>
+            </SelectTrigger>
+            <SelectContent className="rounded-2xl border-gray-100">
+              {monthOptions.map(option => (
+                <SelectItem key={option.value} value={option.value} className="capitalize">
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Cards de Resumo (Totais do Mês) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="border-none shadow-sm rounded-[32px] bg-white overflow-hidden group">
+            <CardContent className="p-8">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-2xl bg-green-50 text-green-600">
+                  <DollarSign size={24} />
+                </div>
+                <div className="flex items-center gap-1 text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded-full">
+                  <ArrowUpRight size={14} /> {financialStats.orderCount} vendas
+                </div>
+              </div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total em Vendas</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{formatCurrency(financialStats.totalRevenue)}</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-none shadow-sm rounded-[32px] bg-white overflow-hidden group">
+            <CardContent className="p-8">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-2xl bg-[#B89C6A]/10 text-[#B89C6A]">
+                  <TrendingUp size={24} />
+                </div>
+                <div className="flex items-center gap-1 text-red-500 text-xs font-bold bg-red-50 px-2 py-1 rounded-full">
+                  <ArrowDownRight size={14} /> Custos: {formatCurrency(financialStats.totalCosts)}
+                </div>
+              </div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Lucro Líquido Estimado</p>
+              <p className="text-3xl font-bold text-green-600 mt-2">{formatCurrency(financialStats.totalProfit)}</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-none shadow-sm rounded-[32px] bg-gray-900 overflow-hidden">
+            <CardContent className="p-8 text-white">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-2xl bg-white/10 text-white">
+                  <BadgePercent size={24} />
+                </div>
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Margem Média</div>
+              </div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Margem de Lucro</p>
+              <p className="text-3xl font-bold mt-2">
+                {financialStats.totalRevenue > 0 
+                  ? ((financialStats.totalProfit / financialStats.totalRevenue) * 100).toFixed(1) 
+                  : '0'}%
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Tabela de Vendas Paginada */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between px-2">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400">Listagem de Vendas Paga (Mês)</h3>
+            <p className="text-xs text-gray-400">{totalCount} registros encontrados</p>
+          </div>
+          
+          <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden">
+            <Table>
+              <TableHeader className="bg-gray-50/50">
+                <TableRow className="border-gray-50 hover:bg-transparent">
+                  <TableHead className="font-bold text-xs uppercase tracking-widest text-gray-400 px-8 py-5">Pedido / Data</TableHead>
+                  <TableHead className="font-bold text-xs uppercase tracking-widest text-gray-400">Cliente</TableHead>
+                  <TableHead className="font-bold text-xs uppercase tracking-widest text-gray-400">Itens</TableHead>
+                  <TableHead className="font-bold text-xs uppercase tracking-widest text-gray-400 text-right pr-8">Valor Venda</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i} className="border-gray-50">
+                      <TableCell colSpan={4} className="h-16 animate-pulse bg-gray-50/20" />
+                    </TableRow>
+                  ))
+                ) : orders.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-40 text-center text-gray-400">
+                      Nenhuma venda efetivada neste período.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  orders.map((order) => (
+                    <TableRow key={order.id} className="border-gray-50 group hover:bg-gray-50/30 transition-colors">
+                      <TableCell className="px-8 py-4">
+                        <div>
+                          <p className="font-bold text-gray-900 text-sm">#{order.id.split('-')[0]}</p>
+                          <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-tighter">
+                            {format(new Date(order.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <p className="text-sm font-medium text-gray-700">{order.customer_data.fullName}</p>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex -space-x-2">
+                          {order.items.slice(0, 3).map((item: any, idx: number) => (
+                            <div key={idx} className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 overflow-hidden">
+                              <img src={item.selectedVariant?.main_image || item.image} className="w-full h-full object-cover" alt="" />
+                            </div>
+                          ))}
+                          {order.items.length > 3 && (
+                            <div className="w-8 h-8 rounded-full border-2 border-white bg-gray-900 text-white flex items-center justify-center text-[10px] font-bold">
+                              +{order.items.length - 3}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right pr-8">
+                        <p className="font-bold text-gray-900">{formatCurrency(order.total)}</p>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+
+            {/* Paginação */}
+            {totalPages > 1 && (
+              <div className="p-6 border-t border-gray-50 bg-gray-50/20 flex items-center justify-center gap-4">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  disabled={currentPage === 1 || loading}
+                  onClick={() => setCurrentPage(prev => prev - 1)}
+                  className="rounded-xl border-gray-100 bg-white"
+                >
+                  <ChevronLeft size={18} />
+                </Button>
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+                  Página {currentPage} de {totalPages}
+                </span>
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  disabled={currentPage === totalPages || loading}
+                  onClick={() => setCurrentPage(prev => prev + 1)}
+                  className="rounded-xl border-gray-100 bg-white"
+                >
+                  <ChevronRight size={18} />
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </AdminLayout>
+  );
+};
+
+export default Finance;

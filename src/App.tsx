@@ -31,6 +31,7 @@ import ProductForm from "./pages/admin/ProductForm";
 import Settings from "./pages/admin/Settings";
 import Orders from "./pages/admin/Orders";
 import Customers from "./pages/admin/Customers";
+import Finance from "./pages/admin/Finance";
 
 const queryClient = new QueryClient();
 
@@ -97,6 +98,7 @@ const AppContent = () => {
         <Route path="/adm/configuracoes" element={<ProtectedRoute requireAdmin><Settings /></ProtectedRoute>} />
         <Route path="/adm/pedidos" element={<ProtectedRoute requireAdmin><Orders /></ProtectedRoute>} />
         <Route path="/adm/clientes" element={<ProtectedRoute requireAdmin><Customers /></ProtectedRoute>} />
+        <Route path="/adm/financeiro" element={<ProtectedRoute requireAdmin><Finance /></ProtectedRoute>} />
         
         <Route path="*" element={<NotFound />} />
       </Routes>

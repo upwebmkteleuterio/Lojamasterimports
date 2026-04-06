@@ -16,6 +16,7 @@ import {
 const menuItems = [
   { label: 'Início', icon: LayoutDashboard, path: '/adm' },
   { label: 'Pedidos', icon: ShoppingBag, path: '/adm/pedidos' },
+  { label: 'Financeiro', icon: DollarSign, path: '/adm/financeiro' },
   { label: 'Análises', icon: TrendingUp, path: '/adm/analises' },
   {
     label: 'Produtos',
