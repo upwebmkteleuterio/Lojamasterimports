@@ -2,23 +2,24 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Package, 
-  Layers, 
-  Settings, 
-  Users, 
-  TrendingUp, 
+import {
+  LayoutDashboard,
+  Package,
+  Layers,
+  Settings,
+  Users,
+  TrendingUp,
   ChevronDown,
+  ShoppingBag,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 const menuItems = [
   { label: 'Início', icon: LayoutDashboard, path: '/adm' },
+  { label: 'Pedidos', icon: ShoppingBag, path: '/adm/pedidos' },
   { label: 'Análises', icon: TrendingUp, path: '/adm/analises' },
-  { 
-    label: 'Produtos', 
-    icon: Package, 
+  {
+    label: 'Produtos',
+    icon: Package,
     path: '/adm/produtos',
     submenu: [
       { label: 'Ver todos', path: '/adm/produtos' },

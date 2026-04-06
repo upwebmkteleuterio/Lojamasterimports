@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
 import { useCart } from '@/context/CartContext';
@@ -7,10 +7,12 @@ import { CustomerData } from '@/types/store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { saveOrder, limparDadosFormulario } from '@/services/persistence';
+import { limparDadosFormulario } from '@/services/persistence';
 import { toast } from 'sonner';
-import { ShieldCheck, CreditCard, Truck, Tag } from 'lucide-react';
+import { ShieldCheck, CreditCard, Truck, Tag, Loader2 } from 'lucide-react';
 import { getSafeProductImage } from '@/utils/imageHandler';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/context/AuthContext';
 
 const initialCustomerData: CustomerData = {
   fullName: '',
@@ -27,28 +29,68 @@ const initialCustomerData: CustomerData = {
 const Checkout = () => {
   const navigate = useNavigate();
   const { cart, cartTotal, clearCart } = useCart();
-  const { data, updateField } = usePersistence<CustomerData>('checkout_form', initialCustomerData);
+  const { user, profile } = useAuth();
+  const { data, updateField, setData } = usePersistence<CustomerData>('checkout_form', initialCustomerData);
+  const [loading, setLoading] = useState(false);
+  const [shippingCost] = useState(0); // Por enquanto grátis, mas preparado para integração
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Preenche dados do perfil se logado e formulário vazio
+  useEffect(() => {
+    if (profile && !data.fullName && !data.email) {
+      setData({
+        fullName: profile.full_name || '',
+        email: user?.email || '',
+        phone: profile.phone || '',
+        cpf: profile.cpf || '',
+        zipCode: profile.zip_code || '',
+        address: profile.address || '',
+        number: profile.number || '',
+        city: profile.city || '',
+        state: profile.state || '',
+      });
+    } else if (user?.email && !data.email) {
+      updateField('email', user.email);
+    }
+  }, [profile, user, setData]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (cart.length === 0) return;
+    if (cart.length === 0) {
+      toast.error('Seu carrinho está vazio');
+      return;
+    }
 
-    const newOrder = {
-      id: Math.random().toString(36).substr(2, 9).toUpperCase(),
-      items: cart,
-      total: cartTotal,
-      status: 'completed',
-      customerData: data,
-      createdAt: new Date().toISOString(),
-    };
+    setLoading(true);
 
-    saveOrder(newOrder);
-    clearCart();
-    limparDadosFormulario('checkout_form');
-    
-    toast.success('Pedido realizado com sucesso!');
-    navigate('/minha-conta');
+    try {
+      // Salva no Supabase
+      const { data: orderData, error } = await supabase
+        .from('orders')
+        .insert({
+          user_id: user?.id || null,
+          total: cartTotal + shippingCost,
+          shipping_cost: shippingCost,
+          status: 'Pagamento Pendente',
+          customer_data: data,
+          items: cart, // Itens como JSONB no banco para histórico imutável
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      clearCart();
+      limparDadosFormulario('checkout_form');
+      
+      toast.success('Pedido realizado com sucesso!');
+      navigate('/minha-conta');
+    } catch (error: any) {
+      console.error('Erro ao salvar pedido:', error);
+      toast.error('Erro ao processar pedido: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -184,8 +226,12 @@ const Checkout = () => {
                 <p className="text-sm font-medium">Checkout 100% seguro com criptografia SSL de 256 bits.</p>
               </div>
               
-              <Button type="submit" className="w-full h-20 rounded-full bg-black text-white text-xl font-bold shadow-2xl shadow-black/20 hover:bg-gray-800 transition-all">
-                Confirmar e Pagar Agora
+              <Button 
+                type="submit" 
+                disabled={loading}
+                className="w-full h-20 rounded-full bg-black text-white text-xl font-bold shadow-2xl shadow-black/20 hover:bg-gray-800 transition-all gap-3"
+              >
+                {loading ? <Loader2 className="animate-spin" /> : 'Confirmar e Pagar Agora'}
               </Button>
             </form>
           </div>
@@ -220,10 +266,21 @@ const Checkout = () => {
               </div>
 
               <div className="space-y-4 pt-6 border-t border-dashed">
-                <div className="flex justify-between items-center text-lg font-bold">
+                <div className="flex justify-between items-center text-sm font-medium text-gray-500">
+                  <span>Subtotal</span>
+                  <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cartTotal)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm font-medium text-gray-500">
+                  <span>Frete</span>
+                  <span className={shippingCost === 0 ? "text-green-600" : ""}>
+                    {shippingCost === 0 ? "Grátis" : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(shippingCost)}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between items-center text-lg font-bold pt-4 border-t border-gray-50">
                   <span className="text-gray-400 font-serif">Total</span>
                   <span className="text-3xl text-[#B89C6A]">
-                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cartTotal)}
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cartTotal + shippingCost)}
                   </span>
                 </div>
                 

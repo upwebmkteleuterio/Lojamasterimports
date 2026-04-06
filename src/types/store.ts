@@ -72,11 +72,23 @@ export interface CustomerData {
   state: string;
 }
 
+export type OrderStatus =
+  | 'Pago'
+  | 'Pagamento Pendente'
+  | 'Cancelado'
+  | 'Pagamento Estornado'
+  | 'Enviado'
+  | 'Entregue'
+  | 'Preparando Pedido';
+
 export interface Order {
   id: string;
   items: OrderItem[];
   total: number;
-  status: 'pending' | 'completed' | 'cancelled';
-  customerData: CustomerData;
-  createdAt: string;
+  shipping_cost?: number;
+  tracking_code?: string;
+  status: OrderStatus;
+  customer_data: CustomerData;
+  user_id?: string;
+  created_at: string;
 }
