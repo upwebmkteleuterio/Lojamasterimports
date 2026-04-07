@@ -11,6 +11,7 @@ import {
   TrendingUp,
   ChevronDown,
   ShoppingBag,
+  DollarSign,
 } from 'lucide-react';
 
 const menuItems = [
