@@ -54,11 +54,9 @@ const ProductForm = () => {
 
   useEffect(() => {
     if (!id) {
-      diamondDebug('info', 'Iniciando formulário para NOVO produto. Limpando campos.');
       setFormData(initialFormData);
       setVariants([]);
     } else {
-      diamondDebug('info', `ID detectado (${id}). Iniciando carregamento do produto.`);
       fetchProduct();
     }
   }, [id]);
@@ -91,29 +89,46 @@ const ProductForm = () => {
   };
 
   const fetchProduct = async () => {
+    if (!id) return;
+    
     try {
-      diamondDebug('info', `Executando SELECT no Supabase para o produto ID: ${id}`);
-      const { data: prod, error } = await supabase.from('products').select('*').eq('id', id).single();
+      diamondDebug('info', `Buscando produto e variantes para ID: ${id}`);
       
-      if (error) throw error;
+      // Busca produto
+      const { data: prod, error: prodError } = await supabase.from('products').select('*').eq('id', id).single();
+      if (prodError) throw prodError;
       
       if (prod) {
-        diamondDebug('success', 'Produto recuperado do banco de dados com sucesso.', prod);
         setFormData(prod);
-        
-        // EXECUTA DIAGNÓSTICO DE INTEGRIDADE (Banco vs UI State Recém carregado)
-        checkIntegrity('products', id!, prod);
+        checkIntegrity('products', id, prod);
       }
       
-      diamondDebug('info', `Buscando variantes para o produto ID: ${id}`);
-      const { data: dbVariants } = await supabase.from('product_variants').select('*').eq('product_id', id);
+      // Busca variantes de forma isolada e GARANTE que o estado seja atualizado
+      const { data: dbVariants, error: varError } = await supabase
+        .from('product_variants')
+        .select('*')
+        .eq('product_id', id);
+      
+      if (varError) throw varError;
+
       if (dbVariants) {
-        diamondDebug('success', `Carregadas ${dbVariants.length} variantes.`, dbVariants);
-        setVariants(dbVariants);
+        diamondDebug('success', `Carregadas ${dbVariants.length} variantes do banco.`, dbVariants);
+        // Mapeia para garantir que números sejam números (numeric do postgres às vezes vem como string)
+        const mappedVariants = dbVariants.map(v => ({
+          ...v,
+          price: Number(v.price),
+          cost_price: Number(v.cost_price || 0),
+          promo_price: Number(v.promo_price || 0),
+          weight: Number(v.weight || 0),
+          height: Number(v.height || 0),
+          width: Number(v.width || 0),
+          length: Number(v.length || 0)
+        }));
+        setVariants(mappedVariants);
       }
     } catch (error: any) {
-      diamondDebug('error', 'Falha crítica ao carregar produto existente', error);
-      toast.error("Erro ao carregar produto.");
+      diamondDebug('error', 'Erro ao carregar dados do produto', error);
+      toast.error("Erro ao carregar dados do banco.");
     }
   };
 
@@ -133,62 +148,80 @@ const ProductForm = () => {
     }
 
     setSaving(true);
-    
-    // RASTREIO DE FLUXO ANTES DO ENVIO
     traceSaveFlow('products', { ...formData, variants });
 
-    const payload = {
-      ...formData,
-      sku: formData.sku?.trim() === "" ? null : formData.sku,
-      barcode: formData.barcode?.trim() === "" ? null : formData.barcode,
-      id: id || undefined
-    };
-
     try {
+      // 1. Salva o produto principal
+      const productPayload = {
+        ...formData,
+        id: id || undefined,
+        sku: formData.sku?.trim() === "" ? null : formData.sku,
+        barcode: formData.barcode?.trim() === "" ? null : formData.barcode
+      };
+
       const { data: savedProd, error: prodError } = await supabase
         .from('products')
-        .upsert(payload)
+        .upsert(productPayload)
         .select()
         .single();
 
       if (prodError) throw prodError;
 
+      // 2. Sincroniza Variantes (Lógica Segura)
       if (savedProd) {
-        diamondDebug('success', 'Produto principal salvo. Sincronizando variantes...', savedProd);
+        // Primeiro, buscamos as variações que existem atualmente no banco para este produto
+        const { data: currentVars } = await supabase
+          .from('product_variants')
+          .select('id')
+          .eq('product_id', savedProd.id);
         
-        // Remove as antigas antes de reinserir (Sincronização total)
-        await supabase.from('product_variants').delete().eq('product_id', savedProd.id);
+        const currentIds = (currentVars || []).map(v => v.id);
+        const incomingIds = variants.map(v => v.id).filter(Boolean);
+
+        // Identifica IDs para deletar (os que estão no banco mas não vieram da UI)
+        const idsToDelete = currentIds.filter(id => !incomingIds.includes(id));
         
+        if (idsToDelete.length > 0) {
+          await supabase.from('product_variants').delete().in('id', idsToDelete);
+        }
+
+        // Prepara variantes para Upsert (preserva IDs existentes para não quebrar constraints)
         if (variants.length > 0) {
-          // CORREÇÃO DO ERRO DE NOT-NULL CONSTRAINT:
-          // Removemos qualquer chave 'id' existente para que o Supabase/PostgreSQL 
-          // gere um novo UUID automaticamente usando o default 'gen_random_uuid()'
-          const variantsToSave = variants.map(v => {
-            const { id: _ignoredId, ...variantWithoutId } = v;
-            return { 
-              ...variantWithoutId, 
-              product_id: savedProd.id, 
+          const variantsToUpsert = variants.map(v => {
+            // Se o ID for um UUID válido, mantém. Se for algo como 'temp-' ou nulo, remove para o banco gerar.
+            const isTempId = !v.id || v.id.toString().startsWith('temp');
+            
+            return {
+              ...(isTempId ? {} : { id: v.id }),
+              product_id: savedProd.id,
+              attribute_name: v.attribute_name,
+              option_name: v.option_name,
               sku: v.sku?.trim() === "" ? null : v.sku,
-              barcode: v.barcode?.trim() === "" ? null : v.barcode
+              barcode: v.barcode?.trim() === "" ? null : v.barcode,
+              price: v.price,
+              cost_price: v.cost_price,
+              promo_price: v.promo_price,
+              stock: v.stock,
+              main_image: v.main_image,
+              weight: v.weight,
+              height: v.height,
+              width: v.width,
+              length: v.length,
+              is_active: v.is_active
             };
           });
-          
-          diamondDebug('info', `Inserindo ${variantsToSave.length} variantes sem campo 'id' para evitar violação de constraint...`, variantsToSave);
-          const { error: varError } = await supabase.from('product_variants').insert(variantsToSave);
-          if (varError) {
-            diamondDebug('error', 'Erro ao inserir variantes', varError);
-            throw varError;
-          }
+
+          const { error: varError } = await supabase.from('product_variants').upsert(variantsToUpsert);
+          if (varError) throw varError;
         }
       }
 
-      diamondDebug('success', 'Fluxo de salvamento finalizado com êxito.');
-      toast.success("Produto salvo com sucesso!");
-      
+      diamondDebug('success', 'Produto e variantes sincronizados com sucesso.');
+      toast.success("Produto atualizado!");
       localStorage.removeItem(`form_data_${persistenceKey}`);
       navigate('/adm/produtos');
     } catch (error: any) {
-      diamondDebug('error', 'Falha no salvamento do produto', error);
+      diamondDebug('error', 'Falha no salvamento seguro', error);
       toast.error("Erro ao salvar: " + error.message);
     } finally {
       setSaving(false);
@@ -201,8 +234,8 @@ const ProductForm = () => {
       actions={
         <div className="flex gap-2">
            <Button variant="ghost" onClick={() => navigate('/adm/produtos')} className="rounded-full px-6 uppercase text-[10px] font-bold tracking-widest text-gray-400">Cancelar</Button>
-           <Button onClick={handleSave} disabled={saving} className="bg-black hover:bg-gray-800 rounded-full px-12 h-11 font-bold uppercase text-[10px] tracking-widest text-white">
-            {saving ? 'Gravando...' : 'Salvar Produto'}
+           <Button onClick={handleSave} disabled={saving} className="bg-black hover:bg-gray-800 rounded-full px-12 h-11 font-bold uppercase text-[10px] tracking-widest text-white shadow-lg">
+            {saving ? 'Gravando...' : 'Salvar Alterações'}
           </Button>
         </div>
       }
