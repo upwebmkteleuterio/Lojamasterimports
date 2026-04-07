@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit3, Trash2, FileSpreadsheet, Search, Filter } from 'lucide-react';
+import { Plus, Edit3, Trash2, FileSpreadsheet, Search, Filter, Layers } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +29,7 @@ const Products = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [nicheFilter, setNicheFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [variationFilter, setVariationFilter] = useState("all"); // NOVO FILTRO
 
   useEffect(() => {
     fetchInitialData();
@@ -37,15 +38,19 @@ const Products = () => {
   const fetchInitialData = async () => {
     setLoading(true);
     try {
-      // Busca produtos
-      const { data: prods } = await supabase
+      // Busca produtos INCLUINDO a contagem de variantes via select
+      const { data: prods, error: pError } = await supabase
         .from('products')
-        .select(`*, category_mothers (name)`)
+        .select(`
+          *, 
+          category_mothers (name),
+          product_variants (id)
+        `)
         .order('created_at', { ascending: false });
       
+      if (pError) throw pError;
       setProducts(prods || []);
 
-      // Busca nichos reais para o filtro
       const { data: catMothers } = await supabase
         .from('category_mothers')
         .select('id, name');
@@ -77,7 +82,12 @@ const Products = () => {
     const matchesStatus = statusFilter === "all" || 
       (statusFilter === "active" ? product.is_active === true : product.is_active === false);
     
-    return matchesSearch && matchesNiche && matchesStatus;
+    // Lógica do novo filtro de variações
+    const hasVariants = product.product_variants && product.product_variants.length > 0;
+    const matchesVariation = variationFilter === "all" || 
+      (variationFilter === "with" ? hasVariants : !hasVariants);
+    
+    return matchesSearch && matchesNiche && matchesStatus && matchesVariation;
   });
 
   const Actions = (
@@ -101,9 +111,9 @@ const Products = () => {
     <AdminLayout title="Produtos" actions={Actions}>
       <div className="space-y-8">
         
-        {/* Barra de Filtros */}
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4 flex flex-col md:flex-row gap-4 items-center">
-          <div className="relative flex-1 w-full">
+        {/* Barra de Filtros Expandida */}
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4 flex flex-col gap-4">
+          <div className="relative w-full">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <Input 
               placeholder="Buscar produto pelo nome..." 
@@ -113,10 +123,9 @@ const Products = () => {
             />
           </div>
 
-          <div className="flex flex-wrap gap-3 w-full md:w-auto">
-            {/* Filtro de Nicho */}
+          <div className="flex flex-wrap gap-3">
             <Select value={nicheFilter} onValueChange={setNicheFilter}>
-              <SelectTrigger className="w-full md:w-[180px] h-12 rounded-2xl bg-gray-50 border-none text-xs font-bold uppercase tracking-widest text-gray-500">
+              <SelectTrigger className="flex-1 min-w-[150px] h-12 rounded-2xl bg-gray-50 border-none text-xs font-bold uppercase tracking-widest text-gray-500">
                 <div className="flex items-center gap-2">
                   <Filter size={14} />
                   <SelectValue placeholder="Nicho" />
@@ -130,9 +139,23 @@ const Products = () => {
               </SelectContent>
             </Select>
 
-            {/* Filtro de Status */}
+            {/* FILTRO DE VARIAÇÕES (O TIRA-TEIMA) */}
+            <Select value={variationFilter} onValueChange={setVariationFilter}>
+              <SelectTrigger className="flex-1 min-w-[150px] h-12 rounded-2xl bg-gray-50 border-none text-xs font-bold uppercase tracking-widest text-gray-500">
+                <div className="flex items-center gap-2">
+                  <Layers size={14} />
+                  <SelectValue placeholder="Variações" />
+                </div>
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl border-gray-100">
+                <SelectItem value="all">Variações: Tudo</SelectItem>
+                <SelectItem value="with">Com Variação</SelectItem>
+                <SelectItem value="without">Sem Variação</SelectItem>
+              </SelectContent>
+            </Select>
+
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-[180px] h-12 rounded-2xl bg-gray-50 border-none text-xs font-bold uppercase tracking-widest text-gray-500">
+              <SelectTrigger className="flex-1 min-w-[150px] h-12 rounded-2xl bg-gray-50 border-none text-xs font-bold uppercase tracking-widest text-gray-500">
                 <div className="flex items-center gap-2">
                   <Filter size={14} />
                   <SelectValue placeholder="Status" />
@@ -155,7 +178,7 @@ const Products = () => {
                   <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-gray-400">Produto</th>
                   <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-gray-400">Nicho</th>
                   <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-gray-400">Preço</th>
-                  <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-gray-400">Estoque</th>
+                  <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-gray-400">Variações</th>
                   <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-gray-400">Status</th>
                   <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-right">Ações</th>
                 </tr>
@@ -186,9 +209,13 @@ const Products = () => {
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price)}
                       </td>
                       <td className="px-8 py-5">
-                        <span className={product.stock <= 5 ? "text-red-500 font-bold" : "text-gray-600"}>
-                          {product.stock} un
-                        </span>
+                        {product.product_variants && product.product_variants.length > 0 ? (
+                          <Badge className="bg-blue-50 text-blue-600 border-none rounded-full px-3">
+                            {product.product_variants.length} variações
+                          </Badge>
+                        ) : (
+                          <span className="text-[10px] text-gray-300 font-bold uppercase">Nenhuma</span>
+                        )}
                       </td>
                       <td className="px-8 py-5">
                         <Badge className={product.is_active ? "bg-green-50 text-green-600 border-none" : "bg-red-50 text-red-600 border-none"}>
@@ -217,9 +244,7 @@ const Products = () => {
                 ) : (
                   <tr>
                     <td colSpan={6} className="px-8 py-20 text-center text-gray-400 italic">
-                      {searchTerm || nicheFilter !== "all" || statusFilter !== "all" ? 
-                        "Nenhum produto encontrado para os filtros selecionados." : 
-                        "Catálogo vazio. Use o botão acima para importar ou criar novos produtos."}
+                      Nenhum produto encontrado para os filtros selecionados.
                     </td>
                   </tr>
                 )}
