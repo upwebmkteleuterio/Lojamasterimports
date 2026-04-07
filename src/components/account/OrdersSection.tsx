@@ -1,14 +1,48 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, Calendar, MapPin, ShoppingBag } from 'lucide-react';
+import { Package, Calendar, MapPin, ShoppingBag, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Order } from '@/types/store';
-import { getOrders } from '@/services/persistence';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/context/AuthContext';
 
 export const OrdersSection = () => {
-  const orders = getOrders() as Order[];
+  const { user } = useAuth();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchOrders();
+    }
+  }, [user]);
+
+  const fetchOrders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setOrders((data as any[]) || []);
+    } catch (error) {
+      console.error('Erro ao buscar pedidos:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-20">
+        <Loader2 className="animate-spin text-[#B89C6A]" size={40} />
+      </div>
+    );
+  }
 
   if (orders.length === 0) {
     return (
@@ -37,13 +71,13 @@ export const OrdersSection = () => {
                 <Package size={24} />
               </div>
               <div>
-                <p className="text-sm text-gray-500 font-medium">Pedido #{order.id}</p>
+                <p className="text-sm text-gray-500 font-medium">Pedido #{order.id.split('-')[0]}</p>
                 <div className="flex items-center gap-4 mt-1">
                   <span className="flex items-center gap-1 text-xs text-gray-400">
-                    <Calendar size={12} /> {new Date(order.createdAt).toLocaleDateString('pt-BR')}
+                    <Calendar size={12} /> {new Date(order.created_at).toLocaleDateString('pt-BR')}
                   </span>
                   <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none rounded-full px-3">
-                    {order.status === 'completed' ? 'Concluído' : 'Pendente'}
+                    {order.status}
                   </Badge>
                 </div>
               </div>
@@ -62,14 +96,16 @@ export const OrdersSection = () => {
                 <ShoppingBag size={18} className="text-[#B89C6A]" /> Itens
               </h3>
               <div className="space-y-4">
-                {order.items.map((item) => (
-                  <div key={item.id} className="flex items-center gap-4">
+                {order.items.map((item: any, idx: number) => (
+                  <div key={idx} className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0 border border-gray-100">
-                      <img src={item.image} className="w-full h-full object-cover" alt={item.name} />
+                      <img src={item.selectedVariant?.main_image || item.image} className="w-full h-full object-cover" alt={item.name} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold truncate text-gray-800">{item.name}</p>
-                      <p className="text-xs text-gray-500">{item.quantity} unidade(s)</p>
+                      <p className="text-xs text-gray-500">
+                        {item.quantity} unidade(s) {item.selectedVariant ? ` - ${item.selectedVariant.option_name}` : ''}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -81,11 +117,11 @@ export const OrdersSection = () => {
                 <MapPin size={18} className="text-[#B89C6A]" /> Entrega
               </h3>
               <div className="text-sm text-gray-600 space-y-2 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
-                <p className="font-bold text-gray-900">{order.customerData.fullName}</p>
+                <p className="font-bold text-gray-900">{order.customer_data.fullName}</p>
                 <p className="leading-relaxed">
-                  {order.customerData.address}, {order.customerData.number}<br />
-                  {order.customerData.city} - {order.customerData.state}<br />
-                  CEP: {order.customerData.zipCode}
+                  {order.customer_data.address}, {order.customer_data.number}<br />
+                  {order.customer_data.city} - {order.customer_data.state}<br />
+                  CEP: {order.customer_data.zipCode}
                 </p>
               </div>
             </div>
