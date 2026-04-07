@@ -14,9 +14,8 @@ import {
   Eye,
   MapPin,
   User as UserIcon,
-  CreditCard,
-  Hash,
-  Map
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { 
   Table, 
@@ -55,11 +54,17 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+const ITEMS_PER_PAGE = 50;
+
 const Customers = () => {
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
+  // Estados de Paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
   // Estados para Modal de Detalhes
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -70,18 +75,31 @@ const Customers = () => {
 
   useEffect(() => {
     fetchCustomers();
-  }, []);
+  }, [currentPage, searchTerm]);
 
   const fetchCustomers = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const from = (currentPage - 1) * ITEMS_PER_PAGE;
+      const to = from + ITEMS_PER_PAGE - 1;
+
+      let query = supabase
         .from('profiles')
-        .select('*')
-        .order('full_name', { ascending: true });
+        .select('*', { count: 'exact' });
+
+      // Aplica busca se houver termo
+      if (searchTerm) {
+        query = query.or(`full_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,cpf.ilike.%${searchTerm}%`);
+      }
+
+      const { data, error, count } = await query
+        .order('full_name', { ascending: true })
+        .range(from, to);
 
       if (error) throw error;
+      
       setCustomers(data || []);
+      setTotalCount(count || 0);
     } catch (error: any) {
       toast.error('Erro ao buscar clientes: ' + error.message);
     } finally {
@@ -100,7 +118,7 @@ const Customers = () => {
 
       if (error) throw error;
       toast.success('Perfil excluído com sucesso!');
-      setCustomers(customers.filter(c => c.id !== customerToDelete.id));
+      fetchCustomers(); // Recarrega a página atual
       setCustomerToDelete(null);
     } catch (error: any) {
       toast.error('Erro ao excluir: ' + error.message);
@@ -109,33 +127,36 @@ const Customers = () => {
     }
   };
 
-  const filteredCustomers = customers.filter(customer => {
-    const nameMatch = (customer.full_name || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const phoneMatch = (customer.phone || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const emailMatch = (customer.email || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const cpfMatch = (customer.cpf || '').toLowerCase().includes(searchTerm.toLowerCase());
-    return nameMatch || phoneMatch || emailMatch || cpfMatch;
-  });
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1); // Reseta para a primeira página ao buscar
+  };
 
   const openDetails = (customer: any) => {
     setSelectedCustomer(customer);
     setIsDetailsOpen(true);
   };
 
-  // Helper para exibir valor ou placeholder
   const displayVal = (val: any) => val && val.trim() !== "" ? val : <span className="text-gray-300 italic">Não informado</span>;
+  
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
   return (
     <AdminLayout title="Gestão de Clientes">
       <div className="space-y-6">
-        <div className="relative w-full md:w-96">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <Input 
-            placeholder="Buscar por nome, e-mail ou CPF..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 rounded-2xl border-gray-100 bg-white h-12"
-          />
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="relative w-full md:w-96">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <Input 
+              placeholder="Buscar por nome, e-mail ou CPF..." 
+              value={searchTerm}
+              onChange={handleSearchChange}
+              className="pl-10 rounded-2xl border-gray-100 bg-white h-12"
+            />
+          </div>
+          <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+            Total: {totalCount} clientes
+          </div>
         </div>
 
         <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden">
@@ -155,14 +176,14 @@ const Customers = () => {
                     <TableCell colSpan={4} className="h-20 animate-pulse bg-gray-50/20" />
                   </TableRow>
                 ))
-              ) : filteredCustomers.length === 0 ? (
+              ) : customers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="h-40 text-center text-gray-400">
-                    Nenhum cliente cadastrado.
+                    Nenhum cliente encontrado.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredCustomers.map((customer) => (
+                customers.map((customer) => (
                   <TableRow 
                     key={customer.id} 
                     className="border-gray-50 group hover:bg-gray-50/30 transition-colors cursor-pointer"
@@ -222,10 +243,39 @@ const Customers = () => {
               )}
             </TableBody>
           </Table>
+
+          {/* Controles de Paginação */}
+          {totalPages > 1 && (
+            <div className="p-6 bg-gray-50/50 border-t flex items-center justify-center gap-4">
+              <Button 
+                variant="outline" 
+                size="icon" 
+                disabled={currentPage === 1 || loading}
+                onClick={() => setCurrentPage(prev => prev - 1)}
+                className="rounded-xl border-gray-100 bg-white"
+              >
+                <ChevronLeft size={18} />
+              </Button>
+              
+              <div className="text-xs font-bold uppercase tracking-widest text-gray-500">
+                Página {currentPage} de {totalPages}
+              </div>
+
+              <Button 
+                variant="outline" 
+                size="icon" 
+                disabled={currentPage === totalPages || loading}
+                onClick={() => setCurrentPage(prev => prev + 1)}
+                className="rounded-xl border-gray-100 bg-white"
+              >
+                <ChevronRight size={18} />
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Modal de Detalhes do Cliente */}
+      {/* Modais existentes (Details/Delete) mantidos... */}
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
         <DialogContent className="max-w-2xl rounded-[32px] border-none shadow-2xl p-0 overflow-hidden">
           {selectedCustomer && (
@@ -243,7 +293,6 @@ const Customers = () => {
               </DialogHeader>
 
               <div className="p-8 space-y-8 max-h-[60vh] overflow-y-auto scrollbar-hide">
-                {/* Informações Básicas */}
                 <div className="space-y-4">
                   <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#B89C6A] flex items-center gap-2">
                     <UserIcon size={14} /> Dados Pessoais
@@ -270,7 +319,6 @@ const Customers = () => {
                   </div>
                 </div>
 
-                {/* Localização Detalhada */}
                 <div className="space-y-4">
                   <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#B89C6A] flex items-center gap-2">
                     <MapPin size={14} /> Endereço de Entrega
@@ -310,7 +358,6 @@ const Customers = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Alerta de Confirmação de Exclusão */}
       <AlertDialog open={!!customerToDelete} onOpenChange={(open) => !open && setCustomerToDelete(null)}>
         <AlertDialogContent className="rounded-[32px] border-none shadow-2xl p-8">
           <AlertDialogHeader>
@@ -319,17 +366,13 @@ const Customers = () => {
             </div>
             <AlertDialogTitle className="text-2xl font-serif">Excluir este cliente?</AlertDialogTitle>
             <AlertDialogDescription className="text-gray-500 text-base leading-relaxed">
-              Esta ação excluirá o perfil de <strong>{customerToDelete?.full_name}</strong>. 
-              Isso não pode ser desfeito.
+              Esta ação excluirá o perfil de <strong>{customerToDelete?.full_name}</strong>. Isso não pode ser desfeito.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-8 gap-3">
             <AlertDialogCancel className="rounded-full h-12 px-8 border-gray-200">Cancelar</AlertDialogCancel>
             <AlertDialogAction 
-              onClick={(e) => {
-                e.preventDefault();
-                handleDeleteCustomer();
-              }}
+              onClick={(e) => { e.preventDefault(); handleDeleteCustomer(); }}
               disabled={isDeleting}
               className="bg-red-600 hover:bg-red-700 text-white rounded-full h-12 px-8 font-bold text-xs uppercase tracking-widest gap-2"
             >
