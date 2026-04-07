@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { AlertTriangle, CheckCircle2, Database, Layout, Copy, RefreshCw, Key, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Database, Layout, RefreshCw, Key, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface IntegrityBannerProps {
   productId: string;
@@ -24,9 +25,16 @@ export const IntegrityBanner = ({ productId, uiVariants }: IntegrityBannerProps)
     try {
       // 1. Verificação de Auth (RLS Check)
       const { data: { session } } = await supabase.auth.getSession();
+      
+      const { data: profile } = session ? await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .maybeSingle() : { data: null };
+
       setAuthStatus({
         logged: !!session,
-        role: session?.user?.app_metadata?.role || 'anon'
+        role: profile?.role || 'anon'
       });
 
       // 2. Busca Bruta (Verdade do Banco)
@@ -71,7 +79,6 @@ export const IntegrityBanner = ({ productId, uiVariants }: IntegrityBannerProps)
           </div>
         </div>
 
-        {/* Grade de Verificação Visual */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white/50 p-4 rounded-2xl border border-gray-100">
              <span className="block text-[8px] font-bold text-gray-400 uppercase mb-2">Conexão Banco</span>
@@ -103,13 +110,12 @@ export const IntegrityBanner = ({ productId, uiVariants }: IntegrityBannerProps)
           </div>
         </div>
 
-        {/* Alertas Críticos em Texto */}
         {mismatch && (
           <div className="bg-red-500 text-white p-4 rounded-2xl flex items-center gap-4 animate-pulse">
             <ShieldAlert size={24} />
             <div>
               <p className="text-xs font-bold uppercase tracking-widest">Bloqueio de Renderização Detectado</p>
-              <p className="text-[10px] opacity-90">O Supabase retornou dados, mas a lógica do componente VariationsSection não os exibiu.</p>
+              <p className="text-[10px] opacity-90">O Supabase retornou dados, mas o código não os processou corretamente.</p>
             </div>
           </div>
         )}
