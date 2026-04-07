@@ -13,6 +13,14 @@ import { ShieldCheck, CreditCard, Truck, Tag, Loader2 } from 'lucide-react';
 import { getSafeProductImage } from '@/utils/imageHandler';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { validateCPF, maskPhone, maskCEP, maskCPF, BRAZILIAN_STATES } from '@/utils/validation';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const initialCustomerData: CustomerData = {
   fullName: '',
@@ -39,10 +47,10 @@ const Checkout = () => {
     if (profile) {
       setData({
         fullName: data.fullName || profile.full_name || '',
-        email: user?.email || '', // Email sempre vem do Auth
-        phone: data.phone || profile.phone || '',
-        cpf: data.cpf || profile.cpf || '',
-        zipCode: data.zipCode || profile.zip_code || '',
+        email: user?.email || '',
+        phone: data.phone || maskPhone(profile.phone || ''),
+        cpf: data.cpf || maskCPF(profile.cpf || ''),
+        zipCode: data.zipCode || maskCEP(profile.zip_code || ''),
         address: data.address || profile.address || '',
         number: data.number || profile.number || '',
         city: data.city || profile.city || '',
@@ -59,10 +67,34 @@ const Checkout = () => {
       return;
     }
 
+    // Validação de CPF Real
+    if (!validateCPF(data.cpf)) {
+      toast.error('Por favor, informe um CPF válido.');
+      return;
+    }
+
+    // Validação de Telefone
+    const cleanPhone = data.phone.replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      toast.error('Telefone inválido.');
+      return;
+    }
+
+    // Validação de CEP
+    const cleanCEP = data.zipCode.replace(/\D/g, '');
+    if (cleanCEP.length !== 8) {
+      toast.error('CEP inválido.');
+      return;
+    }
+
+    if (!data.state) {
+      toast.error('Por favor, selecione seu estado.');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // 1. Atualiza os dados no Perfil do Usuário (Supabase)
       if (user) {
         const { error: profileError } = await supabase
           .from('profiles')
@@ -82,7 +114,6 @@ const Checkout = () => {
         if (profileError) throw profileError;
       }
 
-      // 2. Salva o pedido
       const { error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -154,7 +185,7 @@ const Checkout = () => {
                     <Input
                       id="phone"
                       value={data.phone}
-                      onChange={(e) => updateField('phone', e.target.value)}
+                      onChange={(e) => updateField('phone', maskPhone(e.target.value))}
                       placeholder="(00) 00000-0000"
                       required
                       className="rounded-2xl h-12 bg-gray-50 border-gray-100"
@@ -165,7 +196,7 @@ const Checkout = () => {
                     <Input
                       id="cpf"
                       value={data.cpf}
-                      onChange={(e) => updateField('cpf', e.target.value)}
+                      onChange={(e) => updateField('cpf', maskCPF(e.target.value))}
                       placeholder="000.000.000-00"
                       required
                       className="rounded-2xl h-12 bg-gray-50 border-gray-100"
@@ -185,7 +216,7 @@ const Checkout = () => {
                     <Input 
                       id="zipCode" 
                       value={data.zipCode} 
-                      onChange={(e) => updateField('zipCode', e.target.value)}
+                      onChange={(e) => updateField('zipCode', maskCEP(e.target.value))}
                       placeholder="00000-000"
                       required
                       className="rounded-2xl h-12 bg-gray-50 border-gray-100"
@@ -223,15 +254,17 @@ const Checkout = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="state">Estado</Label>
-                    <Input 
-                      id="state" 
-                      value={data.state} 
-                      onChange={(e) => updateField('state', e.target.value)}
-                      placeholder="UF"
-                      required
-                      className="rounded-2xl h-12 bg-gray-50 border-gray-100"
-                    />
+                    <Label>Estado</Label>
+                    <Select value={data.state} onValueChange={(val) => updateField('state', val)}>
+                      <SelectTrigger className="rounded-2xl h-12 bg-gray-50 border-gray-100">
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-2xl">
+                        {BRAZILIAN_STATES.map((st) => (
+                          <SelectItem key={st.value} value={st.value}>{st.label} ({st.value})</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </section>
