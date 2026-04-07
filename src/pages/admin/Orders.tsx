@@ -12,12 +12,10 @@ import {
   User, 
   MapPin, 
   Calendar,
-  CreditCard,
   CheckCircle2,
   Clock,
   XCircle,
   Undo2,
-  ChevronRight,
   ExternalLink
 } from 'lucide-react';
 import { 
@@ -57,6 +55,7 @@ import { Order, OrderStatus } from '@/types/store';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { OrderStepper } from '@/components/account/OrderStepper';
 
 const statusColors: Record<OrderStatus, string> = {
   'Pago': 'bg-green-100 text-green-700',
@@ -158,7 +157,6 @@ const Orders = () => {
   return (
     <AdminLayout title="Gestão de Pedidos">
       <div className="space-y-6">
-        {/* Filtros e Busca */}
         <div className="flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -189,7 +187,6 @@ const Orders = () => {
           </Select>
         </div>
 
-        {/* Tabela de Pedidos */}
         <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden">
           <Table>
             <TableHeader className="bg-gray-50/50">
@@ -218,7 +215,11 @@ const Orders = () => {
                 filteredOrders.map((order) => {
                   const Icon = statusIcons[order.status] || Clock;
                   return (
-                    <TableRow key={order.id} className="border-gray-50 group hover:bg-gray-50/30 transition-colors">
+                    <TableRow 
+                      key={order.id} 
+                      className="border-gray-50 group hover:bg-gray-50/30 transition-colors cursor-pointer"
+                      onClick={() => openDetails(order)}
+                    >
                       <TableCell className="px-6 py-4">
                         <div>
                           <p className="font-bold text-gray-900 text-sm truncate w-24">#{order.id.split('-')[0]}</p>
@@ -245,7 +246,7 @@ const Orders = () => {
                       </TableCell>
                       <TableCell className="text-right px-6">
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                             <Button variant="ghost" className="h-8 w-8 p-0 rounded-full hover:bg-white">
                               <MoreHorizontal size={16} />
                             </Button>
@@ -269,7 +270,6 @@ const Orders = () => {
         </div>
       </div>
 
-      {/* Modal de Detalhes do Pedido */}
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-[32px] border-none shadow-2xl p-0">
           {selectedOrder && (
@@ -289,8 +289,17 @@ const Orders = () => {
               </DialogHeader>
 
               <div className="p-8 space-y-8">
+                {/* Visualização de Etapas (Stepper) para a Administração */}
+                <div className="bg-gray-50/50 p-6 rounded-[32px] border border-gray-100">
+                   <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">Mapa do Processo</h3>
+                   <OrderStepper 
+                    status={selectedOrder.status} 
+                    updatedAt={selectedOrder.updated_at || selectedOrder.created_at} 
+                    createdAt={selectedOrder.created_at} 
+                   />
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  {/* Cliente */}
                   <div className="space-y-4">
                     <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2">
                       <User size={14} /> Dados do Cliente
@@ -303,7 +312,6 @@ const Orders = () => {
                     </div>
                   </div>
 
-                  {/* Entrega */}
                   <div className="md:col-span-2 space-y-4">
                     <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2">
                       <MapPin size={14} /> Endereço de Entrega
@@ -318,7 +326,6 @@ const Orders = () => {
                   </div>
                 </div>
 
-                {/* Itens do Pedido */}
                 <div className="space-y-4">
                   <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2">
                     <ShoppingBag size={14} /> Itens Comprados
@@ -364,7 +371,6 @@ const Orders = () => {
                   </div>
                 </div>
 
-                {/* Resumo de Valores */}
                 <div className="flex justify-end">
                   <div className="w-full md:w-64 space-y-3">
                     <div className="flex justify-between text-sm">
@@ -382,7 +388,6 @@ const Orders = () => {
                   </div>
                 </div>
 
-                {/* Atualização de Status e Rastreio */}
                 <div className="pt-8 border-t space-y-6">
                   <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400">Gerenciamento Logístico</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
