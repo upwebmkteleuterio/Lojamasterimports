@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { getSafeProductImage } from '@/utils/imageHandler';
 import { OrderStepper } from './OrderStepper';
+import { cn } from '@/lib/utils';
 
 export const OrdersSection = () => {
   const { user } = useAuth();
