@@ -93,43 +93,50 @@ const ProductForm = () => {
     if (!id) return;
     
     try {
-      diamondDebug('info', `Buscando produto e variantes para ID: ${id}`);
+      diamondDebug('info', `[PONTE] Iniciando carga via Relacionamento Inverso para ID: ${id}`);
       
-      // Busca produto
-      const { data: prod, error: prodError } = await supabase.from('products').select('*').eq('id', id).single();
-      if (prodError) throw prodError;
-      
-      if (prod) {
-        setFormData(prod);
-        checkIntegrity('products', id, prod);
-      }
-      
-      // Busca variantes de forma isolada e GARANTE que o estado seja atualizado
-      const { data: dbVariants, error: varError } = await supabase
-        .from('product_variants')
-        .select('*')
-        .eq('product_id', id);
-      
-      if (varError) throw varError;
+      // ESTRATÉGIA VENCEDORA: Buscar produto e variantes em uma única query (Join)
+      // Isso evita o problema de tipagem de UUID na cláusula WHERE isolada.
+      const { data: fullData, error } = await supabase
+        .from('products')
+        .select('*, product_variants(*)')
+        .eq('id', id)
+        .maybeSingle();
 
-      if (dbVariants) {
-        diamondDebug('success', `Carregadas ${dbVariants.length} variantes do banco.`, dbVariants);
-        // Mapeia para garantir que números sejam números (numeric do postgres às vezes vem como string)
-        const mappedVariants = dbVariants.map(v => ({
-          ...v,
-          price: Number(v.price),
-          cost_price: Number(v.cost_price || 0),
-          promo_price: Number(v.promo_price || 0),
-          weight: Number(v.weight || 0),
-          height: Number(v.height || 0),
-          width: Number(v.width || 0),
-          length: Number(v.length || 0)
-        }));
-        setVariants(mappedVariants);
+      if (error) throw error;
+      
+      if (fullData) {
+        // Separa os dados para os estados da UI
+        const { product_variants, ...productInfo } = fullData;
+        
+        setFormData(productInfo);
+        
+        if (product_variants && product_variants.length > 0) {
+          diamondDebug('success', `[PONTE] Sincronização concluída: ${product_variants.length} variantes carregadas via Join.`);
+          
+          const mappedVariants = product_variants.map((v: any) => ({
+            ...v,
+            price: Number(v.price),
+            cost_price: Number(v.cost_price || 0),
+            promo_price: Number(v.promo_price || 0),
+            weight: Number(v.weight || 0),
+            height: Number(v.height || 0),
+            width: Number(v.width || 0),
+            length: Number(v.length || 0)
+          }));
+          
+          setVariants(mappedVariants);
+        } else {
+          diamondDebug('info', '[PONTE] Produto carregado, mas não possui variações no banco.');
+          setVariants([]);
+        }
+        
+        // Diagnóstico de integridade pós-carga
+        checkIntegrity('products', id, productInfo);
       }
     } catch (error: any) {
-      diamondDebug('error', 'Erro ao carregar dados do produto', error);
-      toast.error("Erro ao carregar dados do banco.");
+      diamondDebug('error', 'Erro crítico na carga de dados', error);
+      toast.error("Erro ao sincronizar com o banco de dados.");
     }
   };
 
@@ -170,7 +177,6 @@ const ProductForm = () => {
 
       // 2. Sincroniza Variantes (Lógica Segura)
       if (savedProd) {
-        // Primeiro, buscamos as variações que existem atualmente no banco para este produto
         const { data: currentVars } = await supabase
           .from('product_variants')
           .select('id')
@@ -178,20 +184,15 @@ const ProductForm = () => {
         
         const currentIds = (currentVars || []).map(v => v.id);
         const incomingIds = variants.map(v => v.id).filter(Boolean);
-
-        // Identifica IDs para deletar (os que estão no banco mas não vieram da UI)
         const idsToDelete = currentIds.filter(id => !incomingIds.includes(id));
         
         if (idsToDelete.length > 0) {
           await supabase.from('product_variants').delete().in('id', idsToDelete);
         }
 
-        // Prepara variantes para Upsert (preserva IDs existentes para não quebrar constraints)
         if (variants.length > 0) {
           const variantsToUpsert = variants.map(v => {
-            // Se o ID for um UUID válido, mantém. Se for algo como 'temp-' ou nulo, remove para o banco gerar.
             const isTempId = !v.id || v.id.toString().startsWith('temp');
-            
             return {
               ...(isTempId ? {} : { id: v.id }),
               product_id: savedProd.id,
