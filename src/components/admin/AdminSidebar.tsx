@@ -3,16 +3,17 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
 import {
   LayoutDashboard,
   Package,
-  Layers,
   Settings,
   Users,
   TrendingUp,
   ChevronDown,
   ShoppingBag,
   DollarSign,
+  LogOut,
 } from 'lucide-react';
 
 const menuItems = [
@@ -35,11 +36,17 @@ const menuItems = [
   { label: 'Configurações', icon: Settings, path: '/adm/configuracoes' },
 ];
 
-export const AdminSidebar = () => {
+interface AdminSidebarProps {
+  onItemClick?: () => void;
+  className?: string;
+}
+
+export const AdminSidebar = ({ onItemClick, className }: AdminSidebarProps) => {
   const location = useLocation();
+  const { signOut, profile } = useAuth();
 
   return (
-    <aside className="w-64 h-screen bg-white border-r border-gray-100 flex flex-col fixed left-0 top-0 z-50">
+    <aside className={cn("w-64 h-full bg-white border-r border-gray-100 flex flex-col", className)}>
       <div className="p-6 border-b border-gray-50">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-[#B89C6A] rounded-lg flex items-center justify-center text-white font-bold">
@@ -52,7 +59,6 @@ export const AdminSidebar = () => {
       <nav className="flex-1 overflow-y-auto py-6">
         <ul className="space-y-1 px-3">
           {menuItems.map((item) => {
-            // Verifica se o item principal ou qualquer um de seus sub-itens está ativo
             const isAnySubItemActive = item.submenu?.some(sub => 
               location.pathname === sub.path || (sub.path !== '/adm/produtos' && location.pathname.startsWith(sub.path))
             );
@@ -66,6 +72,7 @@ export const AdminSidebar = () => {
               <li key={item.label}>
                 <Link
                   to={item.path}
+                  onClick={onItemClick}
                   className={cn(
                     "flex items-center justify-between px-4 py-3 rounded-xl transition-all group",
                     isActive ? "bg-[#B89C6A]/10 text-[#B89C6A]" : "text-gray-500 hover:bg-gray-50"
@@ -89,6 +96,7 @@ export const AdminSidebar = () => {
                         <li key={sub.label}>
                           <Link
                             to={sub.path}
+                            onClick={onItemClick}
                             className={cn(
                               "block px-4 py-2 text-xs font-medium rounded-lg transition-colors",
                               isSubActive ? "text-[#B89C6A]" : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"
@@ -107,16 +115,24 @@ export const AdminSidebar = () => {
         </ul>
       </nav>
 
-      <div className="p-4 border-t border-gray-50">
+      <div className="p-4 border-t border-gray-50 space-y-2">
         <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#B89C6A] font-bold border border-gray-100">
-            AD
+            {profile?.full_name?.charAt(0) || 'A'}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-gray-900 truncate">Admin Diamond</p>
-            <p className="text-[10px] text-gray-400 truncate">admin@diamond.com</p>
+            <p className="text-xs font-bold text-gray-900 truncate">{profile?.full_name || 'Admin Diamond'}</p>
+            <p className="text-[10px] text-gray-400 truncate">{profile?.role === 'adm' ? 'Administrador' : 'Usuário'}</p>
           </div>
         </div>
+        
+        <button 
+          onClick={() => signOut()}
+          className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors text-sm font-medium"
+        >
+          <LogOut size={20} />
+          <span>Sair do Painel</span>
+        </button>
       </div>
     </aside>
   );
