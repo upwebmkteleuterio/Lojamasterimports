@@ -13,9 +13,10 @@ import {
   Loader2,
   Eye,
   MapPin,
-  CreditCard,
   User as UserIcon,
-  Hash
+  CreditCard,
+  Hash,
+  Map
 } from 'lucide-react';
 import { 
   Table, 
@@ -120,6 +121,9 @@ const Customers = () => {
     setSelectedCustomer(customer);
     setIsDetailsOpen(true);
   };
+
+  // Helper para exibir valor ou placeholder
+  const displayVal = (val: any) => val && val.trim() !== "" ? val : <span className="text-gray-300 italic">Não informado</span>;
 
   return (
     <AdminLayout title="Gestão de Clientes">
@@ -238,65 +242,66 @@ const Customers = () => {
                 </div>
               </DialogHeader>
 
-              <div className="p-8 space-y-8">
+              <div className="p-8 space-y-8 max-h-[60vh] overflow-y-auto scrollbar-hide">
                 {/* Informações Básicas */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                      <UserIcon size={14} /> Dados Pessoais
-                    </h3>
-                    <div className="space-y-3 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-gray-400">E-mail</span>
-                        <span className="font-bold text-gray-700 truncate max-w-[180px]">{selectedCustomer.email || 'Não informado'}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-gray-400">CPF</span>
-                        <span className="font-bold text-gray-700">{selectedCustomer.cpf || 'Não informado'}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-gray-400">Telefone</span>
-                        <span className="font-bold text-gray-700">{selectedCustomer.phone || 'Não informado'}</span>
-                      </div>
+                <div className="space-y-4">
+                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#B89C6A] flex items-center gap-2">
+                    <UserIcon size={14} /> Dados Pessoais
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 flex flex-col gap-1">
+                      <span className="text-[9px] font-bold text-gray-400 uppercase">E-mail de Acesso</span>
+                      <span className="text-sm font-bold text-gray-700 truncate">{displayVal(selectedCustomer.email)}</span>
                     </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                      <MapPin size={14} /> Localização
-                    </h3>
-                    <div className="space-y-3 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-gray-400">CEP</span>
-                        <span className="font-bold text-gray-700">{selectedCustomer.zip_code || '---'}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-gray-400">Cidade/UF</span>
-                        <span className="font-bold text-gray-700">{selectedCustomer.city || '---'} - {selectedCustomer.state || '--'}</span>
-                      </div>
+                    <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 flex flex-col gap-1">
+                      <span className="text-[9px] font-bold text-gray-400 uppercase">CPF / Documento</span>
+                      <span className="text-sm font-bold text-gray-700">{displayVal(selectedCustomer.cpf)}</span>
+                    </div>
+                    <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 flex flex-col gap-1">
+                      <span className="text-[9px] font-bold text-gray-400 uppercase">Telefone / WhatsApp</span>
+                      <span className="text-sm font-bold text-gray-700">{displayVal(selectedCustomer.phone)}</span>
+                    </div>
+                    <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 flex flex-col gap-1">
+                      <span className="text-[9px] font-bold text-gray-400 uppercase">Data de Cadastro</span>
+                      <span className="text-sm font-bold text-gray-700">
+                        {selectedCustomer.updated_at ? format(new Date(selectedCustomer.updated_at), "dd/MM/yyyy HH:mm") : '---'}
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Endereço Completo */}
+                {/* Localização Detalhada */}
                 <div className="space-y-4">
-                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#B89C6A] flex items-center gap-2">
                     <MapPin size={14} /> Endereço de Entrega
                   </h3>
-                  <div className="p-5 bg-[#B89C6A]/5 rounded-3xl border border-[#B89C6A]/10">
-                    <p className="text-sm font-medium text-gray-700 leading-relaxed">
-                      {selectedCustomer.address ? (
-                        <>
-                          {selectedCustomer.address}{selectedCustomer.number && `, ${selectedCustomer.number}`}
-                        </>
-                      ) : 'Endereço não cadastrado'}
-                    </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="md:col-span-2 bg-gray-50/50 p-4 rounded-2xl border border-gray-100 flex flex-col gap-1">
+                      <span className="text-[9px] font-bold text-gray-400 uppercase">Logradouro (Rua/Av)</span>
+                      <span className="text-sm font-bold text-gray-700">{displayVal(selectedCustomer.address)}</span>
+                    </div>
+                    <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 flex flex-col gap-1">
+                      <span className="text-[9px] font-bold text-gray-400 uppercase">Número</span>
+                      <span className="text-sm font-bold text-gray-700">{displayVal(selectedCustomer.number)}</span>
+                    </div>
+                    <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 flex flex-col gap-1">
+                      <span className="text-[9px] font-bold text-gray-400 uppercase">CEP</span>
+                      <span className="text-sm font-bold text-gray-700">{displayVal(selectedCustomer.zip_code)}</span>
+                    </div>
+                    <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 flex flex-col gap-1">
+                      <span className="text-[9px] font-bold text-gray-400 uppercase">Cidade</span>
+                      <span className="text-sm font-bold text-gray-700">{displayVal(selectedCustomer.city)}</span>
+                    </div>
+                    <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 flex flex-col gap-1">
+                      <span className="text-[9px] font-bold text-gray-400 uppercase">Estado (UF)</span>
+                      <span className="text-sm font-bold text-gray-700">{displayVal(selectedCustomer.state)}</span>
+                    </div>
                   </div>
                 </div>
               </div>
 
               <DialogFooter className="p-8 border-t bg-gray-50/30">
-                <Button onClick={() => setIsDetailsOpen(false)} className="rounded-full px-10 h-12 bg-black hover:bg-zinc-800 font-bold uppercase text-[10px] tracking-widest text-white">
+                <Button onClick={() => setIsDetailsOpen(false)} className="rounded-full px-10 h-12 bg-black hover:bg-zinc-800 font-bold uppercase text-[10px] tracking-widest text-white shadow-lg shadow-black/10">
                   Fechar Visualização
                 </Button>
               </DialogFooter>
