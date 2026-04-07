@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit3, Trash2, FileSpreadsheet, Search, Filter, Eye } from 'lucide-react';
+import { Plus, Edit3, Trash2, FileSpreadsheet, Search, Filter, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+const ITEMS_PER_PAGE = 50;
+
 const Products = () => {
   const [products, setProducts] = useState<any[]>([]);
   const [niches, setNiches] = useState<any[]>([]);
@@ -30,36 +32,77 @@ const Products = () => {
   const [nicheFilter, setNicheFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
+  // Paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
   useEffect(() => {
-    fetchInitialData();
+    fetchNiches();
   }, []);
 
-  const fetchInitialData = async () => {
+  // Recarrega produtos sempre que um filtro ou a página mudar
+  useEffect(() => {
+    fetchProducts();
+  }, [currentPage, searchTerm, nicheFilter, statusFilter]);
+
+  const fetchNiches = async () => {
+    const { data } = await supabase.from('category_mothers').select('id, name');
+    setNiches(data || []);
+  };
+
+  const fetchProducts = async () => {
     setLoading(true);
     try {
-      const { data: prods, error: pError } = await supabase
+      const from = (currentPage - 1) * ITEMS_PER_PAGE;
+      const to = from + ITEMS_PER_PAGE - 1;
+
+      // Inicia a query básica com contagem exata
+      let query = supabase
         .from('products')
         .select(`
           *, 
           category_mothers (name),
           product_variants (id)
-        `)
-        .order('created_at', { ascending: false });
-      
-      if (pError) throw pError;
-      setProducts(prods || []);
+        `, { count: 'exact' });
 
-      const { data: catMothers } = await supabase
-        .from('category_mothers')
-        .select('id, name');
+      // Aplica Filtro de Nome (Busca)
+      if (searchTerm) {
+        query = query.ilike('name', `%${searchTerm}%`);
+      }
+
+      // Aplica Filtro de Nicho
+      if (nicheFilter !== "all") {
+        query = query.eq('category_mother_id', nicheFilter);
+      }
+
+      // Aplica Filtro de Status
+      if (statusFilter !== "all") {
+        query = query.eq('is_active', statusFilter === "active");
+      }
+
+      // Ordenação e Range (Paginação)
+      const { data, error, count } = await query
+        .order('created_at', { ascending: false })
+        .range(from, to);
       
-      setNiches(catMothers || []);
+      if (error) throw error;
+      
+      setProducts(data || []);
+      setTotalCount(count || 0);
       
     } catch (error: any) {
-      toast.error("Erro ao carregar dados: " + error.message);
+      toast.error("Erro ao carregar catálogo: " + error.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Reseta para a página 1 ao mudar qualquer filtro
+  const handleFilterChange = (type: 'search' | 'niche' | 'status', value: string) => {
+    if (type === 'search') setSearchTerm(value);
+    if (type === 'niche') setNicheFilter(value);
+    if (type === 'status') setStatusFilter(value);
+    setCurrentPage(1);
   };
 
   const handleDelete = async (id: string) => {
@@ -67,21 +110,14 @@ const Products = () => {
     try {
       const { error } = await supabase.from('products').delete().eq('id', id);
       if (error) throw error;
-      setProducts(products.filter(p => p.id !== id));
       toast.success("Produto removido");
+      fetchProducts(); // Recarrega a página atual para atualizar a lista e contagem
     } catch (error: any) {
       toast.error("Erro ao deletar: " + error.message);
     }
   };
 
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesNiche = nicheFilter === "all" || product.category_mother_id === nicheFilter;
-    const matchesStatus = statusFilter === "all" || 
-      (statusFilter === "active" ? product.is_active === true : product.is_active === false);
-    
-    return matchesSearch && matchesNiche && matchesStatus;
-  });
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
   const Actions = (
     <div className="flex gap-3">
@@ -104,20 +140,20 @@ const Products = () => {
     <AdminLayout title="Produtos" actions={Actions}>
       <div className="space-y-8">
         
-        {/* Barra de Filtros em Linha Única */}
+        {/* Barra de Filtros */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4 flex flex-col md:flex-row items-center gap-4">
           <div className="relative flex-1 w-full">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <Input 
-              placeholder="Buscar produto pelo nome..." 
+              placeholder="Buscar produto pelo nome no banco..." 
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => handleFilterChange('search', e.target.value)}
               className="pl-12 h-12 bg-gray-50 border-none rounded-2xl text-sm focus-visible:ring-1 focus-visible:ring-[#B89C6A]"
             />
           </div>
 
           <div className="flex gap-3 shrink-0 w-full md:w-auto">
-            <Select value={nicheFilter} onValueChange={setNicheFilter}>
+            <Select value={nicheFilter} onValueChange={(v) => handleFilterChange('niche', v)}>
               <SelectTrigger className="w-full md:w-[200px] h-12 rounded-2xl bg-gray-50 border-none text-xs font-bold uppercase tracking-widest text-gray-500">
                 <div className="flex items-center gap-2">
                   <Filter size={14} />
@@ -132,7 +168,7 @@ const Products = () => {
               </SelectContent>
             </Select>
 
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={(v) => handleFilterChange('status', v)}>
               <SelectTrigger className="w-full md:w-[200px] h-12 rounded-2xl bg-gray-50 border-none text-xs font-bold uppercase tracking-widest text-gray-500">
                 <div className="flex items-center gap-2">
                   <Filter size={14} />
@@ -163,9 +199,9 @@ const Products = () => {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {loading ? (
-                  <tr><td colSpan={6} className="px-8 py-20 text-center text-gray-400">Carregando catálogo...</td></tr>
-                ) : filteredProducts.length > 0 ? (
-                  filteredProducts.map((product) => (
+                  <tr><td colSpan={6} className="px-8 py-20 text-center text-gray-400">Buscando itens no servidor...</td></tr>
+                ) : products.length > 0 ? (
+                  products.map((product) => (
                     <tr key={product.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-8 py-5">
                         <div className="flex items-center gap-4">
@@ -228,13 +264,42 @@ const Products = () => {
                 ) : (
                   <tr>
                     <td colSpan={6} className="px-8 py-20 text-center text-gray-400 italic">
-                      Nenhum produto encontrado para os filtros selecionados.
+                      Nenhum produto encontrado no banco para estes filtros.
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
+
+          {/* Controles de Paginação */}
+          {totalPages > 1 && (
+            <div className="p-6 bg-gray-50/50 border-t flex items-center justify-center gap-4">
+              <Button 
+                variant="outline" 
+                size="icon" 
+                disabled={currentPage === 1 || loading}
+                onClick={() => setCurrentPage(prev => prev - 1)}
+                className="rounded-xl border-gray-100 bg-white"
+              >
+                <ChevronLeft size={18} />
+              </Button>
+              
+              <div className="text-xs font-bold uppercase tracking-widest text-gray-500">
+                Página {currentPage} de {totalPages} ({totalCount} total)
+              </div>
+
+              <Button 
+                variant="outline" 
+                size="icon" 
+                disabled={currentPage === totalPages || loading}
+                onClick={() => setCurrentPage(prev => prev + 1)}
+                className="rounded-xl border-gray-100 bg-white"
+              >
+                <ChevronRight size={18} />
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
