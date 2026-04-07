@@ -3,23 +3,32 @@
 import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit3, Trash2, FileSpreadsheet, Search } from 'lucide-react';
+import { Plus, Edit3, Trash2, FileSpreadsheet, Search, Filter } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { getSafeProductImage } from '@/utils/imageHandler';
 import { ProductImportModal } from '@/components/admin/import/ProductImportModal';
-import { DeleteNicheProducts } from '@/components/admin/import/DeleteNicheProducts';
-import { diamondDebug } from '@/utils/debug';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const Products = () => {
   const [products, setProducts] = useState<any[]>([]);
   const [niches, setNiches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  
+  // Filtros
   const [searchTerm, setSearchTerm] = useState("");
+  const [nicheFilter, setNicheFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   useEffect(() => {
     fetchInitialData();
@@ -36,13 +45,12 @@ const Products = () => {
       
       setProducts(prods || []);
 
-      // Busca nichos reais para criar os botões de limpeza
+      // Busca nichos reais para o filtro
       const { data: catMothers } = await supabase
         .from('category_mothers')
         .select('id, name');
       
       setNiches(catMothers || []);
-      diamondDebug('info', 'Nichos carregados para o painel de limpeza:', catMothers);
       
     } catch (error: any) {
       toast.error("Erro ao carregar dados: " + error.message);
@@ -63,9 +71,14 @@ const Products = () => {
     }
   };
 
-  const filteredProducts = products.filter(product => 
-    product.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredProducts = products.filter(product => {
+    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesNiche = nicheFilter === "all" || product.category_mother_id === nicheFilter;
+    const matchesStatus = statusFilter === "all" || 
+      (statusFilter === "active" ? product.is_active === true : product.is_active === false);
+    
+    return matchesSearch && matchesNiche && matchesStatus;
+  });
 
   const Actions = (
     <div className="flex gap-3">
@@ -87,23 +100,10 @@ const Products = () => {
   return (
     <AdminLayout title="Produtos" actions={Actions}>
       <div className="space-y-8">
-        {/* Painel de Controle Dinâmico */}
-        {niches.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {niches.map(niche => (
-              <DeleteNicheProducts 
-                key={niche.id}
-                nicheId={niche.id} 
-                nicheName={niche.name} 
-                onSuccess={fetchInitialData} 
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Barra de Busca */}
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4">
-          <div className="relative max-w-md">
+        
+        {/* Barra de Filtros */}
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4 flex flex-col md:flex-row gap-4 items-center">
+          <div className="relative flex-1 w-full">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <Input 
               placeholder="Buscar produto pelo nome..." 
@@ -111,6 +111,39 @@ const Products = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-12 h-12 bg-gray-50 border-none rounded-2xl text-sm focus-visible:ring-1 focus-visible:ring-[#B89C6A]"
             />
+          </div>
+
+          <div className="flex flex-wrap gap-3 w-full md:w-auto">
+            {/* Filtro de Nicho */}
+            <Select value={nicheFilter} onValueChange={setNicheFilter}>
+              <SelectTrigger className="w-full md:w-[180px] h-12 rounded-2xl bg-gray-50 border-none text-xs font-bold uppercase tracking-widest text-gray-500">
+                <div className="flex items-center gap-2">
+                  <Filter size={14} />
+                  <SelectValue placeholder="Nicho" />
+                </div>
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl border-gray-100">
+                <SelectItem value="all">Todos os Nichos</SelectItem>
+                {niches.map(niche => (
+                  <SelectItem key={niche.id} value={niche.id}>{niche.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Filtro de Status */}
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full md:w-[180px] h-12 rounded-2xl bg-gray-50 border-none text-xs font-bold uppercase tracking-widest text-gray-500">
+                <div className="flex items-center gap-2">
+                  <Filter size={14} />
+                  <SelectValue placeholder="Status" />
+                </div>
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl border-gray-100">
+                <SelectItem value="all">Todos Status</SelectItem>
+                <SelectItem value="active">Ativos</SelectItem>
+                <SelectItem value="inactive">Inativos</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -184,7 +217,9 @@ const Products = () => {
                 ) : (
                   <tr>
                     <td colSpan={6} className="px-8 py-20 text-center text-gray-400 italic">
-                      {searchTerm ? `Nenhum produto encontrado para "${searchTerm}"` : "Catálogo vazio. Use o botão acima para importar ou criar novos produtos."}
+                      {searchTerm || nicheFilter !== "all" || statusFilter !== "all" ? 
+                        "Nenhum produto encontrado para os filtros selecionados." : 
+                        "Catálogo vazio. Use o botão acima para importar ou criar novos produtos."}
                     </td>
                   </tr>
                 )}
