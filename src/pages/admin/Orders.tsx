@@ -16,7 +16,9 @@ import {
   Clock,
   XCircle,
   Undo2,
-  ExternalLink
+  ExternalLink,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { 
   Table, 
@@ -77,11 +79,18 @@ const statusIcons: Record<OrderStatus, any> = {
   'Preparando Pedido': Package,
 };
 
+const ITEMS_PER_PAGE = 50;
+
 const Orders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  
+  // Estados de Paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
@@ -89,18 +98,36 @@ const Orders = () => {
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [currentPage, statusFilter, searchTerm]);
 
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const from = (currentPage - 1) * ITEMS_PER_PAGE;
+      const to = from + ITEMS_PER_PAGE - 1;
+
+      let query = supabase
         .from('orders')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*', { count: 'exact' });
+
+      // Aplica filtros no banco de dados
+      if (statusFilter !== 'all') {
+        query = query.eq('status', statusFilter);
+      }
+
+      if (searchTerm) {
+        // Busca simples por ID ou via JSONB para nome/email
+        query = query.or(`id.ilike.%${searchTerm}%,customer_data->>fullName.ilike.%${searchTerm}%,customer_data->>email.ilike.%${searchTerm}%`);
+      }
+
+      const { data, error, count } = await query
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
       if (error) throw error;
+      
       setOrders((data as any[]) || []);
+      setTotalCount(count || 0);
     } catch (error: any) {
       toast.error('Erro ao buscar pedidos: ' + error.message);
     } finally {
@@ -133,16 +160,15 @@ const Orders = () => {
     }
   };
 
-  const filteredOrders = orders.filter(order => {
-    const matchesSearch = 
-      order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customer_data.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customer_data.email.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  });
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1); // Reseta para a primeira página ao buscar
+  };
+
+  const handleStatusChange = (val: string) => {
+    setStatusFilter(val);
+    setCurrentPage(1); // Reseta para a primeira página ao filtrar
+  };
 
   const openDetails = (order: Order) => {
     setSelectedOrder(order);
@@ -154,6 +180,8 @@ const Orders = () => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
 
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+
   return (
     <AdminLayout title="Gestão de Pedidos">
       <div className="space-y-6">
@@ -163,11 +191,11 @@ const Orders = () => {
             <Input 
               placeholder="Buscar por ID, nome ou e-mail..." 
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleSearchChange}
               className="pl-10 rounded-2xl border-gray-100 bg-white"
             />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={statusFilter} onValueChange={handleStatusChange}>
             <SelectTrigger className="w-full md:w-[200px] rounded-2xl border-gray-100 bg-white">
               <div className="flex items-center gap-2">
                 <Filter size={16} className="text-gray-400" />
@@ -205,14 +233,14 @@ const Orders = () => {
                     <TableCell colSpan={5} className="h-16 animate-pulse bg-gray-50/20" />
                   </TableRow>
                 ))
-              ) : filteredOrders.length === 0 ? (
+              ) : orders.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="h-40 text-center text-gray-400">
                     Nenhum pedido encontrado.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredOrders.map((order) => {
+                orders.map((order) => {
                   const Icon = statusIcons[order.status] || Clock;
                   return (
                     <TableRow 
@@ -255,9 +283,6 @@ const Orders = () => {
                             <DropdownMenuItem onClick={() => openDetails(order)} className="gap-2 cursor-pointer rounded-xl">
                               <Eye size={14} /> Detalhes
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="gap-2 cursor-pointer rounded-xl text-blue-600">
-                              <ExternalLink size={14} /> Ver comprovante
-                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -267,6 +292,33 @@ const Orders = () => {
               )}
             </TableBody>
           </Table>
+
+          {/* Paginação */}
+          {totalPages > 1 && (
+            <div className="p-6 border-t border-gray-50 bg-gray-50/20 flex items-center justify-center gap-4">
+              <Button 
+                variant="outline" 
+                size="icon" 
+                disabled={currentPage === 1 || loading}
+                onClick={() => setCurrentPage(prev => prev - 1)}
+                className="rounded-xl border-gray-100 bg-white"
+              >
+                <ChevronLeft size={18} />
+              </Button>
+              <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+                Página {currentPage} de {totalPages} ({totalCount} total)
+              </span>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                disabled={currentPage === totalPages || loading}
+                onClick={() => setCurrentPage(prev => prev + 1)}
+                className="rounded-xl border-gray-100 bg-white"
+              >
+                <ChevronRight size={18} />
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
