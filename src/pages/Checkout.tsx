@@ -32,26 +32,24 @@ const Checkout = () => {
   const { user, profile } = useAuth();
   const { data, updateField, setData } = usePersistence<CustomerData>('checkout_form', initialCustomerData);
   const [loading, setLoading] = useState(false);
-  const [shippingCost] = useState(0); // Por enquanto grátis, mas preparado para integração
+  const [shippingCost] = useState(0);
 
-  // Preenche dados do perfil se logado e formulário vazio
+  // Sincroniza dados do perfil para o formulário
   useEffect(() => {
-    if (profile && !data.fullName && !data.email) {
+    if (profile) {
       setData({
-        fullName: profile.full_name || '',
-        email: user?.email || '',
-        phone: profile.phone || '',
-        cpf: profile.cpf || '',
-        zipCode: profile.zip_code || '',
-        address: profile.address || '',
-        number: profile.number || '',
-        city: profile.city || '',
-        state: profile.state || '',
+        fullName: data.fullName || profile.full_name || '',
+        email: user?.email || '', // Email sempre vem do Auth
+        phone: data.phone || profile.phone || '',
+        cpf: data.cpf || profile.cpf || '',
+        zipCode: data.zipCode || profile.zip_code || '',
+        address: data.address || profile.address || '',
+        number: data.number || profile.number || '',
+        city: data.city || profile.city || '',
+        state: data.state || profile.state || '',
       });
-    } else if (user?.email && !data.email) {
-      updateField('email', user.email);
     }
-  }, [profile, user, setData]);
+  }, [profile, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,8 +62,28 @@ const Checkout = () => {
     setLoading(true);
 
     try {
-      // Salva no Supabase
-      const { data: orderData, error } = await supabase
+      // 1. Atualiza os dados no Perfil do Usuário (Supabase)
+      if (user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            full_name: data.fullName,
+            phone: data.phone,
+            cpf: data.cpf,
+            zip_code: data.zipCode,
+            address: data.address,
+            number: data.number,
+            city: data.city,
+            state: data.state,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id);
+
+        if (profileError) throw profileError;
+      }
+
+      // 2. Salva o pedido
+      const { error: orderError } = await supabase
         .from('orders')
         .insert({
           user_id: user?.id || null,
@@ -73,12 +91,10 @@ const Checkout = () => {
           shipping_cost: shippingCost,
           status: 'Pagamento Pendente',
           customer_data: data,
-          items: cart, // Itens como JSONB no banco para histórico imutável
-        })
-        .select()
-        .single();
+          items: cart,
+        });
 
-      if (error) throw error;
+      if (orderError) throw orderError;
 
       clearCart();
       limparDadosFormulario('checkout_form');
@@ -86,8 +102,8 @@ const Checkout = () => {
       toast.success('Pedido realizado com sucesso!');
       navigate('/minha-conta');
     } catch (error: any) {
-      console.error('Erro ao salvar pedido:', error);
-      toast.error('Erro ao processar pedido: ' + error.message);
+      console.error('Erro no checkout:', error);
+      toast.error('Erro ao processar: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -100,7 +116,6 @@ const Checkout = () => {
       <main className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
           
-          {/* Formulário */}
           <div className="lg:col-span-7 space-y-8">
             <h1 className="text-3xl font-serif font-bold">Finalizar Compra</h1>
             
@@ -128,10 +143,10 @@ const Checkout = () => {
                       id="email" 
                       type="email"
                       value={data.email} 
-                      onChange={(e) => updateField('email', e.target.value)}
+                      readOnly
+                      disabled
                       placeholder="seu@email.com"
-                      required
-                      className="rounded-2xl h-12 bg-gray-50 border-gray-100"
+                      className="rounded-2xl h-12 bg-gray-100 border-gray-100 cursor-not-allowed opacity-70"
                     />
                   </div>
                   <div className="space-y-2">
@@ -236,7 +251,6 @@ const Checkout = () => {
             </form>
           </div>
 
-          {/* Resumo Lateral */}
           <div className="lg:col-span-5">
             <div className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100 sticky top-24">
               <h2 className="text-xl font-bold mb-6">Resumo da Compra</h2>
@@ -293,7 +307,7 @@ const Checkout = () => {
                   <div className="flex flex-col items-center p-4 rounded-3xl border border-gray-50 bg-gray-50/50">
                     <CreditCard size={20} className="text-[#B89C6A] mb-2" />
                     <span className="text-[10px] uppercase font-bold text-gray-400">Parcelas</span>
-                    <span className="text-xs font-bold text-gray-700">Até 12x</span>
+                    <span className="text-xs font-bold text-gray-700">Parcele em até 12x</span>
                   </div>
                 </div>
               </div>
