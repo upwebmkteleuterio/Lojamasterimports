@@ -42,6 +42,9 @@ export const OrdersSection = () => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
 
+  // Padrão de tipografia solicitado
+  const labelStyle = "text-[10px] font-black uppercase tracking-[0.2em] text-gray-400";
+
   if (loading) {
     return (
       <div className="flex justify-center py-20">
@@ -82,7 +85,7 @@ export const OrdersSection = () => {
                     <Package size={28} />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Identificação do Pedido</p>
+                    <p className={labelStyle}>Identificação do Pedido</p>
                     <p className="text-lg font-serif font-bold text-gray-900">#{order.id.split('-')[0].toUpperCase()}</p>
                     <div className="flex items-center gap-2 text-xs text-gray-400">
                       <Calendar size={12} /> Realizado em {new Date(order.created_at).toLocaleDateString('pt-BR')}
@@ -90,14 +93,13 @@ export const OrdersSection = () => {
                   </div>
                 </div>
                 <div className="flex flex-col gap-2 md:items-end">
-                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 md:text-right">Status Atual</p>
+                   <p className={cn(labelStyle, "md:text-right")}>Status Atual</p>
                    <Badge className="bg-green-50 text-green-700 hover:bg-green-50 border-none rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-widest w-fit">
                     {order.status}
                   </Badge>
                 </div>
               </div>
 
-              {/* Rastreamento de Etapas (Stepper) */}
               <div className="mt-8 pt-8 border-t border-gray-100">
                 <OrderStepper 
                   status={order.status} 
@@ -109,8 +111,8 @@ export const OrdersSection = () => {
 
             <div className="p-6 md:p-10 grid grid-cols-1 lg:grid-cols-12 gap-10">
               <div className="lg:col-span-7 space-y-6">
-                <h3 className="text-sm font-black uppercase tracking-widest text-gray-900 mb-6 flex items-center gap-2">
-                  <ShoppingBag size={18} className="text-[#B89C6A]" /> Itens do Pedido
+                <h3 className={cn(labelStyle, "text-gray-900 flex items-center gap-2")}>
+                  <ShoppingBag size={14} className="text-[#B89C6A]" /> Itens do Pedido
                 </h3>
                 <div className="space-y-6">
                   {order.items.map((item: any, idx: number) => (
@@ -153,8 +155,8 @@ export const OrdersSection = () => {
               </div>
 
               <div className="lg:col-span-5 space-y-6">
-                <h3 className="text-sm font-black uppercase tracking-widest text-gray-900 mb-6 flex items-center gap-2">
-                  <MapPin size={18} className="text-[#B89C6A]" /> Endereço de Entrega
+                <h3 className={cn(labelStyle, "text-gray-900 flex items-center gap-2")}>
+                  <MapPin size={14} className="text-[#B89C6A]" /> Endereço de Entrega
                 </h3>
                 <div className="bg-gray-50/50 p-6 rounded-3xl border border-gray-100 space-y-3">
                   <p className="font-bold text-gray-900 text-sm">{order.customer_data.fullName}</p>
@@ -169,12 +171,12 @@ export const OrdersSection = () => {
 
             <div className="bg-gray-50/80 p-6 md:p-10 border-t flex flex-col md:flex-row justify-end">
               <div className="w-full md:w-80 space-y-3">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-400 font-medium">Subtotal</span>
+                <div className="flex justify-between items-center">
+                  <span className={labelStyle}>Subtotal</span>
                   <span className="text-gray-600 font-bold">{formatCurrency(subtotal)}</span>
                 </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-400 font-medium">Frete</span>
+                <div className="flex justify-between items-center">
+                  <span className={labelStyle}>Frete</span>
                   <span className={shipping === 0 ? "text-green-600 font-bold" : "text-gray-600 font-bold"}>
                     {shipping === 0 ? "Grátis" : formatCurrency(shipping)}
                   </span>
