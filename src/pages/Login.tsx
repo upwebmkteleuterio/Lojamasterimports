@@ -1,113 +1,221 @@
 "use client";
 
-import { Auth } from '@supabase/auth-ui-react';
-import { ThemeSupa } from '@supabase/auth-ui-shared';
-import { supabase } from '@/integrations/supabase/client';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { Navbar } from '@/components/layout/Navbar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Eye, EyeOff, Mail, Lock, User, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const Login = () => {
   const { session } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [storeName, setStoreName] = useState("Master Imports");
 
-  // Verifica se o acesso veio da administração para ocultar o cadastro se necessário
-  const isAdminPath = location.state?.from?.pathname?.startsWith('/adm');
+  // Estados dos formulários
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
 
   useEffect(() => {
     const fetchStoreConfig = async () => {
       try {
-        const { data } = await supabase
-          .from('store_configs')
-          .select('store_name')
-          .maybeSingle();
-        if (data?.store_name) {
-          setStoreName(data.store_name);
-        }
-      } catch (e) {
-        console.error("Erro ao carregar nome da loja", e);
-      }
+        const { data } = await supabase.from('store_configs').select('store_name').maybeSingle();
+        if (data?.store_name) setStoreName(data.store_name);
+      } catch (e) { console.error(e); }
     };
     fetchStoreConfig();
   }, []);
 
   useEffect(() => {
     if (session) {
-      // Se estiver logado, volta para onde tentou ir ou para a conta
       const origin = location.state?.from?.pathname || '/minha-conta';
       navigate(origin);
     }
   }, [session, navigate, location]);
 
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      toast.success("Bem-vindo de volta!");
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao entrar. Verifique seus dados.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fullName.trim()) {
+      toast.error("Por favor, informe seu nome completo.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          }
+        }
+      });
+      if (error) throw error;
+      toast.success("Conta criada! Verifique seu e-mail se necessário.");
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao criar conta.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar />
       <div className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white p-10 rounded-[40px] shadow-sm border border-gray-100">
-          <div className="text-center mb-10">
+        <div className="w-full max-w-md bg-white p-8 md:p-10 rounded-[40px] shadow-sm border border-gray-100">
+          <div className="text-center mb-8">
             <h1 className="text-2xl font-serif font-bold text-[#B89C6A] uppercase tracking-[0.2em]">{storeName}</h1>
-            <p className="text-gray-400 text-xs mt-2 font-bold uppercase tracking-widest">Acesso do Cliente</p>
+            <p className="text-gray-400 text-[10px] mt-2 font-bold uppercase tracking-widest">Acesso do Cliente</p>
           </div>
-          
-          <Auth
-            supabaseClient={supabase}
-            providers={[]}
-            view="sign_in" 
-            appearance={{
-              theme: ThemeSupa,
-              variables: {
-                default: {
-                  colors: {
-                    brand: '#B89C6A',
-                    brandAccent: '#A68B5B',
-                  },
-                },
-              },
-              className: {
-                container: 'w-full',
-                button: 'rounded-full h-14 font-bold uppercase tracking-widest text-[10px] transition-all hover:scale-[1.02]',
-                input: 'rounded-2xl h-14 bg-gray-50 border-gray-100 focus:bg-white',
-                label: 'text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4 mb-2',
-                anchor: 'text-[10px] font-bold uppercase tracking-widest text-[#B89C6A] hover:text-[#A68B5B] no-underline transition-colors mt-4 block text-center',
-              }
-            }}
-            localization={{
-              variables: {
-                sign_in: {
-                  email_label: 'Seu E-mail',
-                  password_label: 'Sua Senha',
-                  button_label: 'ENTRAR NA CONTA',
-                  loading_button_label: 'AUTENTICANDO...',
-                  link_text: 'Não tem uma conta? Cadastre-se agora',
-                  email_input_placeholder: 'exemplo@email.com',
-                  password_input_placeholder: '******',
-                },
-                sign_up: {
-                  email_label: 'E-mail para cadastro',
-                  password_label: 'Crie uma senha forte',
-                  button_label: 'CRIAR MINHA CONTA',
-                  loading_button_label: 'CADASTRANDO...',
-                  link_text: 'Já tem conta? Entre por aqui',
-                },
-                forgotten_password: {
-                  link_text: 'Esqueceu sua senha?',
-                  email_label: 'E-mail cadastrado',
-                  button_label: 'ENVIAR LINK DE RECUPERAÇÃO',
-                  loading_button_label: 'ENVIANDO...',
-                }
-              },
-            }}
-            theme="light"
-          />
 
-          {isAdminPath && (
-            <p className="mt-8 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-              Área restrita para administradores autorizados.
-            </p>
-          )}
+          <Tabs defaultValue="login" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-8 bg-gray-50 p-1 rounded-2xl h-12">
+              <TabsTrigger value="login" className="rounded-xl font-bold text-[10px] uppercase tracking-widest">Entrar</TabsTrigger>
+              <TabsTrigger value="register" className="rounded-xl font-bold text-[10px] uppercase tracking-widest">Criar conta</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="login">
+              <form onSubmit={handleSignIn} className="space-y-5">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">E-mail</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                    <Input 
+                      type="email" 
+                      placeholder="seu@email.com" 
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="pl-12 rounded-2xl h-14 bg-gray-50 border-gray-100 focus:bg-white transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">Senha</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                    <Input 
+                      type={showPassword ? "text" : "password"} 
+                      placeholder="******" 
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="px-12 rounded-2xl h-14 bg-gray-50 border-gray-100 focus:bg-white transition-all"
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+
+                <Button 
+                  type="submit" 
+                  disabled={loading}
+                  className="w-full h-14 bg-[#B89C6A] hover:bg-[#A68B5B] text-white rounded-full font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-[#B89C6A]/20 transition-all active:scale-95"
+                >
+                  {loading ? <Loader2 className="animate-spin" /> : 'ENTRAR NA CONTA'}
+                </Button>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="register">
+              <form onSubmit={handleSignUp} className="space-y-5">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">Nome Completo</Label>
+                  <div className="relative">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                    <Input 
+                      type="text" 
+                      placeholder="Ex: Maria Silva" 
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      required
+                      className="pl-12 rounded-2xl h-14 bg-gray-50 border-gray-100 focus:bg-white transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">E-mail</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                    <Input 
+                      type="email" 
+                      placeholder="seu@email.com" 
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="pl-12 rounded-2xl h-14 bg-gray-50 border-gray-100 focus:bg-white transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">Senha</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                    <Input 
+                      type={showPassword ? "text" : "password"} 
+                      placeholder="Crie uma senha forte" 
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="px-12 rounded-2xl h-14 bg-gray-50 border-gray-100 focus:bg-white transition-all"
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+
+                <Button 
+                  type="submit" 
+                  disabled={loading}
+                  className="w-full h-14 bg-black hover:bg-zinc-800 text-white rounded-full font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-black/10 transition-all active:scale-95"
+                >
+                  {loading ? <Loader2 className="animate-spin" /> : 'CRIAR MINHA CONTA'}
+                </Button>
+              </form>
+            </TabsContent>
+          </Tabs>
+
+          <p className="mt-8 text-center text-[9px] text-gray-400 font-bold uppercase tracking-widest px-4">
+            Ao continuar, você concorda com nossos termos de serviço e política de privacidade.
+          </p>
         </div>
       </div>
     </div>
