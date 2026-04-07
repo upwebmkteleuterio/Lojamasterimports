@@ -111,8 +111,9 @@ const Customers = () => {
   const filteredCustomers = customers.filter(customer => {
     const nameMatch = (customer.full_name || '').toLowerCase().includes(searchTerm.toLowerCase());
     const phoneMatch = (customer.phone || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const emailMatch = (customer.email || '').toLowerCase().includes(searchTerm.toLowerCase());
     const cpfMatch = (customer.cpf || '').toLowerCase().includes(searchTerm.toLowerCase());
-    return nameMatch || phoneMatch || cpfMatch;
+    return nameMatch || phoneMatch || emailMatch || cpfMatch;
   });
 
   const openDetails = (customer: any) => {
@@ -126,7 +127,7 @@ const Customers = () => {
         <div className="relative w-full md:w-96">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <Input 
-            placeholder="Buscar por nome, telefone ou CPF..." 
+            placeholder="Buscar por nome, e-mail ou CPF..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 rounded-2xl border-gray-100 bg-white h-12"
@@ -170,13 +171,16 @@ const Customers = () => {
                         </div>
                         <div>
                           <p className="font-bold text-gray-900 text-sm">{customer.full_name || 'Usuário Sem Nome'}</p>
-                          <p className="text-[10px] text-gray-400 uppercase tracking-wider mt-0.5">CPF: {customer.cpf || 'Não informado'}</p>
+                          <p className="text-[10px] text-gray-400 uppercase tracking-wider mt-0.5">ID: {customer.id.split('-')[0]}</p>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="space-y-1">
-                        <p className="text-sm text-gray-600 flex items-center gap-2">
+                        <p className="text-sm text-gray-700 font-medium flex items-center gap-2">
+                           <Mail size={12} className="text-gray-400" /> {customer.email || 'N/A'}
+                        </p>
+                        <p className="text-xs text-gray-500 flex items-center gap-2">
                           <Phone size={12} className="text-gray-400" /> {customer.phone || 'N/A'}
                         </p>
                       </div>
@@ -243,16 +247,16 @@ const Customers = () => {
                     </h3>
                     <div className="space-y-3 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
                       <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-400">E-mail</span>
+                        <span className="font-bold text-gray-700 truncate max-w-[180px]">{selectedCustomer.email || 'Não informado'}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
                         <span className="text-gray-400">CPF</span>
                         <span className="font-bold text-gray-700">{selectedCustomer.cpf || 'Não informado'}</span>
                       </div>
                       <div className="flex justify-between items-center text-sm">
                         <span className="text-gray-400">Telefone</span>
                         <span className="font-bold text-gray-700">{selectedCustomer.phone || 'Não informado'}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-gray-400">E-mail</span>
-                        <span className="font-bold text-gray-700 truncate max-w-[150px]">{selectedCustomer.email || 'Acessar via Auth'}</span>
                       </div>
                     </div>
                   </div>
@@ -281,15 +285,18 @@ const Customers = () => {
                   </h3>
                   <div className="p-5 bg-[#B89C6A]/5 rounded-3xl border border-[#B89C6A]/10">
                     <p className="text-sm font-medium text-gray-700 leading-relaxed">
-                      {selectedCustomer.address || 'Endereço não cadastrado'}
-                      {selectedCustomer.number && `, ${selectedCustomer.number}`}
+                      {selectedCustomer.address ? (
+                        <>
+                          {selectedCustomer.address}{selectedCustomer.number && `, ${selectedCustomer.number}`}
+                        </>
+                      ) : 'Endereço não cadastrado'}
                     </p>
                   </div>
                 </div>
               </div>
 
               <DialogFooter className="p-8 border-t bg-gray-50/30">
-                <Button onClick={() => setIsDetailsOpen(false)} className="rounded-full px-10 h-12 bg-black hover:bg-zinc-800 font-bold uppercase text-[10px] tracking-widest">
+                <Button onClick={() => setIsDetailsOpen(false)} className="rounded-full px-10 h-12 bg-black hover:bg-zinc-800 font-bold uppercase text-[10px] tracking-widest text-white">
                   Fechar Visualização
                 </Button>
               </DialogFooter>
