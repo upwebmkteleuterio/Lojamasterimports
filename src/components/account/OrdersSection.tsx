@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, Calendar, MapPin, ShoppingBag, Loader2, Tag, ChevronRight } from 'lucide-react';
+import { Package, Calendar, MapPin, ShoppingBag, Loader2, Tag } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Order } from '@/types/store';
 import { supabase } from '@/integrations/supabase/client';
@@ -74,7 +74,6 @@ export const OrdersSection = () => {
 
         return (
           <div key={order.id} className="bg-white rounded-[40px] shadow-sm border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Cabeçalho do Pedido - Melhorado para Mobile */}
             <div className="p-6 md:p-10 bg-gray-50/50 border-b">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="flex items-center gap-5">
@@ -89,7 +88,6 @@ export const OrdersSection = () => {
                     </div>
                   </div>
                 </div>
-                
                 <div className="flex flex-col gap-2 md:items-end">
                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 md:text-right">Status Atual</p>
                    <Badge className="bg-green-50 text-green-700 hover:bg-green-50 border-none rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-widest w-fit">
@@ -99,9 +97,7 @@ export const OrdersSection = () => {
               </div>
             </div>
 
-            {/* Conteúdo: Itens e Entrega */}
             <div className="p-6 md:p-10 grid grid-cols-1 lg:grid-cols-12 gap-10">
-              {/* Lista de Itens */}
               <div className="lg:col-span-7 space-y-6">
                 <h3 className="text-sm font-black uppercase tracking-widest text-gray-900 mb-6 flex items-center gap-2">
                   <ShoppingBag size={18} className="text-[#B89C6A]" /> Itens do Pedido
@@ -128,8 +124,9 @@ export const OrdersSection = () => {
                         </Link>
                         <div className="flex flex-wrap items-center gap-3 mt-1.5">
                           <span className="text-xs text-gray-400 font-medium">
-                            {item.quantity}x {formatCurrency(item.price)}
+                            Unitário: {formatCurrency(item.price)}
                           </span>
+                          <span className="text-[10px] text-gray-400">| {item.quantity} un.</span>
                           {item.selectedVariant && (
                             <span className="bg-gray-100 text-[9px] font-bold text-gray-500 px-2 py-0.5 rounded-full flex items-center gap-1 uppercase">
                               <Tag size={8} /> {item.selectedVariant.option_name}
@@ -145,7 +142,6 @@ export const OrdersSection = () => {
                 </div>
               </div>
 
-              {/* Endereço de Entrega */}
               <div className="lg:col-span-5 space-y-6">
                 <h3 className="text-sm font-black uppercase tracking-widest text-gray-900 mb-6 flex items-center gap-2">
                   <MapPin size={18} className="text-[#B89C6A]" /> Endereço de Entrega
@@ -161,7 +157,6 @@ export const OrdersSection = () => {
               </div>
             </div>
 
-            {/* Rodapé de Resumo Financeiro */}
             <div className="bg-gray-50/80 p-6 md:p-10 border-t flex flex-col md:flex-row justify-end">
               <div className="w-full md:w-80 space-y-3">
                 <div className="flex justify-between items-center text-sm">
