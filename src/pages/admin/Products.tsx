@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit3, Trash2, FileSpreadsheet, Search, Filter, Layers } from 'lucide-react';
+import { Plus, Edit3, Trash2, FileSpreadsheet, Search, Filter, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -29,7 +29,6 @@ const Products = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [nicheFilter, setNicheFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [variationFilter, setVariationFilter] = useState("all"); // NOVO FILTRO
 
   useEffect(() => {
     fetchInitialData();
@@ -38,7 +37,6 @@ const Products = () => {
   const fetchInitialData = async () => {
     setLoading(true);
     try {
-      // Busca produtos INCLUINDO a contagem de variantes via select
       const { data: prods, error: pError } = await supabase
         .from('products')
         .select(`
@@ -82,12 +80,7 @@ const Products = () => {
     const matchesStatus = statusFilter === "all" || 
       (statusFilter === "active" ? product.is_active === true : product.is_active === false);
     
-    // Lógica do novo filtro de variações
-    const hasVariants = product.product_variants && product.product_variants.length > 0;
-    const matchesVariation = variationFilter === "all" || 
-      (variationFilter === "with" ? hasVariants : !hasVariants);
-    
-    return matchesSearch && matchesNiche && matchesStatus && matchesVariation;
+    return matchesSearch && matchesNiche && matchesStatus;
   });
 
   const Actions = (
@@ -111,9 +104,9 @@ const Products = () => {
     <AdminLayout title="Produtos" actions={Actions}>
       <div className="space-y-8">
         
-        {/* Barra de Filtros Expandida */}
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4 flex flex-col gap-4">
-          <div className="relative w-full">
+        {/* Barra de Filtros em Linha Única */}
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4 flex flex-col md:flex-row items-center gap-4">
+          <div className="relative flex-1 w-full">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <Input 
               placeholder="Buscar produto pelo nome..." 
@@ -123,9 +116,9 @@ const Products = () => {
             />
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="flex gap-3 shrink-0 w-full md:w-auto">
             <Select value={nicheFilter} onValueChange={setNicheFilter}>
-              <SelectTrigger className="flex-1 min-w-[150px] h-12 rounded-2xl bg-gray-50 border-none text-xs font-bold uppercase tracking-widest text-gray-500">
+              <SelectTrigger className="w-full md:w-[200px] h-12 rounded-2xl bg-gray-50 border-none text-xs font-bold uppercase tracking-widest text-gray-500">
                 <div className="flex items-center gap-2">
                   <Filter size={14} />
                   <SelectValue placeholder="Nicho" />
@@ -139,23 +132,8 @@ const Products = () => {
               </SelectContent>
             </Select>
 
-            {/* FILTRO DE VARIAÇÕES (O TIRA-TEIMA) */}
-            <Select value={variationFilter} onValueChange={setVariationFilter}>
-              <SelectTrigger className="flex-1 min-w-[150px] h-12 rounded-2xl bg-gray-50 border-none text-xs font-bold uppercase tracking-widest text-gray-500">
-                <div className="flex items-center gap-2">
-                  <Layers size={14} />
-                  <SelectValue placeholder="Variações" />
-                </div>
-              </SelectTrigger>
-              <SelectContent className="rounded-2xl border-gray-100">
-                <SelectItem value="all">Variações: Tudo</SelectItem>
-                <SelectItem value="with">Com Variação</SelectItem>
-                <SelectItem value="without">Sem Variação</SelectItem>
-              </SelectContent>
-            </Select>
-
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="flex-1 min-w-[150px] h-12 rounded-2xl bg-gray-50 border-none text-xs font-bold uppercase tracking-widest text-gray-500">
+              <SelectTrigger className="w-full md:w-[200px] h-12 rounded-2xl bg-gray-50 border-none text-xs font-bold uppercase tracking-widest text-gray-500">
                 <div className="flex items-center gap-2">
                   <Filter size={14} />
                   <SelectValue placeholder="Status" />
@@ -224,8 +202,13 @@ const Products = () => {
                       </td>
                       <td className="px-8 py-5 text-right">
                         <div className="flex justify-end gap-2">
+                          <Link to={`/${product.category_mother_id}/produto/${product.id}`} target="_blank">
+                            <Button variant="ghost" size="icon" className="text-gray-400 hover:text-[#B89C6A] h-9 w-9" title="Ver na Loja">
+                              <Eye size={16} />
+                            </Button>
+                          </Link>
                           <Link to={`/adm/produtos/editar/${product.id}`}>
-                            <Button variant="ghost" size="icon" className="text-gray-400 hover:text-[#B89C6A] h-9 w-9">
+                            <Button variant="ghost" size="icon" className="text-gray-400 hover:text-[#B89C6A] h-9 w-9" title="Editar">
                               <Edit3 size={16} />
                             </Button>
                           </Link>
@@ -234,6 +217,7 @@ const Products = () => {
                             size="icon" 
                             className="text-gray-400 hover:text-red-500 h-9 w-9"
                             onClick={() => handleDelete(product.id)}
+                            title="Excluir"
                           >
                             <Trash2 size={16} />
                           </Button>
