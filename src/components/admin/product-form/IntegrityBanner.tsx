@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { AlertTriangle, CheckCircle2, Database, Layout, Copy, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Database, Layout, Copy, RefreshCw, Key, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -15,13 +15,21 @@ export const IntegrityBanner = ({ productId, uiVariants }: IntegrityBannerProps)
   const [dbData, setDbData] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [authStatus, setAuthStatus] = useState<any>(null);
 
   const runDiagnostic = async () => {
     if (!productId) return;
     setLoading(true);
     setError(null);
     try {
-      // 1. Teste de Conexão e Busca Bruta (Verdade do Banco)
+      // 1. Verificação de Auth (RLS Check)
+      const { data: { session } } = await supabase.auth.getSession();
+      setAuthStatus({
+        logged: !!session,
+        role: session?.user?.app_metadata?.role || 'anon'
+      });
+
+      // 2. Busca Bruta (Verdade do Banco)
       const { data, error: dbError } = await supabase
         .from('product_variants')
         .select('*')
@@ -42,75 +50,76 @@ export const IntegrityBanner = ({ productId, uiVariants }: IntegrityBannerProps)
 
   const mismatch = (dbData?.length || 0) > 0 && uiVariants.length === 0;
 
-  const copyReport = () => {
-    const report = {
-      productId,
-      timestamp: new Date().toISOString(),
-      database: {
-        accessible: !error,
-        error: error || 'none',
-        count: dbData?.length || 0,
-        ids: dbData?.map(v => v.id) || []
-      },
-      uiState: {
-        count: uiVariants.length,
-        items: uiVariants.map(v => ({ id: v.id, name: v.option_name }))
-      },
-      diagnosis: mismatch ? "MISMATCH DETECTED: Banco possui dados mas a UI está zerada." : "Íntegro ou ambos vazios."
-    };
-    navigator.clipboard.writeText(JSON.stringify(report, null, 2));
-    toast.success("Relatório de diagnóstico copiado!");
-  };
-
   return (
-    <div className={`mb-8 p-4 rounded-3xl border-2 ${mismatch ? 'border-red-500 bg-red-50' : 'border-[#B89C6A]/20 bg-white'} transition-all`}>
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${mismatch ? 'bg-red-500 text-white' : 'bg-[#B89C6A] text-white'}`}>
-            {mismatch ? <AlertTriangle size={24} /> : <CheckCircle2 size={24} />}
+    <div className={`mb-8 p-6 rounded-[32px] border-2 transition-all ${mismatch ? 'border-red-500 bg-red-50/50' : 'border-[#B89C6A]/20 bg-white'}`}>
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${mismatch ? 'bg-red-500 text-white' : 'bg-[#B89C6A] text-white'}`}>
+              {mismatch ? <AlertTriangle size={24} /> : <CheckCircle2 size={24} />}
+            </div>
+            <div>
+              <h3 className="font-bold text-sm uppercase tracking-widest">Diagnóstico Profundo de Fluxo</h3>
+              <p className="text-[10px] text-gray-500 uppercase font-mono">{productId}</p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-bold text-sm uppercase tracking-widest">Diagnóstico de Integridade Bruta</h3>
-            <p className="text-[10px] text-gray-500 uppercase font-mono">{productId}</p>
+
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={runDiagnostic} className="rounded-full h-10 px-4 gap-2 text-[10px] font-bold uppercase">
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> REFRESH
+            </Button>
           </div>
         </div>
 
-        <div className="flex gap-6 items-center px-6 border-x border-gray-100">
-          <div className="text-center">
-            <span className="block text-[8px] font-bold text-gray-400 uppercase tracking-tighter">Verdade do Banco</span>
-            <span className="flex items-center gap-1 text-xs font-bold text-gray-900">
-              <Database size={12} className="text-[#B89C6A]" /> {loading ? '...' : dbData?.length || 0} variações
-            </span>
+        {/* Grade de Verificação Visual */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-white/50 p-4 rounded-2xl border border-gray-100">
+             <span className="block text-[8px] font-bold text-gray-400 uppercase mb-2">Conexão Banco</span>
+             <div className="flex items-center gap-2">
+                <div className={cn("w-2 h-2 rounded-full", error ? "bg-red-500" : "bg-green-500")} />
+                <span className="text-xs font-bold">{error ? 'Falha' : 'Ativa'}</span>
+             </div>
           </div>
-          <div className="text-center">
-            <span className="block text-[8px] font-bold text-gray-400 uppercase tracking-tighter">Verdade da UI</span>
-            <span className={`flex items-center gap-1 text-xs font-bold ${mismatch ? 'text-red-500' : 'text-gray-900'}`}>
-              <Layout size={12} className={mismatch ? 'text-red-500' : 'text-[#B89C6A]'} /> {uiVariants.length} carregadas
-            </span>
+          <div className="bg-white/50 p-4 rounded-2xl border border-gray-100">
+             <span className="block text-[8px] font-bold text-gray-400 uppercase mb-2">Status RLS/Auth</span>
+             <div className="flex items-center gap-2">
+                <Key size={12} className="text-[#B89C6A]" />
+                <span className="text-xs font-bold uppercase">{authStatus?.role || '---'}</span>
+             </div>
+          </div>
+          <div className="bg-white/50 p-4 rounded-2xl border border-gray-100">
+             <span className="block text-[8px] font-bold text-gray-400 uppercase mb-2">Variações no Banco</span>
+             <div className="flex items-center gap-2">
+                <Database size={12} className="text-[#B89C6A]" />
+                <span className="text-xs font-bold">{dbData?.length || 0} encontradas</span>
+             </div>
+          </div>
+          <div className="bg-white/50 p-4 rounded-2xl border border-gray-100">
+             <span className="block text-[8px] font-bold text-gray-400 uppercase mb-2">Variações na UI</span>
+             <div className="flex items-center gap-2">
+                <Layout size={12} className={mismatch ? 'text-red-500' : 'text-[#B89C6A]'} />
+                <span className={cn("text-xs font-bold", mismatch && "text-red-500")}>{uiVariants.length} carregadas</span>
+             </div>
           </div>
         </div>
 
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={runDiagnostic} className="rounded-full h-10 px-4 gap-2 text-[10px] font-bold uppercase">
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> REFRESH
-          </Button>
-          <Button onClick={copyReport} className="bg-gray-900 hover:bg-black text-white rounded-full h-10 px-6 gap-2 text-[10px] font-bold uppercase tracking-widest">
-            <Copy size={14} /> COPIAR RELATÓRIO
-          </Button>
-        </div>
+        {/* Alertas Críticos em Texto */}
+        {mismatch && (
+          <div className="bg-red-500 text-white p-4 rounded-2xl flex items-center gap-4 animate-pulse">
+            <ShieldAlert size={24} />
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest">Bloqueio de Renderização Detectado</p>
+              <p className="text-[10px] opacity-90">O Supabase retornou dados, mas a lógica do componente VariationsSection não os exibiu.</p>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-red-100 text-red-600 p-4 rounded-2xl font-mono text-[10px]">
+            ERRO POSTGREST: {error}
+          </div>
+        )}
       </div>
-
-      {error && (
-        <div className="mt-4 p-3 bg-red-100 text-red-600 rounded-xl text-[10px] font-mono">
-          ERRO DE CONEXÃO DIRETA: {error}
-        </div>
-      )}
-
-      {mismatch && (
-        <div className="mt-4 p-3 bg-red-500 text-white rounded-xl text-[10px] font-bold uppercase text-center animate-pulse">
-          ⚠️ BLOQUEIO DETECTADO: Os dados existem no banco mas o código do app está impedindo a exibição.
-        </div>
-      )}
     </div>
   );
 };
