@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { usePersistence } from '@/hooks/usePersistence';
 import { diamondDebug } from '@/utils/debug';
 import { checkIntegrity, traceSaveFlow } from '@/utils/integrityDiagnostic';
+import { IntegrityBanner } from '@/components/admin/product-form/IntegrityBanner';
 
 // Importação das seções
 import { GeneralInfoSection } from '@/components/admin/product-form/GeneralInfoSection';
@@ -240,6 +241,8 @@ const ProductForm = () => {
         </div>
       }
     >
+      {id && <IntegrityBanner productId={id} uiVariants={variants} />}
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-8">
           <GeneralInfoSection name={formData.name} description={formData.description} isActive={formData.is_active} onChange={updateField} />
