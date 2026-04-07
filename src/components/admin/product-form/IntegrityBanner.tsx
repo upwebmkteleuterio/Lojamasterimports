@@ -6,6 +6,7 @@ import { AlertTriangle, CheckCircle2, Database, Layout, RefreshCw, Key, ShieldAl
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { diamondDebug } from '@/utils/debug';
 
 interface IntegrityBannerProps {
   productId: string;
@@ -22,6 +23,9 @@ export const IntegrityBanner = ({ productId, uiVariants }: IntegrityBannerProps)
     if (!productId) return;
     setLoading(true);
     setError(null);
+    
+    diamondDebug('info', `[DIAGNÓSTICO] Iniciando varredura bruta para Produto: ${productId}`);
+
     try {
       // 1. Verificação de Auth (RLS Check)
       const { data: { session } } = await supabase.auth.getSession();
@@ -32,10 +36,14 @@ export const IntegrityBanner = ({ productId, uiVariants }: IntegrityBannerProps)
         .eq('id', session.user.id)
         .maybeSingle() : { data: null };
 
-      setAuthStatus({
+      const authInfo = {
         logged: !!session,
-        role: profile?.role || 'anon'
-      });
+        role: profile?.role || 'anon',
+        userId: session?.user?.id || 'none'
+      };
+      
+      setAuthStatus(authInfo);
+      diamondDebug('info', '[DIAGNÓSTICO] Status de Autenticação:', authInfo);
 
       // 2. Busca Bruta (Verdade do Banco)
       const { data, error: dbError } = await supabase
@@ -43,10 +51,22 @@ export const IntegrityBanner = ({ productId, uiVariants }: IntegrityBannerProps)
         .select('*')
         .eq('product_id', productId);
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        diamondDebug('error', '[DIAGNÓSTICO] Erro na query bruta do banco:', dbError);
+        throw dbError;
+      }
+
       setDbData(data || []);
+      
+      diamondDebug('success', `[DIAGNÓSTICO] Retorno do banco: ${data?.length || 0} variações encontradas.`, {
+        dbCount: data?.length || 0,
+        uiCount: uiVariants.length,
+        rawItems: data
+      });
+
     } catch (err: any) {
       setError(err.message);
+      diamondDebug('error', '[DIAGNÓSTICO] Falha crítica na varredura:', err);
     } finally {
       setLoading(false);
     }
