@@ -7,11 +7,14 @@ import { PersonalDataForm } from '@/components/account/PersonalDataForm';
 import { OrdersSection } from '@/components/account/OrdersSection';
 import { FavoritesSection } from '@/components/account/FavoritesSection';
 import { useFavorites } from '@/context/FavoritesContext';
+import { useAuth } from '@/context/AuthContext';
 import { getOrders } from '@/services/persistence';
-import { Package, User, Heart } from 'lucide-react';
+import { Package, User, Heart, LogOut } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const Account = () => {
   const { favorites } = useFavorites();
+  const { signOut } = useAuth();
   const orders = getOrders();
 
   return (
@@ -19,9 +22,19 @@ const Account = () => {
       <Navbar />
       
       <main className="container mx-auto px-4 py-8 md:py-12">
-        <header className="mb-10 text-center md:text-left">
-          <h1 className="text-3xl md:text-5xl font-serif font-bold text-gray-900 mb-2">Minha Conta</h1>
-          <p className="text-gray-500">Gerencie seus pedidos, dados pessoais e favoritos.</p>
+        <header className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="text-center md:text-left">
+            <h1 className="text-3xl md:text-5xl font-serif font-bold text-gray-900 mb-2">Minha Conta</h1>
+            <p className="text-gray-500">Gerencie seus pedidos, dados pessoais e favoritos.</p>
+          </div>
+          
+          <Button 
+            variant="outline" 
+            onClick={() => signOut()}
+            className="rounded-full border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-100 hover:bg-red-50 transition-all gap-2 h-11 px-6 font-bold text-[10px] uppercase tracking-widest"
+          >
+            <LogOut size={16} /> Sair da conta
+          </Button>
         </header>
 
         <Tabs defaultValue="pedidos" className="w-full">
