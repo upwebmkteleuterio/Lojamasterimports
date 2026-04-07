@@ -8,6 +8,7 @@ import { Order } from '@/types/store';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { getSafeProductImage } from '@/utils/imageHandler';
+import { OrderStepper } from './OrderStepper';
 
 export const OrdersSection = () => {
   const { user } = useAuth();
@@ -94,6 +95,15 @@ export const OrdersSection = () => {
                     {order.status}
                   </Badge>
                 </div>
+              </div>
+
+              {/* Rastreamento de Etapas (Stepper) */}
+              <div className="mt-8 pt-8 border-t border-gray-100">
+                <OrderStepper 
+                  status={order.status} 
+                  updatedAt={order.updated_at || order.created_at} 
+                  createdAt={order.created_at} 
+                />
               </div>
             </div>
 
