@@ -31,29 +31,32 @@ const Settings = () => {
   }, []);
 
   const fetchSettings = async () => {
-    diamondDebug('info', 'Iniciando carga de configurações da loja...');
+    diamondDebug('info', 'Iniciando carga de configurações (Resiliência PGRST116)...');
     try {
+      // Mudamos de maybeSingle() para select().limit(1) para evitar erro de múltiplas linhas
       const { data, error } = await supabase
         .from('store_configs')
         .select('*')
-        .maybeSingle();
+        .order('updated_at', { ascending: false })
+        .limit(1);
 
       if (error) {
-        diamondDebug('error', 'Falha na ponte de dados (SELECT store_configs)', error);
+        diamondDebug('error', 'Falha na ponte de dados', error);
         throw error;
       }
       
-      if (data) {
-        diamondDebug('success', 'Configurações carregadas com sucesso.', data);
-        setConfig(data);
-        // Dispara varredura profunda para validar o registro
-        const scan = await runDeepScan('store_configs', data.id);
+      if (data && data.length > 0) {
+        const entry = data[0];
+        diamondDebug('success', 'Configuração mestre localizada.', entry);
+        setConfig(entry);
+        
+        const scan = await runDeepScan('store_configs', entry.id);
         setDeepScanResults(scan);
       } else {
-        diamondDebug('info', 'Nenhum registro de configuração encontrado no banco.');
+        diamondDebug('info', 'Nenhum registro encontrado. O formulário criará o primeiro.');
       }
     } catch (error: any) {
-      toast.error("Erro ao carregar dados.");
+      toast.error("Erro ao sincronizar dados.");
     } finally {
       setLoading(false);
     }
@@ -65,9 +68,10 @@ const Settings = () => {
     
     try {
       const payload = { ...config };
+      // Se não temos ID, o Supabase criará um novo. Se temos, ele atualizará.
       if (!payload.id) delete (payload as any).id;
 
-      diamondDebug('info', 'Executando UPSERT no banco...', payload);
+      diamondDebug('info', 'Executando UPSERT controlado...', payload);
       
       const { data, error } = await supabase
         .from('store_configs')
@@ -79,15 +83,19 @@ const Settings = () => {
         .single();
 
       if (error) {
-        diamondDebug('error', 'Falha crítica no UPSERT', error);
+        diamondDebug('error', 'Erro no UPSERT', error);
         throw error;
       }
       
-      diamondDebug('success', 'Banco confirmou salvamento com êxito.', data);
+      diamondDebug('success', 'Persistência confirmada pelo banco.', data);
       if (data) setConfig(data);
       toast.success("Configurações atualizadas!");
+      
+      // Recarrega o scan para atualizar o banner de integridade
+      const scan = await runDeepScan('store_configs', data.id);
+      setDeepScanResults(scan);
     } catch (error: any) {
-      diamondDebug('error', 'Erro no processo de salvamento (Ponte Quebrada)', { message: error.message, code: error.code });
+      diamondDebug('error', 'Falha crítica no salvamento', error);
       toast.error("Erro ao salvar mudanças.");
     } finally {
       setSaving(false);
@@ -102,11 +110,10 @@ const Settings = () => {
       actions={
         <Button onClick={handleSave} disabled={saving} className="bg-[#B89C6A] hover:bg-[#A68B5B] rounded-full px-8 h-12 font-bold text-xs uppercase tracking-widest gap-2 shadow-lg shadow-[#B89C6A]/20">
           {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />} 
-          {saving ? 'Gravando...' : 'Salvar Alterações'}
+          {saving ? 'Gravar Mudanças' : 'Salvar Alterações'}
         </Button>
       }
     >
-      {/* INTEGRITY BANNER */}
       <div className={cn(
         "mb-8 p-6 rounded-[32px] border-2 flex items-center justify-between transition-all",
         loading ? "bg-gray-50 border-gray-100 opacity-50" :
@@ -117,13 +124,10 @@ const Settings = () => {
             {isBridgeOk ? <ShieldCheck size={24} /> : <AlertTriangle size={24} />}
           </div>
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Status da Ponte de Dados</p>
-            <p className="font-bold">{loading ? 'Validando Integridade...' : isBridgeOk ? 'Ponte Íntegra e Segura' : 'Falha na Validação de Registro'}</p>
+            <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Integridade de Dados</p>
+            <p className="font-bold">{loading ? 'Validando...' : isBridgeOk ? 'Conexão Estável' : 'Registro inconsistente no banco'}</p>
           </div>
         </div>
-        {!loading && !isBridgeOk && (
-          <p className="text-xs font-bold uppercase underline cursor-pointer" onClick={() => fetchSettings()}>Forçar Recarga</p>
-        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
