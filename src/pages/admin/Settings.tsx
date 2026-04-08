@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Save, Store, Phone, Mail, MapPin, Image as ImageIcon } from 'lucide-react';
+import { Save, Store, Phone, Mail, MapPin, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -14,6 +14,7 @@ const Settings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [config, setConfig] = useState({
+    id: null as string | null,
     store_name: '',
     logo_url: '',
     support_phone: '',
@@ -30,11 +31,13 @@ const Settings = () => {
       const { data, error } = await supabase
         .from('store_configs')
         .select('*')
+        .limit(1)
         .maybeSingle();
 
       if (error) throw error;
       if (data) {
         setConfig({
+          id: data.id,
           store_name: data.store_name || '',
           logo_url: data.logo_url || '',
           support_phone: data.support_phone || '',
@@ -52,14 +55,26 @@ const Settings = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase
+      // Removemos o ID do payload se for nulo para o Supabase gerar um novo na primeira vez
+      const payload = { ...config };
+      if (!payload.id) delete (payload as any).id;
+
+      const { data, error } = await supabase
         .from('store_configs')
         .upsert({ 
-          ...config,
+          ...payload,
           updated_at: new Date().toISOString() 
-        }, { onConflict: 'id' });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+      
+      // Atualiza o estado local com o ID gerado (caso seja a primeira inserção)
+      if (data) {
+        setConfig(prev => ({ ...prev, id: data.id }));
+      }
+      
       toast.success("Configurações atualizadas com sucesso!");
     } catch (error: any) {
       toast.error("Erro ao salvar: " + error.message);
@@ -79,7 +94,8 @@ const Settings = () => {
           disabled={saving}
           className="bg-[#B89C6A] hover:bg-[#A68B5B] rounded-full px-8 h-12 font-bold text-xs uppercase tracking-widest gap-2"
         >
-          <Save size={18} /> {saving ? 'Salvando...' : 'Salvar Configurações'}
+          {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />} 
+          {saving ? 'Salvando...' : 'Salvar Configurações'}
         </Button>
       }
     >
