@@ -1,9 +1,10 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import {
   LayoutDashboard,
   Package,
@@ -43,15 +44,36 @@ interface AdminSidebarProps {
 export const AdminSidebar = ({ onItemClick, className }: AdminSidebarProps) => {
   const location = useLocation();
   const { signOut, profile } = useAuth();
+  const [storeName, setStoreName] = useState("DIAMOND ADM");
+
+  useEffect(() => {
+    const fetchStoreName = async () => {
+      try {
+        const { data } = await supabase
+          .from('store_configs')
+          .select('store_name')
+          .maybeSingle();
+        
+        if (data?.store_name) {
+          setStoreName(data.store_name.toUpperCase());
+        }
+      } catch (e) {
+        console.error("Erro ao carregar nome da loja:", e);
+      }
+    };
+    fetchStoreName();
+  }, []);
 
   return (
     <aside className={cn("w-64 h-full bg-white border-r border-gray-100 flex flex-col", className)}>
       <div className="p-6 border-b border-gray-50">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-[#B89C6A] rounded-lg flex items-center justify-center text-white font-bold">
-            D
+          <div className="w-8 h-8 bg-[#B89C6A] rounded-lg flex items-center justify-center text-white font-bold shrink-0">
+            {storeName.charAt(0)}
           </div>
-          <span className="font-serif font-bold tracking-widest text-[#B89C6A]">DIAMOND ADM</span>
+          <span className="font-serif font-bold tracking-widest text-[#B89C6A] text-xs truncate">
+            {storeName}
+          </span>
         </div>
       </div>
 
@@ -112,7 +134,6 @@ export const AdminSidebar = ({ onItemClick, className }: AdminSidebarProps) => {
             );
           })}
 
-          {/* Item Ver Site no final */}
           <li className="pt-4 border-t border-gray-50 mt-4">
             <Link
               to="/"
