@@ -6,17 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Save, Store, Phone, Mail, MapPin, Image as ImageIcon, Loader2, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Save, Store, Phone, Mail, MapPin, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { diamondDebug } from '@/utils/debug';
-import { runDeepScan, traceSaveFlow } from '@/utils/integrityDiagnostic';
-import { cn } from '@/lib/utils';
 
 const Settings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [deepScanResults, setDeepScanResults] = useState<any[]>([]);
   const [config, setConfig] = useState({
     id: null as string | null,
     store_name: '',
@@ -31,32 +28,20 @@ const Settings = () => {
   }, []);
 
   const fetchSettings = async () => {
-    diamondDebug('info', 'Iniciando carga de configurações (Resiliência PGRST116)...');
     try {
-      // Mudamos de maybeSingle() para select().limit(1) para evitar erro de múltiplas linhas
       const { data, error } = await supabase
         .from('store_configs')
         .select('*')
         .order('updated_at', { ascending: false })
         .limit(1);
 
-      if (error) {
-        diamondDebug('error', 'Falha na ponte de dados', error);
-        throw error;
-      }
+      if (error) throw error;
       
       if (data && data.length > 0) {
-        const entry = data[0];
-        diamondDebug('success', 'Configuração mestre localizada.', entry);
-        setConfig(entry);
-        
-        const scan = await runDeepScan('store_configs', entry.id);
-        setDeepScanResults(scan);
-      } else {
-        diamondDebug('info', 'Nenhum registro encontrado. O formulário criará o primeiro.');
+        setConfig(data[0]);
       }
     } catch (error: any) {
-      toast.error("Erro ao sincronizar dados.");
+      toast.error("Erro ao carregar configurações.");
     } finally {
       setLoading(false);
     }
@@ -64,15 +49,10 @@ const Settings = () => {
 
   const handleSave = async () => {
     setSaving(true);
-    traceSaveFlow('store_configs', config);
-    
     try {
       const payload = { ...config };
-      // Se não temos ID, o Supabase criará um novo. Se temos, ele atualizará.
       if (!payload.id) delete (payload as any).id;
 
-      diamondDebug('info', 'Executando UPSERT controlado...', payload);
-      
       const { data, error } = await supabase
         .from('store_configs')
         .upsert({ 
@@ -82,27 +62,20 @@ const Settings = () => {
         .select()
         .single();
 
-      if (error) {
-        diamondDebug('error', 'Erro no UPSERT', error);
-        throw error;
-      }
+      if (error) throw error;
       
-      diamondDebug('success', 'Persistência confirmada pelo banco.', data);
       if (data) setConfig(data);
       toast.success("Configurações atualizadas!");
       
-      // Recarrega o scan para atualizar o banner de integridade
-      const scan = await runDeepScan('store_configs', data.id);
-      setDeepScanResults(scan);
+      // Força atualização do título da aba imediatamente
+      document.title = data.store_name;
+      
     } catch (error: any) {
-      diamondDebug('error', 'Falha crítica no salvamento', error);
       toast.error("Erro ao salvar mudanças.");
     } finally {
       setSaving(false);
     }
   };
-
-  const isBridgeOk = deepScanResults.length > 0 && deepScanResults.every(r => r.success);
 
   return (
     <AdminLayout 
@@ -114,22 +87,6 @@ const Settings = () => {
         </Button>
       }
     >
-      <div className={cn(
-        "mb-8 p-6 rounded-[32px] border-2 flex items-center justify-between transition-all",
-        loading ? "bg-gray-50 border-gray-100 opacity-50" :
-        isBridgeOk ? "bg-green-50 border-green-100 text-green-700" : "bg-red-50 border-red-100 text-red-700"
-      )}>
-        <div className="flex items-center gap-4">
-          <div className={cn("p-3 rounded-2xl", isBridgeOk ? "bg-green-600 text-white" : "bg-red-600 text-white")}>
-            {isBridgeOk ? <ShieldCheck size={24} /> : <AlertTriangle size={24} />}
-          </div>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Integridade de Dados</p>
-            <p className="font-bold">{loading ? 'Validando...' : isBridgeOk ? 'Conexão Estável' : 'Registro inconsistente no banco'}</p>
-          </div>
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
           <CardHeader className="bg-gray-50/50 border-b">
