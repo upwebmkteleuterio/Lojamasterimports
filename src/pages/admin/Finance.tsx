@@ -59,7 +59,6 @@ const Finance = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Modal de Detalhes
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
 
@@ -381,6 +380,114 @@ const Finance = () => {
         </div>
       </div>
 
+      {/* Modal COMPROVANTE FISCAL */}
+      <Dialog open={isReceiptOpen} onOpenChange={setIsReceiptOpen}>
+        <DialogContent className="max-w-lg max-h-[95vh] overflow-y-auto rounded-none border-none shadow-2xl p-0 bg-[#fafafa] scrollbar-hide [&>button]:hidden">
+          {selectedOrder && (
+            <div id="printable-receipt" className="relative">
+              {/* Estilo do Topo do Recibo */}
+              <div className="bg-white p-10 pt-12 text-center space-y-4">
+                <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mx-auto mb-4 no-print">
+                  <FileText className="text-[#B89C6A]" size={32} />
+                </div>
+                <h2 className="text-2xl font-serif font-bold uppercase tracking-widest">Comprovante de Venda</h2>
+                <div className="flex flex-col items-center gap-1">
+                   <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Nº do Documento</p>
+                   <p className="text-sm font-mono font-bold">#{selectedOrder.id.toUpperCase()}</p>
+                </div>
+                <div className="flex flex-col items-center gap-1 mt-4">
+                   <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Data da Transação</p>
+                   <p className="text-xs font-bold">{format(new Date(selectedOrder.created_at), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}</p>
+                </div>
+              </div>
+
+              {/* Corpo do Recibo */}
+              <div className="px-10 pb-12 space-y-8">
+                <div className="border-t-2 border-dashed border-gray-200" />
+
+                <div className="space-y-4">
+                   <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-[#B89C6A]">
+                     <UserIcon size={12} /> Dados do Comprador
+                   </div>
+                   <div className="grid grid-cols-2 gap-4">
+                     <div>
+                       <p className="text-[8px] font-bold text-gray-400 uppercase">Nome Completo</p>
+                       <p className="text-xs font-bold text-gray-800">{selectedOrder.customer_data.fullName}</p>
+                     </div>
+                     <div>
+                       <p className="text-[8px] font-bold text-gray-400 uppercase">E-mail</p>
+                       <p className="text-xs font-bold text-gray-800 truncate">{selectedOrder.customer_data.email}</p>
+                     </div>
+                   </div>
+                </div>
+
+                <div className="space-y-3">
+                   <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-[#B89C6A]">
+                     <MapPin size={12} /> Destino da Entrega
+                   </div>
+                   <div className="bg-white p-4 border border-gray-100 rounded-xl">
+                      <p className="text-xs font-medium text-gray-600 leading-relaxed">
+                        {selectedOrder.customer_data.address}, {selectedOrder.customer_data.number}<br />
+                        {selectedOrder.customer_data.city} - {selectedOrder.customer_data.state}<br />
+                        CEP: {selectedOrder.customer_data.zipCode}
+                      </p>
+                   </div>
+                </div>
+
+                <div className="space-y-4">
+                   <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-[#B89C6A]">
+                     <ShoppingBag size={12} /> Discriminação dos Itens
+                   </div>
+                   <div className="space-y-3">
+                     {selectedOrder.items.map((item: any, idx: number) => (
+                       <div key={idx} className="flex justify-between items-start text-xs border-b border-gray-50 pb-2 last:border-0">
+                         <div className="flex-1 pr-4">
+                           <p className="font-bold text-gray-800">{item.name}</p>
+                           <p className="text-[9px] text-gray-400 uppercase">{item.quantity} x {formatCurrency(item.price)}</p>
+                         </div>
+                         <p className="font-mono font-bold text-gray-900">{formatCurrency(item.price * item.quantity)}</p>
+                       </div>
+                     ))}
+                   </div>
+                </div>
+
+                <div className="bg-white p-6 border-2 border-gray-100 rounded-2xl space-y-3">
+                   <div className="flex justify-between items-center text-xs">
+                     <span className="text-gray-400 font-bold uppercase">Subtotal</span>
+                     <span className="font-bold">{formatCurrency(Number(selectedOrder.total) - Number(selectedOrder.shipping_cost || 0))}</span>
+                   </div>
+                   <div className="flex justify-between items-center text-xs">
+                     <span className="text-gray-400 font-bold uppercase">Frete</span>
+                     <span className="text-green-600 font-bold">{Number(selectedOrder.shipping_cost) === 0 ? "GRÁTIS" : formatCurrency(Number(selectedOrder.shipping_cost))}</span>
+                   </div>
+                   <div className="border-t border-dashed border-gray-100 pt-3 flex justify-between items-center">
+                     <span className="text-sm font-black uppercase tracking-widest text-gray-900">Total Pago</span>
+                     <span className="text-2xl font-black text-[#B89C6A]">{formatCurrency(selectedOrder.total)}</span>
+                   </div>
+                </div>
+
+                <div className="text-center space-y-2 pt-4 no-print">
+                   <p className="text-[9px] font-bold text-gray-300 uppercase tracking-[0.2em]">Autenticação Digital Concluída</p>
+                   <div className="flex justify-center gap-4">
+                      <Button variant="ghost" onClick={() => window.print()} className="h-10 rounded-full text-gray-400 hover:text-black gap-2 text-[10px] font-bold uppercase tracking-widest border border-gray-100">
+                        <Printer size={14} /> Imprimir Comprovante
+                      </Button>
+                   </div>
+                </div>
+              </div>
+
+              {/* Botão de Fechar Absoluto (O único agora) */}
+              <button 
+                onClick={() => setIsReceiptOpen(false)}
+                className="absolute top-4 right-4 w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors z-50 no-print"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Modal Período Personalizado */}
       <Dialog open={isCustomDateOpen} onOpenChange={setIsCustomDateOpen}>
         <DialogContent className="max-w-md rounded-[32px] border-none shadow-2xl p-8">
@@ -400,120 +507,6 @@ const Finance = () => {
           <DialogFooter>
             <Button onClick={() => { setIsCustomDateOpen(false); setDateFilter('custom'); setCurrentPage(1); }} className="w-full bg-black text-white rounded-full h-12 font-bold uppercase tracking-widest text-[10px]">GERAR RELATÓRIO</Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Modal COMPROVANTE FISCAL */}
-      <Dialog open={isReceiptOpen} onOpenChange={setIsReceiptOpen}>
-        <DialogContent className="max-w-lg max-h-[95vh] overflow-y-auto rounded-none border-none shadow-2xl p-0 bg-[#fafafa] scrollbar-hide">
-          {selectedOrder && (
-            <div className="relative">
-              {/* Estilo do Topo do Recibo */}
-              <div className="bg-white p-10 pt-12 text-center space-y-4">
-                <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FileText className="text-[#B89C6A]" size={32} />
-                </div>
-                <h2 className="text-2xl font-serif font-bold uppercase tracking-widest">Comprovante de Venda</h2>
-                <div className="flex flex-col items-center gap-1">
-                   <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Nº do Documento</p>
-                   <p className="text-sm font-mono font-bold">#{selectedOrder.id.toUpperCase()}</p>
-                </div>
-                <div className="flex flex-col items-center gap-1 mt-4">
-                   <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Data da Transação</p>
-                   <p className="text-xs font-bold">{format(new Date(selectedOrder.created_at), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}</p>
-                </div>
-              </div>
-
-              {/* Corpo do Recibo */}
-              <div className="px-10 pb-12 space-y-8">
-                {/* Linha Divisória Tracejada */}
-                <div className="border-t-2 border-dashed border-gray-200" />
-
-                {/* Dados do Cliente */}
-                <div className="space-y-4">
-                   <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-[#B89C6A]">
-                     <UserIcon size={12} /> Dados do Comprador
-                   </div>
-                   <div className="grid grid-cols-2 gap-4">
-                     <div>
-                       <p className="text-[8px] font-bold text-gray-400 uppercase">Nome Completo</p>
-                       <p className="text-xs font-bold text-gray-800">{selectedOrder.customer_data.fullName}</p>
-                     </div>
-                     <div>
-                       <p className="text-[8px] font-bold text-gray-400 uppercase">E-mail</p>
-                       <p className="text-xs font-bold text-gray-800 truncate">{selectedOrder.customer_data.email}</p>
-                     </div>
-                   </div>
-                </div>
-
-                {/* Endereço */}
-                <div className="space-y-3">
-                   <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-[#B89C6A]">
-                     <MapPin size={12} /> Destino da Entrega
-                   </div>
-                   <div className="bg-white p-4 border border-gray-100 rounded-xl">
-                      <p className="text-xs font-medium text-gray-600 leading-relaxed">
-                        {selectedOrder.customer_data.address}, {selectedOrder.customer_data.number}<br />
-                        {selectedOrder.customer_data.city} - {selectedOrder.customer_data.state}<br />
-                        CEP: {selectedOrder.customer_data.zipCode}
-                      </p>
-                   </div>
-                </div>
-
-                {/* Itens do Pedido */}
-                <div className="space-y-4">
-                   <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-[#B89C6A]">
-                     <ShoppingBag size={12} /> Discriminação dos Itens
-                   </div>
-                   <div className="space-y-3">
-                     {selectedOrder.items.map((item: any, idx: number) => (
-                       <div key={idx} className="flex justify-between items-start text-xs border-b border-gray-50 pb-2 last:border-0">
-                         <div className="flex-1 pr-4">
-                           <p className="font-bold text-gray-800">{item.name}</p>
-                           <p className="text-[9px] text-gray-400 uppercase">{item.quantity} x {formatCurrency(item.price)}</p>
-                         </div>
-                         <p className="font-mono font-bold text-gray-900">{formatCurrency(item.price * item.quantity)}</p>
-                       </div>
-                     ))}
-                   </div>
-                </div>
-
-                {/* Totais Finais */}
-                <div className="bg-white p-6 border-2 border-gray-100 rounded-2xl space-y-3">
-                   <div className="flex justify-between items-center text-xs">
-                     <span className="text-gray-400 font-bold uppercase">Subtotal</span>
-                     <span className="font-bold">{formatCurrency(Number(selectedOrder.total) - Number(selectedOrder.shipping_cost || 0))}</span>
-                   </div>
-                   <div className="flex justify-between items-center text-xs">
-                     <span className="text-gray-400 font-bold uppercase">Frete</span>
-                     <span className="text-green-600 font-bold">{Number(selectedOrder.shipping_cost) === 0 ? "GRÁTIS" : formatCurrency(Number(selectedOrder.shipping_cost))}</span>
-                   </div>
-                   <div className="border-t border-dashed border-gray-100 pt-3 flex justify-between items-center">
-                     <span className="text-sm font-black uppercase tracking-widest text-gray-900">Total Pago</span>
-                     <span className="text-2xl font-black text-[#B89C6A]">{formatCurrency(selectedOrder.total)}</span>
-                   </div>
-                </div>
-
-                {/* Rodapé do Recibo */}
-                <div className="text-center space-y-2 pt-4">
-                   <p className="text-[9px] font-bold text-gray-300 uppercase tracking-[0.2em]">Autenticação Digital Concluída</p>
-                   <div className="flex justify-center gap-4">
-                      <Button variant="ghost" onClick={() => window.print()} className="h-10 rounded-full text-gray-400 hover:text-black gap-2 text-[10px] font-bold uppercase tracking-widest">
-                        <Printer size={14} /> Imprimir
-                      </Button>
-                   </div>
-                </div>
-              </div>
-
-              {/* Botão de Fechar Absoluto */}
-              <button 
-                onClick={() => setIsReceiptOpen(false)}
-                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-gray-100 transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-          )}
         </DialogContent>
       </Dialog>
     </AdminLayout>

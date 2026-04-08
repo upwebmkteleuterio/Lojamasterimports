@@ -99,3 +99,49 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Utilitário para esconder scrollbar mantendo o scroll funcional */
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Regras de Impressão para o Recibo */
+@media print {
+  /* Esconde tudo no site */
+  body * {
+    visibility: hidden;
+  }
+  
+  /* Mostra apenas a área do recibo */
+  #printable-receipt, #printable-receipt * {
+    visibility: visible;
+  }
+  
+  /* Posiciona o recibo no topo da página de impressão */
+  #printable-receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Remove sombras e bordas desnecessárias no papel */
+  #printable-receipt .shadow-2xl {
+    box-shadow: none !important;
+  }
+  
+  /* Força a impressão de cores de fundo (banners pretos, etc) */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
