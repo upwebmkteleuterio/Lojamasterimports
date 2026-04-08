@@ -14,6 +14,7 @@ import {
   ShoppingBag,
   DollarSign,
   LogOut,
+  ExternalLink,
 } from 'lucide-react';
 
 const menuItems = [
@@ -112,6 +113,18 @@ export const AdminSidebar = ({ onItemClick, className }: AdminSidebarProps) => {
               </li>
             );
           })}
+
+          {/* Item Ver Site no final */}
+          <li className="pt-4 border-t border-gray-50 mt-4">
+            <Link
+              to="/"
+              target="_blank"
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-[#B89C6A] hover:bg-[#B89C6A]/5 transition-all font-bold"
+            >
+              <ExternalLink size={20} />
+              <span className="text-sm">Ver site</span>
+            </Link>
+          </li>
         </ul>
       </nav>
 
