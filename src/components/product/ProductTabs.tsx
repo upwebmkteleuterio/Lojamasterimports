@@ -8,6 +8,10 @@ import { ProductQuestions } from './ProductQuestions';
 export const ProductTabs = () => {
   const [activeTab, setActiveTab] = useState<'reviews' | 'questions'>('reviews');
 
+  // Lógica simples para o contador da aba (sempre +1 pela avaliação base simulada)
+  const realReviewsCount = 0; 
+  const displayCount = realReviewsCount + 1;
+
   return (
     <section className="bg-white border-t border-gray-100">
       <div className="container mx-auto px-4">
@@ -22,7 +26,7 @@ export const ProductTabs = () => {
                 : "bg-gray-50/50 border-gray-50 text-gray-400 hover:text-gray-600"
             )}
           >
-            <span className="text-xl md:text-3xl font-serif">Avaliações (1)</span>
+            <span className="text-xl md:text-3xl font-serif">Avaliações ({displayCount})</span>
           </button>
           <button 
             onClick={() => setActiveTab('questions')}

@@ -18,6 +18,9 @@ export const ProductSidebar = ({ product, onAddToCart, onVariantSelect, onReques
   const [quantity, setQuantity] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
 
+  // Sorteia um número entre 15 e 20 para o gatilho de escassez
+  const simulatedStock = useMemo(() => Math.floor(Math.random() * (20 - 15 + 1)) + 15, []);
+
   const variationsMap = useMemo(() => {
     if (!product.variants || product.variants.length === 0) return null;
     
@@ -122,7 +125,7 @@ export const ProductSidebar = ({ product, onAddToCart, onVariantSelect, onReques
       <div className="border border-gray-100 p-8 text-center space-y-4 mb-10">
         <p className="font-serif text-[#333]">
           Apenas <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#333] text-white text-xs font-sans align-middle mx-1">
-            {selectedVariant ? selectedVariant.stock : product.stock}
+            {simulatedStock}
           </span> unidades em estoque
         </p>
         <div className="w-full max-w-xs mx-auto h-2 bg-gray-100 rounded-full overflow-hidden">
