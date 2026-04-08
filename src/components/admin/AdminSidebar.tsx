@@ -49,16 +49,18 @@ export const AdminSidebar = ({ onItemClick, className }: AdminSidebarProps) => {
   useEffect(() => {
     const fetchStoreName = async () => {
       try {
+        // Usamos select().limit(1) para evitar erro PGRST116 caso existam várias linhas
         const { data } = await supabase
           .from('store_configs')
           .select('store_name')
-          .maybeSingle();
+          .order('updated_at', { ascending: false })
+          .limit(1);
         
-        if (data?.store_name) {
-          setStoreName(data.store_name.toUpperCase());
+        if (data && data.length > 0 && data[0].store_name) {
+          setStoreName(data[0].store_name.toUpperCase());
         }
       } catch (e) {
-        console.error("Erro ao carregar nome da loja:", e);
+        console.error("Erro ao carregar nome da loja no menu:", e);
       }
     };
     fetchStoreName();
