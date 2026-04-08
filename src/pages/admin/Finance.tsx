@@ -5,14 +5,12 @@ import {
   DollarSign, 
   TrendingUp, 
   Calendar as CalendarIcon, 
-  ArrowUpRight, 
-  ArrowDownRight,
   ChevronLeft,
   ChevronRight,
   Filter,
-  Package,
   Loader2,
-  BadgePercent
+  BadgePercent,
+  Search
 } from 'lucide-react';
 import { 
   Table, 
@@ -41,7 +39,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Order } from '@/types/store';
 import { format, startOfMonth, endOfMonth, parseISO, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -52,6 +49,7 @@ const Finance = () => {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
   
   // Totais e Indicadores
   const [financialStats, setFinancialStats] = useState({
@@ -68,11 +66,10 @@ const Finance = () => {
 
   useEffect(() => {
     fetchFinanceData();
-  }, [dateFilter, currentPage]);
+  }, [dateFilter, currentPage, searchTerm]);
 
   const getDateRange = () => {
     if (dateFilter.includes('-') && dateFilter.length === 7) {
-      // É um filtro de mês (yyyy-MM)
       const date = parseISO(`${dateFilter}-01`);
       return { start: startOfMonth(date).toISOString(), end: endOfMonth(date).toISOString() };
     } else if (dateFilter === 'custom') {
@@ -81,7 +78,6 @@ const Finance = () => {
         end: customRange.end ? endOfDay(parseISO(customRange.end)).toISOString() : null 
       };
     }
-    // Default fallback
     const date = new Date();
     return { start: startOfMonth(date).toISOString(), end: endOfMonth(date).toISOString() };
   };
@@ -92,13 +88,19 @@ const Finance = () => {
       const { start, end } = getDateRange();
       if (!start || !end) return;
 
-      // 1. Buscar TODOS os pedidos 'Pago' no período para calcular os KPIs globais
-      const { data: allPaidOrders, error: statsError } = await supabase
+      // 1. Calcular KPIs baseados nos filtros ativos (sempre apenas status 'Pago')
+      let statsQuery = supabase
         .from('orders')
         .select('total, items, shipping_cost')
         .eq('status', 'Pago')
         .gte('created_at', start)
         .lte('created_at', end);
+
+      if (searchTerm) {
+        statsQuery = statsQuery.or(`id.ilike.%${searchTerm}%,customer_data->>fullName.ilike.%${searchTerm}%,customer_data->>email.ilike.%${searchTerm}%`);
+      }
+
+      const { data: allFilteredOrders, error: statsError } = await statsQuery;
 
       if (statsError) throw statsError;
 
@@ -106,14 +108,11 @@ const Finance = () => {
       let totalItemCosts = 0;
       let totalShippingCollected = 0;
 
-      allPaidOrders?.forEach(order => {
+      allFilteredOrders?.forEach(order => {
         revenue += Number(order.total);
         totalShippingCollected += Number(order.shipping_cost || 0);
-        
-        // Calcular custos dos itens baseados no snapshot salvo no pedido
         const items = order.items as any[];
         items.forEach(item => {
-          // Busca o costPrice (mapeado na UI) ou cost_price (direto do banco)
           const cost = Number(item.costPrice || item.cost_price || 0);
           totalItemCosts += cost * (item.quantity || 1);
         });
@@ -122,20 +121,26 @@ const Finance = () => {
       setFinancialStats({
         totalRevenue: revenue,
         totalCosts: totalItemCosts,
-        totalProfit: revenue - totalItemCosts - totalShippingCollected, // Lucro Real = Vendas - Custos - Frete
-        orderCount: allPaidOrders?.length || 0
+        totalProfit: revenue - totalItemCosts - totalShippingCollected,
+        orderCount: allFilteredOrders?.length || 0
       });
 
-      // 2. Buscar Dados Paginados para a tabela
+      // 2. Buscar Dados Paginados
       const from = (currentPage - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
 
-      const { data, error, count } = await supabase
+      let query = supabase
         .from('orders')
         .select('*', { count: 'exact' })
         .eq('status', 'Pago')
         .gte('created_at', start)
-        .lte('created_at', end)
+        .lte('created_at', end);
+
+      if (searchTerm) {
+        query = query.or(`id.ilike.%${searchTerm}%,customer_data->>fullName.ilike.%${searchTerm}%,customer_data->>email.ilike.%${searchTerm}%`);
+      }
+
+      const { data, error, count } = await query
         .order('created_at', { ascending: false })
         .range(from, to);
 
@@ -155,7 +160,6 @@ const Finance = () => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
 
-  // Gerar lista de últimos 12 meses para o filtro
   const monthOptions = Array.from({ length: 12 }).map((_, i) => {
     const date = new Date();
     date.setMonth(date.getMonth() - i);
@@ -169,37 +173,9 @@ const Finance = () => {
 
   return (
     <AdminLayout title="Financeiro">
-      <div className="space-y-8">
+      <div className="space-y-6">
         
-        {/* Filtros de Período */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 flex items-center gap-2">
-            <CalendarIcon size={14} /> Período de Apuração
-          </h2>
-          <div className="flex gap-2">
-            <Select value={dateFilter === 'custom' ? 'custom' : dateFilter} onValueChange={(val) => { 
-              if (val === 'custom') setIsCustomDateOpen(true);
-              else { setDateFilter(val); setCurrentPage(1); }
-            }}>
-              <SelectTrigger className="w-full md:w-[240px] rounded-2xl border-gray-100 bg-white h-12">
-                <div className="flex items-center gap-2">
-                  <Filter size={16} className="text-gray-400" />
-                  <SelectValue placeholder="Selecione o período" />
-                </div>
-              </SelectTrigger>
-              <SelectContent className="rounded-2xl border-gray-100">
-                <SelectItem value="custom" className="font-bold text-[#B89C6A]">Período Personalizado</SelectItem>
-                {monthOptions.map(option => (
-                  <SelectItem key={option.value} value={option.value} className="capitalize">
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Cards de KPIs Reais */}
+        {/* Cards de KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="border-none shadow-sm rounded-[32px] bg-white overflow-hidden group">
             <CardContent className="p-8">
@@ -256,102 +232,130 @@ const Finance = () => {
           </Card>
         </div>
 
-        {/* Tabela de Vendas Pagas */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between px-2">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Extrato de Entradas Realizadas</h3>
-            <p className="text-[10px] text-gray-400 uppercase font-bold">{totalCount} registros</p>
+        {/* Filtros e Busca (Alinhado com a tela de pedidos) */}
+        <div className="bg-white p-4 rounded-[32px] border border-gray-100 shadow-sm flex flex-col lg:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <Input 
+              placeholder="Buscar entrada por ID, nome ou e-mail..." 
+              value={searchTerm}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+              className="pl-12 rounded-2xl border-gray-100 bg-gray-50/50 h-12"
+            />
           </div>
           
-          <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden">
-            <Table>
-              <TableHeader className="bg-gray-50/50">
-                <TableRow className="border-gray-50 hover:bg-transparent">
-                  <TableHead className="font-bold text-[10px] uppercase tracking-[0.2em] text-gray-400 px-8 py-5">Pedido / Data</TableHead>
-                  <TableHead className="font-bold text-[10px] uppercase tracking-[0.2em] text-gray-400">Cliente</TableHead>
-                  <TableHead className="font-bold text-[10px] uppercase tracking-[0.2em] text-gray-400">Itens</TableHead>
-                  <TableHead className="font-bold text-[10px] uppercase tracking-[0.2em] text-gray-400 text-right pr-8">Valor Líquido</TableHead>
+          <div className="flex gap-3">
+            <Select value={dateFilter === 'custom' ? 'custom' : dateFilter} onValueChange={(val) => { 
+              if (val === 'custom') setIsCustomDateOpen(true);
+              else { setDateFilter(val); setCurrentPage(1); }
+            }}>
+              <SelectTrigger className="w-full lg:w-[240px] rounded-2xl border-gray-100 bg-gray-50/50 h-12">
+                <div className="flex items-center gap-2">
+                  <CalendarIcon size={16} className="text-gray-400" />
+                  <SelectValue placeholder="Selecione o período" />
+                </div>
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl border-gray-100">
+                <SelectItem value="custom" className="font-bold text-[#B89C6A]">Período Personalizado</SelectItem>
+                {monthOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value} className="capitalize">
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Tabela de Vendas */}
+        <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden">
+          <Table>
+            <TableHeader className="bg-gray-50/50">
+              <TableRow className="border-gray-50 hover:bg-transparent">
+                <TableHead className="font-bold text-[10px] uppercase tracking-[0.2em] text-gray-400 px-8 py-5">Pedido / Data</TableHead>
+                <TableHead className="font-bold text-[10px] uppercase tracking-[0.2em] text-gray-400">Cliente</TableHead>
+                <TableHead className="font-bold text-[10px] uppercase tracking-[0.2em] text-gray-400">Itens</TableHead>
+                <TableHead className="font-bold text-[10px] uppercase tracking-[0.2em] text-gray-400 text-right pr-8">Valor Líquido</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i} className="border-gray-50">
+                    <TableCell colSpan={4} className="h-16 animate-pulse bg-gray-50/20" />
+                  </TableRow>
+                ))
+              ) : orders.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="h-40 text-center text-gray-400 uppercase text-[10px] font-bold tracking-widest">
+                    Nenhuma entrada confirmada encontrada.
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i} className="border-gray-50">
-                      <TableCell colSpan={4} className="h-16 animate-pulse bg-gray-50/20" />
-                    </TableRow>
-                  ))
-                ) : orders.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="h-40 text-center text-gray-400 uppercase text-[10px] font-bold tracking-widest">
-                      Nenhuma entrada confirmada neste período.
+              ) : (
+                orders.map((order) => (
+                  <TableRow key={order.id} className="border-gray-50 group hover:bg-gray-50/30 transition-colors">
+                    <TableCell className="px-8 py-4">
+                      <div>
+                        <p className="font-bold text-gray-900 text-sm">#{order.id.split('-')[0].toUpperCase()}</p>
+                        <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-tighter">
+                          {format(new Date(order.created_at), 'dd/MM/yyyy HH:mm')}
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <p className="text-sm font-medium text-gray-700">{order.customer_data.fullName}</p>
+                      <p className="text-[10px] text-gray-400">{order.customer_data.email}</p>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex -space-x-2">
+                        {order.items.slice(0, 3).map((item: any, idx: number) => (
+                          <div key={idx} className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 overflow-hidden shadow-sm">
+                            <img src={item.selectedVariant?.main_image || item.image} className="w-full h-full object-cover" alt="" />
+                          </div>
+                        ))}
+                        {order.items.length > 3 && (
+                          <div className="w-8 h-8 rounded-full border-2 border-white bg-gray-900 text-white flex items-center justify-center text-[8px] font-bold">
+                            +{order.items.length - 3}
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right pr-8">
+                      <p className="font-bold text-gray-900">{formatCurrency(order.total)}</p>
+                      <p className="text-[9px] text-green-600 font-bold uppercase">Entrada Confirmada</p>
                     </TableCell>
                   </TableRow>
-                ) : (
-                  orders.map((order) => (
-                    <TableRow key={order.id} className="border-gray-50 group hover:bg-gray-50/30 transition-colors">
-                      <TableCell className="px-8 py-4">
-                        <div>
-                          <p className="font-bold text-gray-900 text-sm">#{order.id.split('-')[0].toUpperCase()}</p>
-                          <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-tighter">
-                            {format(new Date(order.created_at), 'dd/MM/yyyy HH:mm')}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <p className="text-sm font-medium text-gray-700">{order.customer_data.fullName}</p>
-                        <p className="text-[10px] text-gray-400">{order.customer_data.email}</p>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex -space-x-2">
-                          {order.items.slice(0, 3).map((item: any, idx: number) => (
-                            <div key={idx} className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 overflow-hidden shadow-sm">
-                              <img src={item.selectedVariant?.main_image || item.image} className="w-full h-full object-cover" alt="" />
-                            </div>
-                          ))}
-                          {order.items.length > 3 && (
-                            <div className="w-8 h-8 rounded-full border-2 border-white bg-gray-900 text-white flex items-center justify-center text-[8px] font-bold">
-                              +{order.items.length - 3}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right pr-8">
-                        <p className="font-bold text-gray-900">{formatCurrency(order.total)}</p>
-                        <p className="text-[9px] text-green-600 font-bold uppercase">Entrada Confirmada</p>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                ))
+              )}
+            </TableBody>
+          </Table>
 
-            {/* Paginação */}
-            {totalPages > 1 && (
-              <div className="p-6 border-t border-gray-50 bg-gray-50/20 flex items-center justify-center gap-4">
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  disabled={currentPage === 1 || loading}
-                  onClick={() => setCurrentPage(prev => prev - 1)}
-                  className="rounded-xl border-gray-100 bg-white"
-                >
-                  <ChevronLeft size={18} />
-                </Button>
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
-                  Página {currentPage} de {totalPages}
-                </span>
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  disabled={currentPage === totalPages || loading}
-                  onClick={() => setCurrentPage(prev => prev + 1)}
-                  className="rounded-xl border-gray-100 bg-white"
-                >
-                  <ChevronRight size={18} />
-                </Button>
-              </div>
-            )}
-          </div>
+          {/* Paginação */}
+          {totalPages > 1 && (
+            <div className="p-6 border-t border-gray-50 bg-gray-50/20 flex items-center justify-center gap-4">
+              <Button 
+                variant="outline" 
+                size="icon" 
+                disabled={currentPage === 1 || loading}
+                onClick={() => setCurrentPage(prev => prev - 1)}
+                className="rounded-xl border-gray-100 bg-white"
+              >
+                <ChevronLeft size={18} />
+              </Button>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
+                Página {currentPage} de {totalPages} ({totalCount} total)
+              </span>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                disabled={currentPage === totalPages || loading}
+                onClick={() => setCurrentPage(prev => prev + 1)}
+                className="rounded-xl border-gray-100 bg-white"
+              >
+                <ChevronRight size={18} />
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
