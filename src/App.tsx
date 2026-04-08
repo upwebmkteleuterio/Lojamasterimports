@@ -8,6 +8,7 @@ import { FavoritesProvider } from "./context/FavoritesContext";
 import { AuthProvider } from "./context/AuthContext";
 import { useAuthStore } from "./store/useAuthStore";
 import { MobileNavbar } from "./components/layout/MobileNavbar";
+import { StoreLayout } from "./components/layout/StoreLayout";
 import ScrollToTop from "./components/ScrollToTop";
 import Landing from "./pages/Landing";
 import Index from "./pages/Index";
@@ -35,7 +36,6 @@ import Finance from "./pages/admin/Finance";
 
 const queryClient = new QueryClient();
 
-// Componente para Proteger Rotas Não-Bloqueante
 const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.ReactNode, requireAdmin?: boolean }) => {
   const { session, profile, isInitialized } = useAuthStore();
   const location = useLocation();
@@ -62,29 +62,26 @@ const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.Re
 const AppContent = () => {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/adm');
+  const isLanding = location.pathname === '/';
 
   return (
     <>
       <ScrollToTop />
       <Routes>
+        {/* Landing é tela cheia, não usa StoreLayout comum */}
         <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<Login />} />
         
-        {/* Rotas Dinâmicas por Nicho */}
-        <Route path="/:shopType" element={<Index />} />
+        {/* Rotas da Loja envolvidas pelo StoreLayout */}
+        <Route path="/:shopType" element={<StoreLayout><Index /></StoreLayout>} />
+        <Route path="/:shopType/categoria/*" element={<StoreLayout><Category /></StoreLayout>} />
+        <Route path="/:shopType/produto/:id" element={<StoreLayout><ProductDetail /></StoreLayout>} />
+        <Route path="/:shopType/busca" element={<StoreLayout><SearchResults /></StoreLayout>} />
+        <Route path="/carrinho" element={<StoreLayout><Cart /></StoreLayout>} />
+        <Route path="/checkout" element={<StoreLayout><Checkout /></StoreLayout>} />
+        <Route path="/login" element={<StoreLayout><Login /></StoreLayout>} />
+        <Route path="/minha-conta" element={<ProtectedRoute><StoreLayout><Account /></StoreLayout></ProtectedRoute>} />
         
-        {/* CORREÇÃO: Usando '*' para permitir subIds com barras (/) sem dar 404 */}
-        <Route path="/:shopType/categoria/*" element={<Category />} />
-        
-        <Route path="/:shopType/produto/:id" element={<ProductDetail />} />
-        <Route path="/:shopType/busca" element={<SearchResults />} />
-        
-        {/* Rotas Globais */}
-        <Route path="/carrinho" element={<Cart />} />
-        <Route path="/checkout" element={<Checkout />} />
-        <Route path="/minha-conta" element={<ProtectedRoute><Account /></ProtectedRoute>} />
-        
-        {/* Rotas Administrativas */}
+        {/* Rotas Administrativas (Mantêm layout próprio) */}
         <Route path="/adm" element={<ProtectedRoute requireAdmin><Dashboard /></ProtectedRoute>} />
         <Route path="/adm/produtos" element={<ProtectedRoute requireAdmin><Products /></ProtectedRoute>} />
         <Route path="/adm/produtos/novo" element={<ProtectedRoute requireAdmin><ProductForm /></ProtectedRoute>} />
@@ -102,7 +99,7 @@ const AppContent = () => {
         
         <Route path="*" element={<NotFound />} />
       </Routes>
-      {!isAdmin && <MobileNavbar />}
+      {!isAdmin && !isLanding && <MobileNavbar />}
     </>
   );
 };

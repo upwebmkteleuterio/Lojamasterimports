@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
-import { Navbar } from '@/components/layout/Navbar';
 import { ProductCard } from '@/components/ui/ProductCard';
 import { searchProducts } from '@/services/products';
 import { CategoryMother, Product } from '@/types/store';
@@ -51,73 +50,68 @@ const SearchResults = () => {
   );
 
   return (
-    <div className="min-h-screen bg-white pb-32 md:pb-20">
-      <Navbar />
-      
-      <div className="container mx-auto px-4 py-8 md:py-12">
-        <div className="flex flex-col lg:flex-row gap-8 md:gap-16">
-          
-          <aside className="hidden lg:block w-64 space-y-12 shrink-0">
-            <div className="flex items-center gap-2 font-bold text-[11px] uppercase tracking-widest text-gray-900 mb-8 border-b pb-4">
-              Filtros <SlidersHorizontal size={14} />
-            </div>
-            <FilterContent />
-          </aside>
-
-          <div className="flex-1">
-            <header className="mb-8 md:mb-12 flex items-end justify-between border-b pb-6 md:pb-8">
-              <div className="space-y-1">
-                <h1 className="text-xl md:text-3xl font-serif font-light text-gray-900 leading-none">
-                  Resultados para: <span className="text-[#B89C6A] italic">"{query}"</span>
-                </h1>
-                <p className="text-[9px] md:text-[10px] uppercase tracking-widest text-gray-400 font-bold">
-                  {loading ? 'Buscando...' : `${products.length} itens encontrados em ${motherCategory === 'pet' ? 'Pet Shop' : 'Luxury Shop'}`}
-                </p>
-              </div>
-
-              <div className="lg:hidden">
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <button className="flex items-center justify-center w-9 h-9 border border-gray-100 rounded-full text-gray-900 active:bg-gray-50 transition-colors">
-                      <SlidersHorizontal size={16} />
-                    </button>
-                  </SheetTrigger>
-                  <SheetContent side="right">
-                    <SheetHeader className="text-left mb-10">
-                      <SheetTitle className="text-[12px] font-bold uppercase tracking-[0.2em]">Filtros</SheetTitle>
-                    </SheetHeader>
-                    <FilterContent />
-                  </SheetContent>
-                </Sheet>
-              </div>
-            </header>
-
-            {loading ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 md:gap-x-8 gap-y-8 md:gap-y-16">
-                {[1, 2, 3, 4, 5, 6].map(i => (
-                  <div key={i} className="aspect-[3/4] bg-gray-100 animate-pulse rounded-2xl" />
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 md:gap-x-8 gap-y-8 md:gap-y-16">
-                {products.map(product => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-                
-                {products.length === 0 && (
-                  <div className="col-span-full py-20 md:py-32 text-center">
-                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-300">
-                      <Search size={32} />
-                    </div>
-                    <p className="font-serif text-xl md:text-2xl text-gray-400 italic">Nenhum produto encontrado para sua busca.</p>
-                    <Link to={`/${shopType}`} className="inline-block mt-6 md:mt-8 text-[9px] md:text-[10px] font-bold uppercase tracking-widest border-b border-black pb-1">
-                      Voltar para a Home
-                    </Link>
-                  </div>
-                )}
-              </div>
-            )}
+    <div className="bg-white pb-32 md:pb-20 py-8 md:py-12">
+      <div className="flex flex-col lg:flex-row gap-8 md:gap-16">
+        <aside className="hidden lg:block w-64 space-y-12 shrink-0">
+          <div className="flex items-center gap-2 font-bold text-[11px] uppercase tracking-widest text-gray-900 mb-8 border-b pb-4">
+            Filtros <SlidersHorizontal size={14} />
           </div>
+          <FilterContent />
+        </aside>
+
+        <div className="flex-1">
+          <header className="mb-8 md:mb-12 flex items-end justify-between border-b pb-6 md:pb-8">
+            <div className="space-y-1">
+              <h1 className="text-xl md:text-3xl font-serif font-light text-gray-900 leading-none">
+                Resultados para: <span className="text-[#B89C6A] italic">"{query}"</span>
+              </h1>
+              <p className="text-[9px] md:text-[10px] uppercase tracking-widest text-gray-400 font-bold">
+                {loading ? 'Buscando...' : `${products.length} itens encontrados em ${motherCategory === 'pet' ? 'Pet Shop' : 'Luxury Shop'}`}
+              </p>
+            </div>
+
+            <div className="lg:hidden">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <button className="flex items-center justify-center w-9 h-9 border border-gray-100 rounded-full text-gray-900 active:bg-gray-50 transition-colors">
+                    <SlidersHorizontal size={16} />
+                  </button>
+                </SheetTrigger>
+                <SheetContent side="right">
+                  <SheetHeader className="text-left mb-10">
+                    <SheetTitle className="text-[12px] font-bold uppercase tracking-[0.2em]">Filtros</SheetTitle>
+                  </SheetHeader>
+                  <FilterContent />
+                </SheetContent>
+              </Sheet>
+            </div>
+          </header>
+
+          {loading ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 md:gap-x-8 gap-y-8 md:gap-y-16">
+              {[1, 2, 3, 4, 5, 6].map(i => (
+                <div key={i} className="aspect-[3/4] bg-gray-100 animate-pulse rounded-2xl" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 md:gap-x-8 gap-y-8 md:gap-y-16">
+              {products.map(product => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+              
+              {products.length === 0 && (
+                <div className="col-span-full py-20 md:py-32 text-center">
+                  <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-300">
+                    <Search size={32} />
+                  </div>
+                  <p className="font-serif text-xl md:text-2xl text-gray-400 italic">Nenhum produto encontrado para sua busca.</p>
+                  <Link to={`/${shopType}`} className="inline-block mt-6 md:mt-8 text-[9px] md:text-[10px] font-bold uppercase tracking-widest border-b border-black pb-1">
+                    Voltar para a Home
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { Navbar } from '@/components/layout/Navbar';
 import { CategoryMother, Product, Subcategory } from '@/types/store';
 import { ProductCard } from '@/components/ui/ProductCard';
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,6 @@ import { getProductsByMother } from '@/services/products';
 import { supabase } from '@/integrations/supabase/client';
 import { CategoryCarousel } from '@/components/home/CategoryCarousel';
 import { FeaturedSubcategorySection } from '@/components/home/FeaturedSubcategorySection';
-import logo from '@/assets/logo.jpg';
 
 const Index = () => {
   const { shopType } = useParams<{ shopType: string }>();
@@ -51,7 +49,6 @@ const Index = () => {
       
       if (subs) {
         setSubcategories(subs);
-        // Filtra apenas as marcadas como destaque
         setFeaturedSubs(subs.filter(s => s.is_featured));
       }
 
@@ -73,16 +70,14 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white font-sans text-gray-900 pb-20 md:pb-0">
-      <Navbar />
-      
-      <section className="relative h-[400px] md:h-[650px] w-full overflow-hidden flex items-center">
+    <div className="font-sans text-gray-900 pb-20 md:pb-12">
+      {/* Banner Hero: Usa 'full-bleed' para tocar as bordas no PC */}
+      <section className="relative h-[400px] md:h-[650px] w-full overflow-hidden flex items-center full-bleed">
         <img 
           src={nicheData?.home_hero_banner || "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?q=80&w=2070"}
           className="absolute inset-0 w-full h-full object-cover"
           alt="Hero"
         />
-        {/* Filtro preto leve para contraste */}
         <div className="absolute inset-0 bg-black/30" />
         
         <div className="container mx-auto px-4 relative z-10">
@@ -127,7 +122,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Renderização das Subcategorias em Destaque (Stack vertical) */}
       <div className="featured-sections">
         {featuredSubs.map(sub => (
           <FeaturedSubcategorySection 
@@ -138,7 +132,7 @@ const Index = () => {
         ))}
       </div>
 
-      <section className="border-t border-b py-8 md:py-10 bg-[#fdfdfd]">
+      <section className="border-t border-b py-8 md:py-10 bg-[#fdfdfd] mb-12">
         <div className="container mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4">
           <div className="flex flex-col items-center text-center gap-2 md:gap-3">
             <Truck size={24} strokeWidth={1} className="text-[#B89C6A]" />
@@ -170,18 +164,6 @@ const Index = () => {
           </div>
         </div>
       </section>
-
-      <footer className="bg-white pt-12 md:pt-20 pb-10 border-t">
-        <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-12 text-center md:text-left">
-          <div className="md:col-span-1">
-            <img src={logo} alt="Master Imports" className="h-12 md:h-16 w-auto object-contain mb-6 mx-auto md:mx-0" />
-            <p className="text-[10px] md:text-xs text-gray-400 leading-loose">
-               Qualidade e sofisticação em importados.
-               <br /> Copyright © 2026 Master Imports.
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };

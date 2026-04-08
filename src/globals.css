@@ -44,18 +44,31 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* 
+   * Classe Full Bleed: Permite que um elemento ignore as margens do container pai no PC.
+   * Útil para banners e heros que devem tocar as bordas da tela.
+   */
+  @screen lg {
+    .full-bleed {
+      width: 100vw;
+      position: relative;
+      left: 50%;
+      right: 50%;
+      margin-left: -50vw;
+      margin-right: -50vw;
+    }
+  }
 }
 
 /* REGRAS DE IMPRESSÃO PROFISSIONAL */
 @media print {
-  /* Esconde tudo que não for o recibo */
   body > *:not([data-radix-portal]),
   [data-radix-portal] > *:not([role="dialog"]),
   .no-print {
     display: none !important;
   }
 
-  /* Ajusta o corpo do papel */
   @page {
     margin: 0;
     size: auto;
@@ -67,7 +80,6 @@
     padding: 0 !important;
   }
 
-  /* Força a exibição do diálogo (modal) ocupando a página toda */
   [role="dialog"] {
     position: absolute !important;
     left: 0 !important;
@@ -89,14 +101,12 @@
     padding: 20px !important;
   }
 
-  /* Garante que cores e textos apareçam */
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     color: black !important;
   }
 
-  /* Mantém a cor dourada apenas no valor total para destaque no PDF */
   .text-gold-print {
     color: #B89C6A !important;
   }
