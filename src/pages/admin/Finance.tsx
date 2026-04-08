@@ -31,12 +31,21 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle,
+  DialogFooter
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Order } from '@/types/store';
-import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
+import { format, startOfMonth, endOfMonth, parseISO, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 50;
 
 const Finance = () => {
   const [orders, setOrders] = useState<any[]>([]);
@@ -44,7 +53,7 @@ const Finance = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   
-  // Totais do Banco (Independente de paginação)
+  // Totais e Indicadores
   const [financialStats, setFinancialStats] = useState({
     totalRevenue: 0,
     totalProfit: 0,
@@ -52,52 +61,68 @@ const Finance = () => {
     orderCount: 0
   });
 
-  const [selectedMonth, setSelectedMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
+  // Filtros de Data
+  const [dateFilter, setDateFilter] = useState<string>(format(new Date(), 'yyyy-MM'));
+  const [isCustomDateOpen, setIsCustomDateOpen] = useState(false);
+  const [customRange, setCustomRange] = useState({ start: '', end: '' });
 
   useEffect(() => {
     fetchFinanceData();
-  }, [selectedMonth, currentPage]);
+  }, [dateFilter, currentPage]);
+
+  const getDateRange = () => {
+    if (dateFilter.includes('-') && dateFilter.length === 7) {
+      // É um filtro de mês (yyyy-MM)
+      const date = parseISO(`${dateFilter}-01`);
+      return { start: startOfMonth(date).toISOString(), end: endOfMonth(date).toISOString() };
+    } else if (dateFilter === 'custom') {
+      return { 
+        start: customRange.start ? startOfDay(parseISO(customRange.start)).toISOString() : null, 
+        end: customRange.end ? endOfDay(parseISO(customRange.end)).toISOString() : null 
+      };
+    }
+    // Default fallback
+    const date = new Date();
+    return { start: startOfMonth(date).toISOString(), end: endOfMonth(date).toISOString() };
+  };
 
   const fetchFinanceData = async () => {
     setLoading(true);
     try {
-      const startDate = startOfMonth(parseISO(`${selectedMonth}-01`)).toISOString();
-      const endDate = endOfMonth(parseISO(`${selectedMonth}-01`)).toISOString();
+      const { start, end } = getDateRange();
+      if (!start || !end) return;
 
-      // 1. Buscar Totais (Todos os pedidos 'Pago' no mês) para o resumo
+      // 1. Buscar TODOS os pedidos 'Pago' no período para calcular os KPIs globais
       const { data: allPaidOrders, error: statsError } = await supabase
         .from('orders')
         .select('total, items, shipping_cost')
         .eq('status', 'Pago')
-        .gte('created_at', startDate)
-        .lte('created_at', endDate);
+        .gte('created_at', start)
+        .lte('created_at', end);
 
       if (statsError) throw statsError;
 
       let revenue = 0;
-      let totalCost = 0;
-      
+      let totalItemCosts = 0;
+      let totalShippingCollected = 0;
+
       allPaidOrders?.forEach(order => {
         revenue += Number(order.total);
+        totalShippingCollected += Number(order.shipping_cost || 0);
         
-        // Calcular custos dos itens do pedido
+        // Calcular custos dos itens baseados no snapshot salvo no pedido
         const items = order.items as any[];
         items.forEach(item => {
-          // Usa cost_price da variante ou do produto principal salvo no snapshot do item
-          const cost = Number(item.selectedVariant?.cost_price || item.cost_price || 0);
-          totalCost += cost * item.quantity;
+          // Busca o costPrice (mapeado na UI) ou cost_price (direto do banco)
+          const cost = Number(item.costPrice || item.cost_price || 0);
+          totalItemCosts += cost * (item.quantity || 1);
         });
-
-        // Somar custo de frete (se houver custo para a loja, por enquanto estamos usando shipping_cost como o que o cliente pagou)
-        // Se shipping_cost for o que o cliente pagou, ele entra na receita. 
-        // O custo real do frete para a loja ainda não temos campo específico, 
-        // então subtraímos o que foi definido como custo fixo ou zero por enquanto.
       });
 
       setFinancialStats({
         totalRevenue: revenue,
-        totalCosts: totalCost,
-        totalProfit: revenue - totalCost,
+        totalCosts: totalItemCosts,
+        totalProfit: revenue - totalItemCosts - totalShippingCollected, // Lucro Real = Vendas - Custos - Frete
         orderCount: allPaidOrders?.length || 0
       });
 
@@ -109,8 +134,8 @@ const Finance = () => {
         .from('orders')
         .select('*', { count: 'exact' })
         .eq('status', 'Pago')
-        .gte('created_at', startDate)
-        .lte('created_at', endDate)
+        .gte('created_at', start)
+        .lte('created_at', end)
         .order('created_at', { ascending: false })
         .range(from, to);
 
@@ -146,31 +171,35 @@ const Finance = () => {
     <AdminLayout title="Financeiro">
       <div className="space-y-8">
         
-        {/* Cabeçalho com Filtro de Mês */}
+        {/* Filtros de Período */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-              <CalendarIcon size={16} /> Período de Apuração
-            </h2>
+          <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 flex items-center gap-2">
+            <CalendarIcon size={14} /> Período de Apuração
+          </h2>
+          <div className="flex gap-2">
+            <Select value={dateFilter === 'custom' ? 'custom' : dateFilter} onValueChange={(val) => { 
+              if (val === 'custom') setIsCustomDateOpen(true);
+              else { setDateFilter(val); setCurrentPage(1); }
+            }}>
+              <SelectTrigger className="w-full md:w-[240px] rounded-2xl border-gray-100 bg-white h-12">
+                <div className="flex items-center gap-2">
+                  <Filter size={16} className="text-gray-400" />
+                  <SelectValue placeholder="Selecione o período" />
+                </div>
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl border-gray-100">
+                <SelectItem value="custom" className="font-bold text-[#B89C6A]">Período Personalizado</SelectItem>
+                {monthOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value} className="capitalize">
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={selectedMonth} onValueChange={(val) => { setSelectedMonth(val); setCurrentPage(1); }}>
-            <SelectTrigger className="w-full md:w-[240px] rounded-2xl border-gray-100 bg-white h-12">
-              <div className="flex items-center gap-2">
-                <Filter size={16} className="text-gray-400" />
-                <SelectValue placeholder="Selecione o mês" />
-              </div>
-            </SelectTrigger>
-            <SelectContent className="rounded-2xl border-gray-100">
-              {monthOptions.map(option => (
-                <SelectItem key={option.value} value={option.value} className="capitalize">
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
-        {/* Cards de Resumo (Totais do Mês) */}
+        {/* Cards de KPIs Reais */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="border-none shadow-sm rounded-[32px] bg-white overflow-hidden group">
             <CardContent className="p-8">
@@ -178,12 +207,15 @@ const Finance = () => {
                 <div className="p-3 rounded-2xl bg-green-50 text-green-600">
                   <DollarSign size={24} />
                 </div>
-                <div className="flex items-center gap-1 text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded-full">
-                  <ArrowUpRight size={14} /> {financialStats.orderCount} vendas
+                <div className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full uppercase">
+                  {financialStats.orderCount} vendas
                 </div>
               </div>
               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total em Vendas</p>
               <p className="text-3xl font-bold text-gray-900 mt-2">{formatCurrency(financialStats.totalRevenue)}</p>
+              <p className="text-[9px] text-gray-400 mt-3 leading-relaxed">
+                Soma total dos pedidos pagos, incluindo valores de frete cobrados.
+              </p>
             </CardContent>
           </Card>
 
@@ -193,12 +225,13 @@ const Finance = () => {
                 <div className="p-3 rounded-2xl bg-[#B89C6A]/10 text-[#B89C6A]">
                   <TrendingUp size={24} />
                 </div>
-                <div className="flex items-center gap-1 text-red-500 text-xs font-bold bg-red-50 px-2 py-1 rounded-full">
-                  <ArrowDownRight size={14} /> Custos: {formatCurrency(financialStats.totalCosts)}
-                </div>
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Saldo Real</div>
               </div>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Lucro Líquido Estimado</p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Lucro Líquido</p>
               <p className="text-3xl font-bold text-green-600 mt-2">{formatCurrency(financialStats.totalProfit)}</p>
+              <p className="text-[9px] text-gray-400 mt-3 leading-relaxed">
+                Faturamento total descontando os custos de aquisição e logística (fretes).
+              </p>
             </CardContent>
           </Card>
 
@@ -208,7 +241,7 @@ const Finance = () => {
                 <div className="p-3 rounded-2xl bg-white/10 text-white">
                   <BadgePercent size={24} />
                 </div>
-                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Margem Média</div>
+                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Eficiência</div>
               </div>
               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Margem de Lucro</p>
               <p className="text-3xl font-bold mt-2">
@@ -216,25 +249,28 @@ const Finance = () => {
                   ? ((financialStats.totalProfit / financialStats.totalRevenue) * 100).toFixed(1) 
                   : '0'}%
               </p>
+              <p className="text-[9px] text-gray-500 mt-3 leading-relaxed">
+                Percentual de rentabilidade real sobre o volume total transacionado.
+              </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Tabela de Vendas Paginada */}
+        {/* Tabela de Vendas Pagas */}
         <div className="space-y-4">
           <div className="flex items-center justify-between px-2">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400">Listagem de Vendas Paga (Mês)</h3>
-            <p className="text-xs text-gray-400">{totalCount} registros encontrados</p>
+            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Extrato de Entradas Realizadas</h3>
+            <p className="text-[10px] text-gray-400 uppercase font-bold">{totalCount} registros</p>
           </div>
           
           <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden">
             <Table>
               <TableHeader className="bg-gray-50/50">
                 <TableRow className="border-gray-50 hover:bg-transparent">
-                  <TableHead className="font-bold text-xs uppercase tracking-widest text-gray-400 px-8 py-5">Pedido / Data</TableHead>
-                  <TableHead className="font-bold text-xs uppercase tracking-widest text-gray-400">Cliente</TableHead>
-                  <TableHead className="font-bold text-xs uppercase tracking-widest text-gray-400">Itens</TableHead>
-                  <TableHead className="font-bold text-xs uppercase tracking-widest text-gray-400 text-right pr-8">Valor Venda</TableHead>
+                  <TableHead className="font-bold text-[10px] uppercase tracking-[0.2em] text-gray-400 px-8 py-5">Pedido / Data</TableHead>
+                  <TableHead className="font-bold text-[10px] uppercase tracking-[0.2em] text-gray-400">Cliente</TableHead>
+                  <TableHead className="font-bold text-[10px] uppercase tracking-[0.2em] text-gray-400">Itens</TableHead>
+                  <TableHead className="font-bold text-[10px] uppercase tracking-[0.2em] text-gray-400 text-right pr-8">Valor Líquido</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -246,8 +282,8 @@ const Finance = () => {
                   ))
                 ) : orders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-40 text-center text-gray-400">
-                      Nenhuma venda efetivada neste período.
+                    <TableCell colSpan={4} className="h-40 text-center text-gray-400 uppercase text-[10px] font-bold tracking-widest">
+                      Nenhuma entrada confirmada neste período.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -255,24 +291,25 @@ const Finance = () => {
                     <TableRow key={order.id} className="border-gray-50 group hover:bg-gray-50/30 transition-colors">
                       <TableCell className="px-8 py-4">
                         <div>
-                          <p className="font-bold text-gray-900 text-sm">#{order.id.split('-')[0]}</p>
+                          <p className="font-bold text-gray-900 text-sm">#{order.id.split('-')[0].toUpperCase()}</p>
                           <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-tighter">
-                            {format(new Date(order.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                            {format(new Date(order.created_at), 'dd/MM/yyyy HH:mm')}
                           </p>
                         </div>
                       </TableCell>
                       <TableCell>
                         <p className="text-sm font-medium text-gray-700">{order.customer_data.fullName}</p>
+                        <p className="text-[10px] text-gray-400">{order.customer_data.email}</p>
                       </TableCell>
                       <TableCell>
                         <div className="flex -space-x-2">
                           {order.items.slice(0, 3).map((item: any, idx: number) => (
-                            <div key={idx} className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 overflow-hidden">
+                            <div key={idx} className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 overflow-hidden shadow-sm">
                               <img src={item.selectedVariant?.main_image || item.image} className="w-full h-full object-cover" alt="" />
                             </div>
                           ))}
                           {order.items.length > 3 && (
-                            <div className="w-8 h-8 rounded-full border-2 border-white bg-gray-900 text-white flex items-center justify-center text-[10px] font-bold">
+                            <div className="w-8 h-8 rounded-full border-2 border-white bg-gray-900 text-white flex items-center justify-center text-[8px] font-bold">
                               +{order.items.length - 3}
                             </div>
                           )}
@@ -280,6 +317,7 @@ const Finance = () => {
                       </TableCell>
                       <TableCell className="text-right pr-8">
                         <p className="font-bold text-gray-900">{formatCurrency(order.total)}</p>
+                        <p className="text-[9px] text-green-600 font-bold uppercase">Entrada Confirmada</p>
                       </TableCell>
                     </TableRow>
                   ))
@@ -299,7 +337,7 @@ const Finance = () => {
                 >
                   <ChevronLeft size={18} />
                 </Button>
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
                   Página {currentPage} de {totalPages}
                 </span>
                 <Button 
@@ -316,6 +354,28 @@ const Finance = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal Período Personalizado */}
+      <Dialog open={isCustomDateOpen} onOpenChange={setIsCustomDateOpen}>
+        <DialogContent className="max-w-md rounded-[32px] border-none shadow-2xl p-8">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-serif">Relatório Personalizado</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-6">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Data Inicial</Label>
+              <Input type="date" value={customRange.start} onChange={e => setCustomRange({...customRange, start: e.target.value})} className="rounded-2xl h-12 bg-gray-50" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Data Final</Label>
+              <Input type="date" value={customRange.end} onChange={e => setCustomRange({...customRange, end: e.target.value})} className="rounded-2xl h-12 bg-gray-50" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => { setIsCustomDateOpen(false); setDateFilter('custom'); setCurrentPage(1); }} className="w-full bg-black text-white rounded-full h-12 font-bold uppercase tracking-widest text-[10px]">GERAR RELATÓRIO</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
