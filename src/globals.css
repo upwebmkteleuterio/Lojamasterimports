@@ -46,18 +46,16 @@
   }
 
   /* 
-   * Classe Full Bleed: Permite que um elemento ignore as margens do container pai no PC.
+   * Classe Full Bleed: Permite que um elemento ignore as margens do container pai.
    * Útil para banners e heros que devem tocar as bordas da tela.
    */
-  @screen lg {
-    .full-bleed {
-      width: 100vw;
-      position: relative;
-      left: 50%;
-      right: 50%;
-      margin-left: -50vw;
-      margin-right: -50vw;
-    }
+  .full-bleed {
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
   }
 }
 

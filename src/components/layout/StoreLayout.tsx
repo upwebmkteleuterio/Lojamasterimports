@@ -12,8 +12,8 @@ interface StoreLayoutProps {
 
 /**
  * StoreLayout: Envolve as páginas da loja virtual.
- * No PC (lg), aplica uma largura máxima e centraliza o conteúdo,
- * permitindo que elementos com a classe 'full-bleed' ignorem essa margem.
+ * Aplica margens laterais no Mobile/Tablet e centraliza no PC (lg).
+ * Elementos com a classe 'full-bleed' ignoram essas margens.
  */
 export const StoreLayout = ({ children, className }: StoreLayoutProps) => {
   return (
@@ -21,9 +21,8 @@ export const StoreLayout = ({ children, className }: StoreLayoutProps) => {
       <Navbar />
       
       <main className={cn(
-        "flex-1 w-full",
-        // No PC, limitamos a largura do conteúdo geral e centralizamos.
-        // O uso de 'mx-auto' cria as margens laterais elegantes.
+        "flex-1 w-full px-4 md:px-8", // Margens para Mobile e Tablet
+        // No PC, limitamos a largura máxima e centralizamos.
         "lg:max-w-[1440px] lg:mx-auto lg:px-8 xl:px-16",
         className
       )}>
