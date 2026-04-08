@@ -405,7 +405,7 @@ const Finance = () => {
 
       {/* Modal COMPROVANTE FISCAL */}
       <Dialog open={isReceiptOpen} onOpenChange={setIsReceiptOpen}>
-        <DialogContent className="max-w-lg rounded-none border-none shadow-2xl p-0 overflow-hidden bg-[#fafafa]">
+        <DialogContent className="max-w-lg max-h-[95vh] overflow-y-auto rounded-none border-none shadow-2xl p-0 bg-[#fafafa] scrollbar-hide">
           {selectedOrder && (
             <div className="relative">
               {/* Estilo do Topo do Recibo */}
