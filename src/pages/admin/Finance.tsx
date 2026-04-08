@@ -44,6 +44,9 @@ import { ptBR } from 'date-fns/locale';
 
 const ITEMS_PER_PAGE = 50;
 
+// Lista de status que representam dinheiro que entrou no caixa
+const PAID_STATUS_LIST = ['Pago', 'Preparando Pedido', 'Enviado', 'Entregue'];
+
 const Finance = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,7 +54,6 @@ const Finance = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Totais e Indicadores
   const [financialStats, setFinancialStats] = useState({
     totalRevenue: 0,
     totalProfit: 0,
@@ -59,7 +61,6 @@ const Finance = () => {
     orderCount: 0
   });
 
-  // Filtros de Data
   const [dateFilter, setDateFilter] = useState<string>(format(new Date(), 'yyyy-MM'));
   const [isCustomDateOpen, setIsCustomDateOpen] = useState(false);
   const [customRange, setCustomRange] = useState({ start: '', end: '' });
@@ -88,11 +89,11 @@ const Finance = () => {
       const { start, end } = getDateRange();
       if (!start || !end) return;
 
-      // 1. Calcular KPIs baseados nos filtros ativos (sempre apenas status 'Pago')
+      // 1. Calcular KPIs incluindo todos os status de pagamento confirmado
       let statsQuery = supabase
         .from('orders')
         .select('total, items, shipping_cost')
-        .eq('status', 'Pago')
+        .in('status', PAID_STATUS_LIST)
         .gte('created_at', start)
         .lte('created_at', end);
 
@@ -132,7 +133,7 @@ const Finance = () => {
       let query = supabase
         .from('orders')
         .select('*', { count: 'exact' })
-        .eq('status', 'Pago')
+        .in('status', PAID_STATUS_LIST)
         .gte('created_at', start)
         .lte('created_at', end);
 
@@ -232,7 +233,7 @@ const Finance = () => {
           </Card>
         </div>
 
-        {/* Filtros e Busca (Alinhado com a tela de pedidos) */}
+        {/* Filtros e Busca */}
         <div className="bg-white p-4 rounded-[32px] border border-gray-100 shadow-sm flex flex-col lg:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -275,7 +276,7 @@ const Finance = () => {
                 <TableHead className="font-bold text-[10px] uppercase tracking-[0.2em] text-gray-400 px-8 py-5">Pedido / Data</TableHead>
                 <TableHead className="font-bold text-[10px] uppercase tracking-[0.2em] text-gray-400">Cliente</TableHead>
                 <TableHead className="font-bold text-[10px] uppercase tracking-[0.2em] text-gray-400">Itens</TableHead>
-                <TableHead className="font-bold text-[10px] uppercase tracking-[0.2em] text-gray-400 text-right pr-8">Valor Líquido</TableHead>
+                <TableHead className="font-bold text-[10px] uppercase tracking-[0.2em] text-gray-400 text-right pr-8">Valor Total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -322,7 +323,12 @@ const Finance = () => {
                     </TableCell>
                     <TableCell className="text-right pr-8">
                       <p className="font-bold text-gray-900">{formatCurrency(order.total)}</p>
-                      <p className="text-[9px] text-green-600 font-bold uppercase">Entrada Confirmada</p>
+                      <p className={cn(
+                        "text-[9px] font-bold uppercase",
+                        order.status === 'Pago' ? "text-green-600" : "text-blue-600"
+                      )}>
+                        {order.status}
+                      </p>
                     </TableCell>
                   </TableRow>
                 ))
