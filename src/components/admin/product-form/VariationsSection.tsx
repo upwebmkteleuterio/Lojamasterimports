@@ -4,7 +4,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Plus, Search, Edit3, Trash2, ChevronDown, X } from 'lucide-react';
 import { ProductVariation, ProductVariant } from '@/types/store';
 import { VariantEditModal } from './VariantEditModal';
@@ -65,6 +64,9 @@ export const VariationsSection = ({ availableVariations, variants, onUpdateVaria
     );
 
     const newVariants: ProductVariant[] = filteredNewOptions.map(opt => ({
+      // Geramos um UUID real no cliente para evitar o erro 'null' no Upsert do banco
+      id: crypto.randomUUID(), 
+      product_id: mainProductData.id || '',
       attribute_name: selectedAttr.name,
       option_name: opt,
       sku: `${mainProductData.sku || 'SKU'}-${opt.toUpperCase().replace(/\s+/g, '')}`,
@@ -82,16 +84,12 @@ export const VariationsSection = ({ availableVariations, variants, onUpdateVaria
     }));
 
     onUpdateVariants([...variants, ...newVariants]);
-    diamondDebug('success', `Geradas ${newVariants.length} variantes para ${selectedAttr.name}`);
+    diamondDebug('success', `Geradas ${newVariants.length} variantes com IDs únicos para ${selectedAttr.name}`);
     setSelectedAttr(null);
     setSelectedOptions([]);
   };
 
   const handleSaveEditedVariant = (updated: ProductVariant) => {
-    diamondDebug('info', `VariationsSection recebeu variante atualizada: ${updated.option_name}`, {
-      price_recebido: updated.price,
-      cost_recebido: updated.cost_price
-    });
     const next = [...variants];
     next[editIndex] = updated;
     onUpdateVariants(next);
@@ -197,7 +195,7 @@ export const VariationsSection = ({ availableVariations, variants, onUpdateVaria
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {variants.map((v, idx) => (
-                    <tr key={idx} className="hover:bg-white transition-colors group">
+                    <tr key={v.id || idx} className="hover:bg-white transition-colors group">
                       <td className="px-6 py-5">
                         <span className="font-bold text-gray-900">{v.option_name}</span>
                       </td>

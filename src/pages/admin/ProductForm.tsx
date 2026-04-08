@@ -93,10 +93,8 @@ const ProductForm = () => {
     if (!id) return;
     
     try {
-      diamondDebug('info', `[PONTE] Iniciando carga via Relacionamento Inverso para ID: ${id}`);
+      diamondDebug('info', `[PONTE] Iniciando carga via Join para ID: ${id}`);
       
-      // ESTRATÉGIA VENCEDORA: Buscar produto e variantes em uma única query (Join)
-      // Isso evita o problema de tipagem de UUID na cláusula WHERE isolada.
       const { data: fullData, error } = await supabase
         .from('products')
         .select('*, product_variants(*)')
@@ -106,37 +104,25 @@ const ProductForm = () => {
       if (error) throw error;
       
       if (fullData) {
-        // Separa os dados para os estados da UI
         const { product_variants, ...productInfo } = fullData;
-        
         setFormData(productInfo);
         
         if (product_variants && product_variants.length > 0) {
-          diamondDebug('success', `[PONTE] Sincronização concluída: ${product_variants.length} variantes carregadas via Join.`);
-          
-          const mappedVariants = product_variants.map((v: any) => ({
+          setVariants(product_variants.map((v: any) => ({
             ...v,
             price: Number(v.price),
             cost_price: Number(v.cost_price || 0),
-            promo_price: Number(v.promo_price || 0),
-            weight: Number(v.weight || 0),
-            height: Number(v.height || 0),
-            width: Number(v.width || 0),
-            length: Number(v.length || 0)
-          }));
-          
-          setVariants(mappedVariants);
+            promo_price: Number(v.promo_price || 0)
+          })));
+          diamondDebug('success', `[PONTE] ${product_variants.length} variantes sincronizadas.`);
         } else {
-          diamondDebug('info', '[PONTE] Produto carregado, mas não possui variações no banco.');
           setVariants([]);
         }
-        
-        // Diagnóstico de integridade pós-carga
         checkIntegrity('products', id, productInfo);
       }
     } catch (error: any) {
-      diamondDebug('error', 'Erro crítico na carga de dados', error);
-      toast.error("Erro ao sincronizar com o banco de dados.");
+      diamondDebug('error', 'Erro crítico na carga', error);
+      toast.error("Erro ao sincronizar dados.");
     }
   };
 
@@ -156,7 +142,7 @@ const ProductForm = () => {
     }
 
     setSaving(true);
-    traceSaveFlow('products', { ...formData, variants });
+    traceSaveFlow('products', { ...formData, variants_count: variants.length });
 
     try {
       // 1. Salva o produto principal
@@ -175,55 +161,50 @@ const ProductForm = () => {
 
       if (prodError) throw prodError;
 
-      // 2. Sincroniza Variantes (Lógica Segura)
+      // 2. Sincroniza Variantes
       if (savedProd) {
-        const { data: currentVars } = await supabase
-          .from('product_variants')
-          .select('id')
-          .eq('product_id', savedProd.id);
-        
-        const currentIds = (currentVars || []).map(v => v.id);
-        const incomingIds = variants.map(v => v.id).filter(Boolean);
-        const idsToDelete = currentIds.filter(id => !incomingIds.includes(id));
+        // Busca o que tem no banco agora para apagar o que foi removido da UI
+        const { data: currentVars } = await supabase.from('product_variants').select('id').eq('product_id', savedProd.id);
+        const currentIdsInDb = (currentVars || []).map(v => v.id);
+        const idsToKeep = variants.map(v => v.id).filter(Boolean);
+        const idsToDelete = currentIdsInDb.filter(dbId => !idsToKeep.includes(dbId));
         
         if (idsToDelete.length > 0) {
           await supabase.from('product_variants').delete().in('id', idsToDelete);
         }
 
+        // Upsert de todas as variantes da tela
         if (variants.length > 0) {
-          const variantsToUpsert = variants.map(v => {
-            const isTempId = !v.id || v.id.toString().startsWith('temp');
-            return {
-              ...(isTempId ? {} : { id: v.id }),
-              product_id: savedProd.id,
-              attribute_name: v.attribute_name,
-              option_name: v.option_name,
-              sku: v.sku?.trim() === "" ? null : v.sku,
-              barcode: v.barcode?.trim() === "" ? null : v.barcode,
-              price: v.price,
-              cost_price: v.cost_price,
-              promo_price: v.promo_price,
-              stock: v.stock,
-              main_image: v.main_image,
-              weight: v.weight,
-              height: v.height,
-              width: v.width,
-              length: v.length,
-              is_active: v.is_active
-            };
-          });
+          const variantsToUpsert = variants.map(v => ({
+            id: v.id || crypto.randomUUID(), // Sempre garante um ID para o lote não falhar
+            product_id: savedProd.id,
+            attribute_name: v.attribute_name,
+            option_name: v.option_name,
+            sku: v.sku?.trim() === "" ? null : v.sku,
+            barcode: v.barcode?.trim() === "" ? null : v.barcode,
+            price: v.price,
+            cost_price: v.cost_price,
+            promo_price: v.promo_price,
+            stock: v.stock,
+            main_image: v.main_image,
+            weight: v.weight,
+            height: v.height,
+            width: v.width,
+            length: v.length,
+            is_active: v.is_active
+          }));
 
           const { error: varError } = await supabase.from('product_variants').upsert(variantsToUpsert);
           if (varError) throw varError;
         }
       }
 
-      diamondDebug('success', 'Produto e variantes sincronizados com sucesso.');
+      diamondDebug('success', 'Produto e variações salvos com êxito.');
       toast.success("Produto atualizado!");
       localStorage.removeItem(`form_data_${persistenceKey}`);
       navigate('/adm/produtos');
     } catch (error: any) {
-      diamondDebug('error', 'Falha no salvamento seguro', error);
+      diamondDebug('error', 'Falha no processo de persistência', error);
       toast.error("Erro ao salvar: " + error.message);
     } finally {
       setSaving(false);
