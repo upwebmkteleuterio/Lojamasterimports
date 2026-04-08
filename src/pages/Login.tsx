@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Eye, EyeOff, Mail, Lock, User, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { diamondDebug } from '@/utils/debug';
 
 const Login = () => {
   const { session } = useAuth();
@@ -24,7 +25,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
 
-  // Identifica de onde o usuário veio
+  // Identifica de onde o usuário veio para redirecionar de volta
   const from = location.state?.from?.pathname || '/minha-conta';
 
   useEffect(() => {
