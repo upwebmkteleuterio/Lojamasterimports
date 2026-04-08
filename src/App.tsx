@@ -3,6 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
+import { useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { CartProvider } from "./context/CartContext";
 import { FavoritesProvider } from "./context/FavoritesContext";
 import { AuthProvider } from "./context/AuthContext";
@@ -49,7 +51,6 @@ const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.Re
   }
 
   if (!session) {
-    // Redireciona para login mantendo o estado de onde o usuário veio
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
@@ -65,6 +66,27 @@ const AppContent = () => {
   const isAdmin = location.pathname.startsWith('/adm');
   const isLanding = location.pathname === '/';
 
+  // Sincroniza o Título do Navegador com o Nome da Loja no Banco
+  useEffect(() => {
+    const fetchStoreName = async () => {
+      try {
+        const { data } = await supabase
+          .from('store_configs')
+          .select('store_name')
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (data?.store_name) {
+          document.title = data.store_name;
+        }
+      } catch (e) {
+        console.error("Erro ao atualizar título da aba:", e);
+      }
+    };
+    fetchStoreName();
+  }, []);
+
   return (
     <>
       <ScrollToTop />
@@ -77,7 +99,6 @@ const AppContent = () => {
         <Route path="/:shopType/busca" element={<StoreLayout><SearchResults /></StoreLayout>} />
         <Route path="/carrinho" element={<StoreLayout><Cart /></StoreLayout>} />
         
-        {/* Checkout agora é uma rota protegida */}
         <Route path="/checkout" element={<ProtectedRoute><StoreLayout><Checkout /></StoreLayout></ProtectedRoute>} />
         
         <Route path="/login" element={<StoreLayout><Login /></StoreLayout>} />
