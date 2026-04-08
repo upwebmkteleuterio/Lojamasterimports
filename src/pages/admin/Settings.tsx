@@ -6,13 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Save, Store, Phone, Mail, MapPin, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Save, Store, Phone, Mail, MapPin, Image as ImageIcon, Loader2, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { diamondDebug } from '@/utils/debug';
+import { runDeepScan, traceSaveFlow } from '@/utils/integrityDiagnostic';
+import { cn } from '@/lib/utils';
 
 const Settings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deepScanResults, setDeepScanResults] = useState<any[]>([]);
   const [config, setConfig] = useState({
     id: null as string | null,
     store_name: '',
@@ -27,26 +31,29 @@ const Settings = () => {
   }, []);
 
   const fetchSettings = async () => {
+    diamondDebug('info', 'Iniciando carga de configurações da loja...');
     try {
       const { data, error } = await supabase
         .from('store_configs')
         .select('*')
-        .limit(1)
         .maybeSingle();
 
-      if (error) throw error;
-      if (data) {
-        setConfig({
-          id: data.id,
-          store_name: data.store_name || '',
-          logo_url: data.logo_url || '',
-          support_phone: data.support_phone || '',
-          support_email: data.support_email || '',
-          address_full: data.address_full || ''
-        });
+      if (error) {
+        diamondDebug('error', 'Falha na ponte de dados (SELECT store_configs)', error);
+        throw error;
       }
-    } catch (error) {
-      console.error('Erro ao buscar configurações:', error);
+      
+      if (data) {
+        diamondDebug('success', 'Configurações carregadas com sucesso.', data);
+        setConfig(data);
+        // Dispara varredura profunda para validar o registro
+        const scan = await runDeepScan('store_configs', data.id);
+        setDeepScanResults(scan);
+      } else {
+        diamondDebug('info', 'Nenhum registro de configuração encontrado no banco.');
+      }
+    } catch (error: any) {
+      toast.error("Erro ao carregar dados.");
     } finally {
       setLoading(false);
     }
@@ -54,11 +61,14 @@ const Settings = () => {
 
   const handleSave = async () => {
     setSaving(true);
+    traceSaveFlow('store_configs', config);
+    
     try {
-      // Removemos o ID do payload se for nulo para o Supabase gerar um novo na primeira vez
       const payload = { ...config };
       if (!payload.id) delete (payload as any).id;
 
+      diamondDebug('info', 'Executando UPSERT no banco...', payload);
+      
       const { data, error } = await supabase
         .from('store_configs')
         .upsert({ 
@@ -68,37 +78,54 @@ const Settings = () => {
         .select()
         .single();
 
-      if (error) throw error;
-      
-      // Atualiza o estado local com o ID gerado (caso seja a primeira inserção)
-      if (data) {
-        setConfig(prev => ({ ...prev, id: data.id }));
+      if (error) {
+        diamondDebug('error', 'Falha crítica no UPSERT', error);
+        throw error;
       }
       
-      toast.success("Configurações atualizadas com sucesso!");
+      diamondDebug('success', 'Banco confirmou salvamento com êxito.', data);
+      if (data) setConfig(data);
+      toast.success("Configurações atualizadas!");
     } catch (error: any) {
-      toast.error("Erro ao salvar: " + error.message);
+      diamondDebug('error', 'Erro no processo de salvamento (Ponte Quebrada)', { message: error.message, code: error.code });
+      toast.error("Erro ao salvar mudanças.");
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) return <AdminLayout title="Configurações">Carregando...</AdminLayout>;
+  const isBridgeOk = deepScanResults.length > 0 && deepScanResults.every(r => r.success);
 
   return (
     <AdminLayout 
       title="Configurações da Loja" 
       actions={
-        <Button 
-          onClick={handleSave} 
-          disabled={saving}
-          className="bg-[#B89C6A] hover:bg-[#A68B5B] rounded-full px-8 h-12 font-bold text-xs uppercase tracking-widest gap-2"
-        >
+        <Button onClick={handleSave} disabled={saving} className="bg-[#B89C6A] hover:bg-[#A68B5B] rounded-full px-8 h-12 font-bold text-xs uppercase tracking-widest gap-2 shadow-lg shadow-[#B89C6A]/20">
           {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />} 
-          {saving ? 'Salvando...' : 'Salvar Configurações'}
+          {saving ? 'Gravando...' : 'Salvar Alterações'}
         </Button>
       }
     >
+      {/* INTEGRITY BANNER */}
+      <div className={cn(
+        "mb-8 p-6 rounded-[32px] border-2 flex items-center justify-between transition-all",
+        loading ? "bg-gray-50 border-gray-100 opacity-50" :
+        isBridgeOk ? "bg-green-50 border-green-100 text-green-700" : "bg-red-50 border-red-100 text-red-700"
+      )}>
+        <div className="flex items-center gap-4">
+          <div className={cn("p-3 rounded-2xl", isBridgeOk ? "bg-green-600 text-white" : "bg-red-600 text-white")}>
+            {isBridgeOk ? <ShieldCheck size={24} /> : <AlertTriangle size={24} />}
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Status da Ponte de Dados</p>
+            <p className="font-bold">{loading ? 'Validando Integridade...' : isBridgeOk ? 'Ponte Íntegra e Segura' : 'Falha na Validação de Registro'}</p>
+          </div>
+        </div>
+        {!loading && !isBridgeOk && (
+          <p className="text-xs font-bold uppercase underline cursor-pointer" onClick={() => fetchSettings()}>Forçar Recarga</p>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
           <CardHeader className="bg-gray-50/50 border-b">
@@ -123,7 +150,7 @@ const Settings = () => {
               <Input 
                 value={config.logo_url}
                 onChange={(e) => setConfig({...config, logo_url: e.target.value})}
-                placeholder="https://link-da-logo.com/logo.png"
+                placeholder="https://..."
                 className="rounded-2xl border-gray-100 bg-gray-50 h-12"
               />
             </div>
@@ -139,32 +166,29 @@ const Settings = () => {
           <CardContent className="p-8 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label className="text-xs font-bold text-gray-500 uppercase">Telefone de Suporte</Label>
+                <Label className="text-xs font-bold text-gray-500 uppercase">Telefone</Label>
                 <Input 
                   value={config.support_phone}
                   onChange={(e) => setConfig({...config, support_phone: e.target.value})}
-                  placeholder="(00) 0000-0000"
                   className="rounded-2xl border-gray-100 bg-gray-50 h-12"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-bold text-gray-500 uppercase">E-mail de Suporte</Label>
+                <Label className="text-xs font-bold text-gray-500 uppercase">E-mail</Label>
                 <Input 
                   value={config.support_email}
                   onChange={(e) => setConfig({...config, support_email: e.target.value})}
-                  placeholder="suporte@diamond.com"
                   className="rounded-2xl border-gray-100 bg-gray-50 h-12"
                 />
               </div>
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
-                <MapPin size={14} /> Endereço Físico / Sede
+                <MapPin size={14} /> Endereço Sede
               </Label>
               <Input 
                 value={config.address_full}
                 onChange={(e) => setConfig({...config, address_full: e.target.value})}
-                placeholder="Rua Exemplo, 123 - Cidade, UF"
                 className="rounded-2xl border-gray-100 bg-gray-50 h-12"
               />
             </div>

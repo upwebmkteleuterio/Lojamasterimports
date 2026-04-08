@@ -23,82 +23,64 @@ export interface DeepScanResult {
  * Realiza uma varredura profunda tentando 3 estratégias diferentes de busca
  * para identificar onde a ponte de dados está quebrando.
  */
-export const runDeepScan = async (productId: string): Promise<DeepScanResult[]> => {
+export const runDeepScan = async (table: string, id: string): Promise<DeepScanResult[]> => {
   const results: DeepScanResult[] = [];
-  diamondDebug('info', `[DEEP SCAN] Iniciando varredura para ID: ${productId}`);
+  diamondDebug('info', `[DEEP SCAN] Iniciando varredura na tabela ${table} para ID: ${id}`);
 
-  // ESTRATÉGIA 1: Busca Direta (A que estava falhando)
+  // ESTRATÉGIA 1: Busca Direta (.eq)
   try {
-    const { data, error } = await supabase
-      .from('product_variants')
-      .select('*')
-      .eq('product_id', productId);
-    
+    const { data, error } = await supabase.from(table as any).select('*').eq('id', id).maybeSingle();
     results.push({
       strategy: 'Busca Direta (.eq)',
-      success: !error && data && data.length > 0,
-      count: data?.length || 0,
+      success: !error && !!data,
+      count: data ? 1 : 0,
       data: data,
       error: error?.message
     });
   } catch (e: any) {
-    results.push({ strategy: 'Busca Direta (.eq)', success: false, count: 0, data: null, error: e.message });
+    results.push({ strategy: 'Busca Direta', success: false, count: 0, data: null, error: e.message });
   }
 
-  // ESTRATÉGIA 2: Busca via Relacionamento Inverso (Join reverso)
-  // Pergunta ao banco: "Me traga o produto e force a inclusão das variantes dele"
+  // ESTRATÉGIA 2: Busca por Relacionamento (Tratando como se fosse query nested)
   try {
-    const { data, error } = await supabase
-      .from('products')
-      .select('id, product_variants(*)')
-      .eq('id', productId)
-      .maybeSingle();
-    
-    const variants = data?.product_variants || [];
+    const { data, error } = await supabase.from(table as any).select('*').limit(10);
+    const found = data?.find((item: any) => item.id === id);
     results.push({
-      strategy: 'Busca via Relacionamento (Nested)',
-      success: !error && variants.length > 0,
-      count: variants.length,
-      data: variants,
+      strategy: 'Busca via Scan de Tabela (RLS Test)',
+      success: !error && !!found,
+      count: found ? 1 : 0,
+      data: found,
       error: error?.message
     });
   } catch (e: any) {
-    results.push({ strategy: 'Busca via Relacionamento (Nested)', success: false, count: 0, data: null, error: e.message });
+    results.push({ strategy: 'Relacionamento', success: false, count: 0, data: null, error: e.message });
   }
 
-  // ESTRATÉGIA 3: Busca Bruta por Filtro de String (Like)
-  // Ignora tipagem UUID e trata o ID como texto simples
+  // ESTRATÉGIA 3: Busca por Filtro Bruto (Tratando UUID como String)
   try {
-    const { data, error } = await supabase
-      .from('product_variants')
-      .select('*')
-      .filter('product_id', 'eq', productId);
-    
+    const { data, error } = await supabase.from(table as any).select('*').filter('id', 'eq', id);
     results.push({
-      strategy: 'Busca com Filtro Bruto (Filter)',
+      strategy: 'Busca com Filtro Bruto (Casting Test)',
       success: !error && data && data.length > 0,
       count: data?.length || 0,
-      data: data,
+      data: data?.[0],
       error: error?.message
     });
   } catch (e: any) {
-    results.push({ strategy: 'Busca com Filtro Bruto (Filter)', success: false, count: 0, data: null, error: e.message });
+    results.push({ strategy: 'Filtro Bruto', success: false, count: 0, data: null, error: e.message });
   }
 
-  diamondDebug('info', '[DEEP SCAN] Varredura concluída. Relatório de estratégias gerado.', results);
+  diamondDebug('info', `[DEEP SCAN] Varredura em ${table} concluída.`, results);
   return results;
 };
 
 export const checkIntegrity = async (table: string, id: string, uiState: any): Promise<IntegrityReport> => {
-  const { data: dbRaw, error } = await supabase
-    .from(table as any)
-    .select('*')
-    .eq('id', id)
-    .maybeSingle();
+  const { data: dbRaw } = await supabase.from(table as any).select('*').eq('id', id).maybeSingle();
 
   const fieldsWithDiff: string[] = [];
   if (dbRaw) {
     Object.keys(uiState).forEach(key => {
+      // Compara apenas valores primitivos para evitar falsos positivos com objetos/arrays
       if (typeof uiState[key] !== 'object' && uiState[key] !== dbRaw[key]) {
         fieldsWithDiff.push(key);
       }
@@ -117,5 +99,8 @@ export const checkIntegrity = async (table: string, id: string, uiState: any): P
 };
 
 export const traceSaveFlow = (entity: string, payload: any) => {
-  diamondDebug('info', `[FLOW TRACE] Validando payload para ${entity}`, { keys: Object.keys(payload) });
+  diamondDebug('info', `[FLOW TRACE] Interceptando payload para ${entity} antes do envio`, { 
+    keys: Object.keys(payload),
+    timestamp: new Date().toISOString()
+  });
 };

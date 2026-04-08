@@ -33,7 +33,7 @@ export const AdminLayout = ({ children, title, actions }: AdminLayoutProps) => {
       <main className={cn("flex-1 flex flex-col min-w-0", !isMobile && "ml-64")}>
         {/* Content Area */}
         <div className="p-6 md:p-12">
-          {/* Header de Título com Gatilho Mobile se necessário */}
+          {/* Header de Título */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-12">
             <div className="flex items-center gap-4">
               {isMobile && (
@@ -62,7 +62,7 @@ export const AdminLayout = ({ children, title, actions }: AdminLayoutProps) => {
         </div>
       </main>
 
-      {/* Monitor de Diagnóstico Fixo */}
+      {/* Monitor de Diagnóstico Global */}
       <DebugInspector />
     </div>
   );

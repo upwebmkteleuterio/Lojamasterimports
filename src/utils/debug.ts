@@ -19,7 +19,7 @@ export const diamondDebug = (type: LogType, message: string, data?: any) => {
   };
   
   logs.unshift(newLog);
-  if (logs.length > 100) logs.pop();
+  if (logs.length > 100) logs.pop(); // Mantém os últimos 100
   
   listeners.forEach(listener => listener([...logs]));
   console.log(`[DIAMOND DEBUG] ${type.toUpperCase()}: ${message}`, data || '');
