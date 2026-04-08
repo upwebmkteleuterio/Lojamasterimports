@@ -49,6 +49,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.Re
   }
 
   if (!session) {
+    // Redireciona para login mantendo o estado de onde o usuário veio
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
@@ -68,20 +69,20 @@ const AppContent = () => {
     <>
       <ScrollToTop />
       <Routes>
-        {/* Landing é tela cheia, não usa StoreLayout comum */}
         <Route path="/" element={<Landing />} />
         
-        {/* Rotas da Loja envolvidas pelo StoreLayout */}
         <Route path="/:shopType" element={<StoreLayout><Index /></StoreLayout>} />
         <Route path="/:shopType/categoria/*" element={<StoreLayout><Category /></StoreLayout>} />
         <Route path="/:shopType/produto/:id" element={<StoreLayout><ProductDetail /></StoreLayout>} />
         <Route path="/:shopType/busca" element={<StoreLayout><SearchResults /></StoreLayout>} />
         <Route path="/carrinho" element={<StoreLayout><Cart /></StoreLayout>} />
-        <Route path="/checkout" element={<StoreLayout><Checkout /></StoreLayout>} />
+        
+        {/* Checkout agora é uma rota protegida */}
+        <Route path="/checkout" element={<ProtectedRoute><StoreLayout><Checkout /></StoreLayout></ProtectedRoute>} />
+        
         <Route path="/login" element={<StoreLayout><Login /></StoreLayout>} />
         <Route path="/minha-conta" element={<ProtectedRoute><StoreLayout><Account /></StoreLayout></ProtectedRoute>} />
         
-        {/* Rotas Administrativas (Mantêm layout próprio) */}
         <Route path="/adm" element={<ProtectedRoute requireAdmin><Dashboard /></ProtectedRoute>} />
         <Route path="/adm/produtos" element={<ProtectedRoute requireAdmin><Products /></ProtectedRoute>} />
         <Route path="/adm/produtos/novo" element={<ProtectedRoute requireAdmin><ProductForm /></ProtectedRoute>} />
@@ -107,17 +108,17 @@ const AppContent = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <AuthProvider>
-        <CartProvider>
-          <FavoritesProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
+      <BrowserRouter>
+        <AuthProvider>
+          <CartProvider>
+            <FavoritesProvider>
+              <Toaster />
+              <Sonner />
               <AppContent />
-            </BrowserRouter>
-          </FavoritesProvider>
-        </CartProvider>
-      </AuthProvider>
+            </FavoritesProvider>
+          </CartProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );

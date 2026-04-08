@@ -24,6 +24,9 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
 
+  // Identifica de onde o usuário veio
+  const from = location.state?.from?.pathname || '/minha-conta';
+
   useEffect(() => {
     const fetchStoreConfig = async () => {
       try {
@@ -34,12 +37,13 @@ const Login = () => {
     fetchStoreConfig();
   }, []);
 
+  // Monitora a sessão para redirecionar assim que autenticar
   useEffect(() => {
     if (session) {
-      const origin = location.state?.from?.pathname || '/minha-conta';
-      navigate(origin);
+      diamondDebug('info', `Usuário autenticado. Redirecionando para: ${from}`);
+      navigate(from, { replace: true });
     }
-  }, [session, navigate, location]);
+  }, [session, navigate, from]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,7 +77,7 @@ const Login = () => {
         }
       });
       if (error) throw error;
-      toast.success("Conta criada! Verifique seu e-mail se necessário.");
+      toast.success("Conta criada com sucesso!");
     } catch (error: any) {
       toast.error(error.message || "Erro ao criar conta.");
     } finally {
@@ -86,7 +90,9 @@ const Login = () => {
       <div className="w-full max-w-md bg-white p-8 md:p-10 rounded-[40px] shadow-sm border border-gray-100">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-serif font-bold text-[#B89C6A] uppercase tracking-[0.2em]">{storeName}</h1>
-          <p className="text-gray-400 text-[10px] mt-2 font-bold uppercase tracking-widest">Acesso do Cliente</p>
+          <p className="text-gray-400 text-[10px] mt-2 font-bold uppercase tracking-widest">
+            {from === '/checkout' ? 'Acesse para finalizar sua compra' : 'Acesso do Cliente'}
+          </p>
         </div>
 
         <Tabs defaultValue="login" className="w-full">

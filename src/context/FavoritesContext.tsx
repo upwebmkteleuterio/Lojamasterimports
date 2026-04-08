@@ -3,6 +3,7 @@ import { Product } from '@/types/store';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface FavoritesContextType {
   favorites: Product[];
@@ -17,14 +18,14 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [favorites, setFavorites] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     if (user) {
       fetchFavorites();
     } else {
-      // Se deslogado, tenta carregar do localStorage como fallback (modo convidado)
-      const saved = localStorage.getItem('favorites_guest');
-      if (saved) setFavorites(JSON.parse(saved));
+      setFavorites([]);
       setLoading(false);
     }
   }, [user]);
@@ -55,14 +56,9 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const toggleFavorite = async (product: Product) => {
     if (!user) {
-      // Lógica de convidado (localStorage)
-      setFavorites(prev => {
-        const isFav = prev.some(p => p.id === product.id);
-        const newFavs = isFav ? prev.filter(p => p.id !== product.id) : [...prev, product];
-        localStorage.setItem('favorites_guest', JSON.stringify(newFavs));
-        toast.info(isFav ? "Removido dos favoritos" : "Adicionado aos favoritos (entre para salvar na nuvem)");
-        return newFavs;
-      });
+      // Se não estiver logado, redireciona para o login salvando a página atual para retorno
+      toast.info("Faça login para salvar seus favoritos.");
+      navigate('/login', { state: { from: location } });
       return;
     }
 

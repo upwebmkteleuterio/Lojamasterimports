@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Product, OrderItem, ProductVariant } from '@/types/store';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,16 +22,51 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [cart, setCart] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const lastUserId = useRef<string | null>(null);
 
   useEffect(() => {
-    if (user) {
-      fetchCartFromDb();
-    } else {
-      const saved = localStorage.getItem('cart_guest');
-      if (saved) setCart(JSON.parse(saved));
-      setLoading(false);
-    }
+    const handleAuthChange = async () => {
+      // Se o usuário acabou de logar (passou de nulo para um ID)
+      if (user && user.id !== lastUserId.current) {
+        setLoading(true);
+        await migrateGuestCart(user.id);
+        await fetchCartFromDb();
+        lastUserId.current = user.id;
+      } 
+      // Se deslogou
+      else if (!user) {
+        const saved = localStorage.getItem('cart_guest');
+        if (saved) setCart(JSON.parse(saved));
+        else setCart([]);
+        setLoading(false);
+        lastUserId.current = null;
+      }
+    };
+
+    handleAuthChange();
   }, [user]);
+
+  const migrateGuestCart = async (userId: string) => {
+    const guestData = localStorage.getItem('cart_guest');
+    if (!guestData) return;
+
+    try {
+      const guestItems: any[] = JSON.parse(guestData);
+      if (guestItems.length === 0) return;
+
+      diamondDebug('info', `Migrando ${guestItems.length} itens do carrinho de convidado para o usuário ${userId}`);
+
+      for (const item of guestItems) {
+        // Tenta adicionar ao banco usando a lógica de duplicidade já existente no Supabase
+        await addToCartDb(userId, item.productId, item.selectedVariant?.id || null, item.quantity);
+      }
+
+      localStorage.removeItem('cart_guest');
+      diamondDebug('success', 'Migração de carrinho concluída.');
+    } catch (error) {
+      diamondDebug('error', 'Falha na migração do carrinho', error);
+    }
+  };
 
   const getJoinedObject = (obj: any) => {
     if (!obj) return null;
@@ -42,7 +77,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return;
     
     try {
-      diamondDebug('info', 'Iniciando busca de itens no Supabase...');
       const { data, error } = await supabase
         .from('cart_items')
         .select(`
@@ -54,16 +88,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         `)
         .eq('user_id', user.id);
 
-      if (error) {
-        diamondDebug('error', 'Falha na query SELECT do carrinho', error);
-        throw error;
-      }
+      if (error) throw error;
 
       const items: OrderItem[] = (data || [])
         .map(item => {
           const p = getJoinedObject(item.products);
           const v = getJoinedObject(item.product_variants);
-          
           if (!p) return null;
 
           return {
@@ -84,18 +114,44 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         })
         .filter(item => item !== null) as OrderItem[];
 
-      diamondDebug('success', `Processamento concluído: ${items.length} itens prontos para UI.`, items);
       setCart(items);
     } catch (error) {
-      diamondDebug('error', 'Erro crítico ao processar carrinho', error);
+      console.error('Erro ao buscar carrinho:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const addToCart = async (product: Product, quantity: number = 1, variant?: ProductVariant) => {
-    diamondDebug('info', `Fluxo addToCart iniciado para: ${product.name}`, { variant_id: variant?.id });
+  const addToCartDb = async (userId: string, productId: string, variantId: string | null, quantity: number) => {
+    let checkQuery = supabase
+      .from('cart_items')
+      .select('id, quantity')
+      .eq('user_id', userId)
+      .eq('product_id', productId);
+    
+    if (variantId) checkQuery = checkQuery.eq('variant_id', variantId);
+    else checkQuery = checkQuery.is('variant_id', null);
 
+    const { data: existing } = await checkQuery.maybeSingle();
+
+    if (existing) {
+      await supabase
+        .from('cart_items')
+        .update({ quantity: existing.quantity + quantity })
+        .eq('id', existing.id);
+    } else {
+      await supabase
+        .from('cart_items')
+        .insert({ 
+          user_id: userId, 
+          product_id: productId, 
+          variant_id: variantId,
+          quantity 
+        });
+    }
+  };
+
+  const addToCart = async (product: Product, quantity: number = 1, variant?: ProductVariant) => {
     if (!user) {
       setCart(prev => {
         const itemKey = variant ? `${product.id}-${variant.id}` : product.id;
@@ -119,55 +175,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      // 1. Verificar duplicata usando a lógica correta de nulos
-      let checkQuery = supabase
-        .from('cart_items')
-        .select('id, quantity')
-        .eq('user_id', user.id)
-        .eq('product_id', product.id);
-      
-      if (variant) {
-        checkQuery = checkQuery.eq('variant_id', variant.id);
-      } else {
-        checkQuery = checkQuery.is('variant_id', null);
-      }
-
-      const { data: existing, error: checkError } = await checkQuery.maybeSingle();
-
-      if (checkError) {
-        diamondDebug('error', 'Erro ao verificar item existente', checkError);
-        throw checkError;
-      }
-
-      if (existing) {
-        diamondDebug('info', `Item existente encontrado (ID: ${existing.id}). Atualizando qtd...`);
-        const { error: updError } = await supabase
-          .from('cart_items')
-          .update({ quantity: existing.quantity + quantity })
-          .eq('id', existing.id);
-        if (updError) throw updError;
-      } else {
-        diamondDebug('info', 'Nenhum item igual encontrado. Inserindo nova linha...');
-        const { error: insError } = await supabase
-          .from('cart_items')
-          .insert({ 
-            user_id: user.id, 
-            product_id: product.id, 
-            variant_id: variant ? variant.id : null,
-            quantity 
-          });
-        
-        if (insError) {
-          diamondDebug('error', 'Falha ao processar adição no banco', insError);
-          // Se o erro for de restrição (23505), avisar o usuário sobre o SQL
-          if (insError.code === '23505') {
-            toast.error("Erro de banco: Você precisa atualizar as restrições da tabela cart_items no Supabase.");
-          }
-          throw insError;
-        }
-      }
-
-      diamondDebug('success', 'Operação no banco concluída. Recarregando estado...');
+      await addToCartDb(user.id, product.id, variant ? variant.id : null, quantity);
       await fetchCartFromDb();
       toast.success("Adicionado ao seu carrinho");
     } catch (error: any) {
@@ -184,7 +192,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       return;
     }
-
     try {
       const { error } = await supabase.from('cart_items').delete().eq('id', cartItemId);
       if (error) throw error;
@@ -196,7 +203,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateQuantity = async (cartItemId: string, quantity: number) => {
     if (quantity <= 0) return removeFromCart(cartItemId);
-
     if (!user) {
       setCart(prev => {
         const next = prev.map(item => item.id === cartItemId ? { ...item, quantity } : item);
@@ -205,7 +211,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       return;
     }
-
     try {
       const { error } = await supabase.from('cart_items').update({ quantity }).eq('id', cartItemId);
       if (error) throw error;
@@ -221,7 +226,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('cart_guest');
       return;
     }
-
     try {
       await supabase.from('cart_items').delete().eq('user_id', user.id);
       setCart([]);
