@@ -41,6 +41,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { format, startOfMonth, endOfMonth, parseISO, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 const ITEMS_PER_PAGE = 50;
 
