@@ -462,7 +462,7 @@ const Finance = () => {
                    </div>
                    <div className="border-t border-dashed border-gray-100 pt-3 flex justify-between items-center">
                      <span className="text-sm font-black uppercase tracking-widest text-gray-900">Total Pago</span>
-                     <span className="text-2xl font-black text-[#B89C6A]">{formatCurrency(selectedOrder.total)}</span>
+                     <span className="text-2xl font-black text-[#B89C6A] text-gold-print">{formatCurrency(selectedOrder.total)}</span>
                    </div>
                 </div>
 
