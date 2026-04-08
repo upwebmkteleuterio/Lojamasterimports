@@ -11,7 +11,6 @@ import { toast } from 'sonner';
 import { usePersistence } from '@/hooks/usePersistence';
 import { diamondDebug } from '@/utils/debug';
 import { checkIntegrity, traceSaveFlow } from '@/utils/integrityDiagnostic';
-import { IntegrityBanner } from '@/components/admin/product-form/IntegrityBanner';
 
 // Importação das seções
 import { GeneralInfoSection } from '@/components/admin/product-form/GeneralInfoSection';
@@ -163,7 +162,6 @@ const ProductForm = () => {
 
       // 2. Sincroniza Variantes
       if (savedProd) {
-        // Busca o que tem no banco agora para apagar o que foi removido da UI
         const { data: currentVars } = await supabase.from('product_variants').select('id').eq('product_id', savedProd.id);
         const currentIdsInDb = (currentVars || []).map(v => v.id);
         const idsToKeep = variants.map(v => v.id).filter(Boolean);
@@ -173,10 +171,9 @@ const ProductForm = () => {
           await supabase.from('product_variants').delete().in('id', idsToDelete);
         }
 
-        // Upsert de todas as variantes da tela
         if (variants.length > 0) {
           const variantsToUpsert = variants.map(v => ({
-            id: v.id || crypto.randomUUID(), // Sempre garante um ID para o lote não falhar
+            id: v.id || crypto.randomUUID(), 
             product_id: savedProd.id,
             attribute_name: v.attribute_name,
             option_name: v.option_name,
@@ -223,8 +220,6 @@ const ProductForm = () => {
         </div>
       }
     >
-      {id && <IntegrityBanner productId={id} uiVariants={variants} />}
-
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-8">
           <GeneralInfoSection name={formData.name} description={formData.description} isActive={formData.is_active} onChange={updateField} />

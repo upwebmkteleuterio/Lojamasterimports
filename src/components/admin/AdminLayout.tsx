@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { AdminSidebar } from './AdminSidebar';
 import { Menu } from 'lucide-react';
-import { DebugInspector } from './DebugInspector';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -61,9 +60,6 @@ export const AdminLayout = ({ children, title, actions }: AdminLayoutProps) => {
           </div>
         </div>
       </main>
-
-      {/* Monitor de Diagnóstico Global */}
-      <DebugInspector />
     </div>
   );
 };
