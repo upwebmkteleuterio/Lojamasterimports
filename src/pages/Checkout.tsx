@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { limparDadosFormulario } from '@/services/persistence';
 import { toast } from 'sonner';
-import { Truck, Tag, Loader2 } from 'lucide-react';
+import { Truck, Tag, Loader2, CreditCard, QrCode, FileText } from 'lucide-react';
 import { getSafeProductImage } from '@/utils/imageHandler';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -20,6 +20,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { initMercadoPago, Payment } from '@mercadopago/sdk-react';
+
+// Substitua pela sua PUBLIC_KEY real do Mercado Pago
+// Recomenda-se colocar em um arquivo de configuração ou variável de ambiente
+const MP_PUBLIC_KEY = "APP_USR-75390666-562a-4340-9750-71701e3b6299"; // Exemplo, o usuário deve trocar se for diferente
+
+initMercadoPago(MP_PUBLIC_KEY, {
+  locale: 'pt-BR'
+});
 
 const initialCustomerData: CustomerData = {
   fullName: '',
@@ -39,6 +48,7 @@ const Checkout = () => {
   const { user, profile } = useAuth();
   const { data, updateField, setData } = usePersistence<CustomerData>('checkout_form', initialCustomerData);
   const [loading, setLoading] = useState(false);
+  const [orderCreated, setOrderCreated] = useState<string | null>(null);
   const [shippingCost] = useState(0);
 
   useEffect(() => {
@@ -57,19 +67,28 @@ const Checkout = () => {
     }
   }, [profile, user]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const validateForm = () => {
     if (cart.length === 0) {
       toast.error('Seu carrinho está vazio');
-      return;
+      return false;
+    }
+    if (!data.fullName || !data.email || !data.phone || !data.cpf || !data.zipCode || !data.address || !data.number || !data.city || !data.state) {
+      toast.error('Por favor, preencha todos os campos obrigatórios.');
+      return false;
     }
     if (!validateCPF(data.cpf)) {
       toast.error('Por favor, informe um CPF válido.');
-      return;
+      return false;
     }
+    return true;
+  };
+
+  const createInitialOrder = async () => {
+    if (!validateForm()) return;
     setLoading(true);
 
     try {
+      // Atualizar perfil do usuário se logado
       if (user) {
         await supabase
           .from('profiles')
@@ -87,28 +106,64 @@ const Checkout = () => {
           .eq('id', user.id);
       }
 
-      const { error: orderError } = await supabase
+      const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
           user_id: user?.id || null,
           total: cartTotal + shippingCost,
           shipping_cost: shippingCost,
-          status: 'Pagamento Pendente',
+          status: 'Pendente',
           customer_data: data,
           items: cart,
-        });
+        })
+        .select()
+        .single();
 
       if (orderError) throw orderError;
-
-      clearCart();
-      limparDadosFormulario('checkout_form');
-      toast.success('Pedido realizado com sucesso!');
-      navigate('/minha-conta');
+      
+      setOrderCreated(orderData.id);
+      toast.success('Informações salvas. Escolha a forma de pagamento.');
     } catch (error: any) {
-      console.error('Erro no checkout:', error);
+      console.error('Erro ao criar pedido:', error);
       toast.error('Erro ao processar: ' + error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePaymentSubmit = async ({ formData }: any) => {
+    if (!orderCreated) return;
+
+    try {
+      const response = await fetch(`https://esdhiurlyicjopjlxvba.supabase.co/functions/v1/process-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabase.supabaseKey}` // Usando a anon key do cliente
+        },
+        body: JSON.stringify({
+          formData,
+          orderId: orderCreated,
+          customerData: data,
+          cart,
+          total: cartTotal + shippingCost
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro ao processar pagamento');
+      }
+
+      clearCart();
+      limparDadosFormulario('checkout_form');
+      toast.success('Pedido finalizado com sucesso!');
+      navigate('/minha-conta');
+      
+    } catch (error: any) {
+      console.error('Erro no pagamento:', error);
+      toast.error(error.message || 'Erro ao processar o pagamento. Tente novamente.');
     }
   };
 
@@ -117,7 +172,9 @@ const Checkout = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
         <div className="lg:col-span-7 space-y-8">
           <h1 className="text-3xl font-serif font-bold">Finalizar Compra</h1>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          
+          <div className="space-y-6">
+            {/* ETAPA 1: INFORMAÇÕES PESSOAIS */}
             <section className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100">
               <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                 <span className="w-8 h-8 rounded-full bg-[#B89C6A] text-white flex items-center justify-center text-sm">1</span>
@@ -126,23 +183,31 @@ const Checkout = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="fullName">Nome Completo</Label>
-                  <Input id="fullName" value={data.fullName} onChange={(e) => updateField('fullName', e.target.value)} required className="rounded-2xl h-12 bg-gray-50 border-gray-100" />
+                  <Input 
+                    id="fullName" 
+                    value={data.fullName} 
+                    onChange={(e) => updateField('fullName', e.target.value)} 
+                    required 
+                    disabled={!!orderCreated}
+                    className="rounded-2xl h-12 bg-gray-50 border-gray-100" 
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">E-mail</Label>
-                  <Input id="email" type="email" value={data.email} readOnly disabled className="rounded-2xl h-12 bg-gray-100 border-gray-100 cursor-not-allowed opacity-70" />
+                  <Input id="email" type="email" value={data.email} onChange={(e) => updateField('email', e.target.value)} disabled={!!orderCreated} className="rounded-2xl h-12 bg-gray-50 border-gray-100" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Telefone / WhatsApp</Label>
-                  <Input id="phone" value={data.phone} onChange={(e) => updateField('phone', maskPhone(e.target.value))} placeholder="(00) 00000-0000" required className="rounded-2xl h-12 bg-gray-50 border-gray-100" />
+                  <Input id="phone" value={data.phone} onChange={(e) => updateField('phone', maskPhone(e.target.value))} placeholder="(00) 00000-0000" required disabled={!!orderCreated} className="rounded-2xl h-12 bg-gray-50 border-gray-100" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="cpf">CPF</Label>
-                  <Input id="cpf" value={data.cpf} onChange={(e) => updateField('cpf', maskCPF(e.target.value))} placeholder="000.000.000-00" required className="rounded-2xl h-12 bg-gray-50 border-gray-100" />
+                  <Input id="cpf" value={data.cpf} onChange={(e) => updateField('cpf', maskCPF(e.target.value))} placeholder="000.000.000-00" required disabled={!!orderCreated} className="rounded-2xl h-12 bg-gray-50 border-gray-100" />
                 </div>
               </div>
             </section>
 
+            {/* ETAPA 2: ENDEREÇO */}
             <section className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100">
               <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                 <span className="w-8 h-8 rounded-full bg-[#B89C6A] text-white flex items-center justify-center text-sm">2</span>
@@ -151,23 +216,23 @@ const Checkout = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="zipCode">CEP</Label>
-                  <Input id="zipCode" value={data.zipCode} onChange={(e) => updateField('zipCode', maskCEP(e.target.value))} placeholder="00000-000" required className="rounded-2xl h-12 bg-gray-50 border-gray-100" />
+                  <Input id="zipCode" value={data.zipCode} onChange={(e) => updateField('zipCode', maskCEP(e.target.value))} placeholder="00000-000" required disabled={!!orderCreated} className="rounded-2xl h-12 bg-gray-50 border-gray-100" />
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="address">Endereço</Label>
-                  <Input id="address" value={data.address} onChange={(e) => updateField('address', e.target.value)} required className="rounded-2xl h-12 bg-gray-50 border-gray-100" />
+                  <Input id="address" value={data.address} onChange={(e) => updateField('address', e.target.value)} required disabled={!!orderCreated} className="rounded-2xl h-12 bg-gray-50 border-gray-100" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="number">Número</Label>
-                  <Input id="number" value={data.number} onChange={(e) => updateField('number', e.target.value)} required className="rounded-2xl h-12 bg-gray-50 border-gray-100" />
+                  <Input id="number" value={data.number} onChange={(e) => updateField('number', e.target.value)} required disabled={!!orderCreated} className="rounded-2xl h-12 bg-gray-50 border-gray-100" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="city">Cidade</Label>
-                  <Input id="city" value={data.city} onChange={(e) => updateField('city', e.target.value)} required className="rounded-2xl h-12 bg-gray-50 border-gray-100" />
+                  <Input id="city" value={data.city} onChange={(e) => updateField('city', e.target.value)} required disabled={!!orderCreated} className="rounded-2xl h-12 bg-gray-50 border-gray-100" />
                 </div>
                 <div className="space-y-2">
                   <Label>Estado</Label>
-                  <Select value={data.state} onValueChange={(val) => updateField('state', val)}>
+                  <Select value={data.state} onValueChange={(val) => updateField('state', val)} disabled={!!orderCreated}>
                     <SelectTrigger className="rounded-2xl h-12 bg-gray-50 border-gray-100">
                       <SelectValue placeholder="Selecione..." />
                     </SelectTrigger>
@@ -179,12 +244,65 @@ const Checkout = () => {
                   </Select>
                 </div>
               </div>
+              
+              {!orderCreated && (
+                <Button 
+                  onClick={createInitialOrder} 
+                  disabled={loading} 
+                  className="w-full h-14 mt-8 rounded-full bg-black text-white font-bold hover:bg-gray-800 transition-all gap-2"
+                >
+                  {loading ? <Loader2 className="animate-spin" /> : 'Confirmar Dados e Ir para Pagamento'}
+                </Button>
+              )}
             </section>
-            
-            <Button type="submit" disabled={loading} className="w-full h-20 rounded-full bg-black text-white text-xl font-bold shadow-2xl shadow-black/20 hover:bg-gray-800 transition-all gap-3">
-              {loading ? <Loader2 className="animate-spin" /> : 'Confirmar e Pagar Agora'}
-            </Button>
-          </form>
+
+            {/* ETAPA 3: PAGAMENTO (MERCADO PAGO BRICKS) */}
+            {orderCreated && (
+              <section className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-full bg-[#B89C6A] text-white flex items-center justify-center text-sm">3</span>
+                  Forma de Pagamento
+                </h2>
+                
+                <div id="payment-brick-container">
+                  <Payment
+                    initialization={{
+                      amount: cartTotal + shippingCost,
+                      preferenceId: undefined, // Usaremos o processamento via API direta
+                    }}
+                    customization={{
+                      paymentMethods: {
+                        creditCard: 'all',
+                        debitCard: 'all',
+                        bankTransfer: ['pix'],
+                        ticket: ['boleto'],
+                      },
+                      visual: {
+                        style: {
+                          theme: 'default',
+                        }
+                      }
+                    }}
+                    onSubmit={handlePaymentSubmit}
+                    onReady={() => {
+                      console.log('Payment Brick ready');
+                    }}
+                    onError={(error) => {
+                      console.error('Payment Brick error:', error);
+                    }}
+                  />
+                </div>
+                
+                <Button 
+                  variant="ghost" 
+                  onClick={() => setOrderCreated(null)} 
+                  className="w-full mt-4 text-gray-400 text-xs hover:text-gray-600"
+                >
+                  Alterar dados de entrega
+                </Button>
+              </section>
+            )}
+          </div>
         </div>
 
         <div className="lg:col-span-5">
