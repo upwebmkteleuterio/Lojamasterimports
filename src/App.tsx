@@ -68,6 +68,7 @@ const AppContent = () => {
   const location = useLocation();
   const isAdminPath = location.pathname.startsWith('/adm');
   const isLanding = location.pathname === '/';
+  const isCheckout = location.pathname === '/checkout';
   const { profile } = useAuthStore();
 
   useEffect(() => {
@@ -125,8 +126,8 @@ const AppContent = () => {
       
       {!isAdminPath && !isLanding && <MobileNavbar />}
       
-      {/* Exibe o Monitor ADM apenas para administradores logados para auditoria técnica */}
-      {profile?.role === 'adm' && <DebugInspector />}
+      {/* Exibe o Monitor ADM se for administrador OU se estiver na página de Checkout */}
+      {(profile?.role === 'adm' || isCheckout) && <DebugInspector />}
     </>
   );
 };
