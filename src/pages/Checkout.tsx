@@ -22,9 +22,8 @@ import {
 } from "@/components/ui/select";
 import { initMercadoPago, Payment } from '@mercadopago/sdk-react';
 
-// Substitua pela sua PUBLIC_KEY real do Mercado Pago
-// Recomenda-se colocar em um arquivo de configuração ou variável de ambiente
-const MP_PUBLIC_KEY = "APP_USR-75390666-562a-4340-9750-71701e3b6299"; // Exemplo, o usuário deve trocar se for diferente
+// Chave Pública fornecida pelo usuário
+const MP_PUBLIC_KEY = "TEST-a9cf1b2c-6fc9-471a-bef4-172ea70d9a2f";
 
 initMercadoPago(MP_PUBLIC_KEY, {
   locale: 'pt-BR'
@@ -88,7 +87,6 @@ const Checkout = () => {
     setLoading(true);
 
     try {
-      // Atualizar perfil do usuário se logado
       if (user) {
         await supabase
           .from('profiles')
@@ -139,7 +137,7 @@ const Checkout = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabase.supabaseKey}` // Usando a anon key do cliente
+          'Authorization': `Bearer ${supabase.supabaseKey}`
         },
         body: JSON.stringify({
           formData,
@@ -174,7 +172,6 @@ const Checkout = () => {
           <h1 className="text-3xl font-serif font-bold">Finalizar Compra</h1>
           
           <div className="space-y-6">
-            {/* ETAPA 1: INFORMAÇÕES PESSOAIS */}
             <section className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100">
               <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                 <span className="w-8 h-8 rounded-full bg-[#B89C6A] text-white flex items-center justify-center text-sm">1</span>
@@ -207,7 +204,6 @@ const Checkout = () => {
               </div>
             </section>
 
-            {/* ETAPA 2: ENDEREÇO */}
             <section className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100">
               <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                 <span className="w-8 h-8 rounded-full bg-[#B89C6A] text-white flex items-center justify-center text-sm">2</span>
@@ -256,7 +252,6 @@ const Checkout = () => {
               )}
             </section>
 
-            {/* ETAPA 3: PAGAMENTO (MERCADO PAGO BRICKS) */}
             {orderCreated && (
               <section className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
@@ -268,7 +263,6 @@ const Checkout = () => {
                   <Payment
                     initialization={{
                       amount: cartTotal + shippingCost,
-                      preferenceId: undefined, // Usaremos o processamento via API direta
                     }}
                     customization={{
                       paymentMethods: {
