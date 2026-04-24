@@ -1,14 +1,17 @@
 "use client";
 
 import React from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams, useNavigate } from 'react-router-dom';
 import { Home, Dog, Sparkles, ShoppingCart, User } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
 
 export const MobileNavbar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { cartCount } = useCart();
+  const { session } = useAuth();
   const { shopType } = useParams<{ shopType: string }>();
   
   const currentShop = shopType || 'cuidadosfemininos';
@@ -21,6 +24,13 @@ export const MobileNavbar = () => {
     { label: 'Você', icon: User, path: '/minha-conta' },
   ];
 
+  const handleNavClick = (e: React.MouseEvent, path: string) => {
+    if (path === '/minha-conta' && !session) {
+      e.preventDefault();
+      navigate('/login', { state: { from: location } });
+    }
+  };
+
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-50 pb-safe">
       <nav className="flex items-center justify-around h-16 px-2">
@@ -32,6 +42,7 @@ export const MobileNavbar = () => {
             <Link 
               key={item.label} 
               to={item.path}
+              onClick={(e) => handleNavClick(e, item.path)}
               className={cn(
                 "flex flex-col items-center justify-center flex-1 gap-1 transition-colors",
                 isActive ? "text-[#B89C6A]" : "text-gray-400"

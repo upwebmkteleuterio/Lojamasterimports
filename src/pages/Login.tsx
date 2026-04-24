@@ -25,7 +25,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
 
-  // Identifica de onde o usuário veio para redirecionar de volta
+  // Identifica de onde o usuário veio para redirecionar de volta (ex: /checkout)
   const from = location.state?.from?.pathname || '/minha-conta';
 
   useEffect(() => {
@@ -78,7 +78,7 @@ const Login = () => {
         }
       });
       if (error) throw error;
-      toast.success("Conta criada com sucesso!");
+      toast.success("Conta criada com sucesso! Verifique seu e-mail se necessário.");
     } catch (error: any) {
       toast.error(error.message || "Erro ao criar conta.");
     } finally {
@@ -92,7 +92,7 @@ const Login = () => {
         <div className="text-center mb-8">
           <h1 className="text-2xl font-serif font-bold text-[#B89C6A] uppercase tracking-[0.2em]">{storeName}</h1>
           <p className="text-gray-400 text-[10px] mt-2 font-bold uppercase tracking-widest">
-            {from === '/checkout' ? 'Acesse para finalizar sua compra' : 'Acesso do Cliente'}
+            {from === '/checkout' ? 'Acesse sua conta para finalizar a compra' : 'Acesso do Cliente'}
           </p>
         </div>
 

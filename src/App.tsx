@@ -51,6 +51,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.Re
   }
 
   if (!session) {
+    // Redireciona para login e salva a rota que o usuário tentou acessar
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
@@ -66,7 +67,6 @@ const AppContent = () => {
   const isAdmin = location.pathname.startsWith('/adm');
   const isLanding = location.pathname === '/';
 
-  // Sincroniza o Título do Navegador com o Nome da Loja no Banco
   useEffect(() => {
     const fetchStoreName = async () => {
       try {
@@ -99,9 +99,12 @@ const AppContent = () => {
         <Route path="/:shopType/busca" element={<StoreLayout><SearchResults /></StoreLayout>} />
         <Route path="/carrinho" element={<StoreLayout><Cart /></StoreLayout>} />
         
+        {/* Checkout Protegido */}
         <Route path="/checkout" element={<ProtectedRoute><StoreLayout><Checkout /></StoreLayout></ProtectedRoute>} />
         
         <Route path="/login" element={<StoreLayout><Login /></StoreLayout>} />
+        
+        {/* Minha Conta Protegida */}
         <Route path="/minha-conta" element={<ProtectedRoute><StoreLayout><Account /></StoreLayout></ProtectedRoute>} />
         
         <Route path="/adm" element={<ProtectedRoute requireAdmin><Dashboard /></ProtectedRoute>} />

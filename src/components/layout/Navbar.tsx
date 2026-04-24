@@ -5,6 +5,7 @@ import { Link, useParams, useLocation, useNavigate } from 'react-router-dom';
 import { ShoppingCart, User, Search, Menu, Phone, MapPin, ChevronRight, LayoutGrid, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui/input';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,6 +22,7 @@ import {
 
 export const Navbar = () => {
   const { cart, cartCount, cartTotal } = useCart();
+  const { session } = useAuth();
   const { shopType } = useParams<{ shopType: string }>();
   const location = useLocation();
   const navigate = useNavigate();
@@ -77,6 +79,14 @@ export const Navbar = () => {
     navigate('/checkout');
   };
 
+  const handleAccountClick = () => {
+    if (!session) {
+      navigate('/login', { state: { from: location } });
+    } else {
+      navigate('/minha-conta');
+    }
+  };
+
   // Ocultar Navbar completa no Mobile para a página de Produto
   const isProductPage = location.pathname.includes('/produto/');
   if (isMobile && isProductPage) {
@@ -96,9 +106,9 @@ export const Navbar = () => {
           </div>
           <p>Master Imports - Qualidade e Confiança.</p>
           <div className="flex items-center gap-4">
-             <Link to="/minha-conta" className="flex items-center gap-1 hover:text-[#B89C6A] transition-colors">
+             <button onClick={handleAccountClick} className="flex items-center gap-1 hover:text-[#B89C6A] transition-colors">
                <MapPin size={12} /> Rastreie seu pedido
-             </Link>
+             </button>
           </div>
         </div>
       </div>
@@ -188,7 +198,7 @@ export const Navbar = () => {
                       </div>
                     </div>
 
-                    {/* Novo: Meu Carrinho */}
+                    {/* Meu Carrinho */}
                     <div className="space-y-4">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 flex items-center justify-between">
                         Meu Carrinho
@@ -243,27 +253,24 @@ export const Navbar = () => {
                   </div>
 
                   <div className="p-6 border-t border-gray-50 space-y-4">
-                    <Link 
-                      to="/minha-conta" 
-                      onClick={() => setIsSheetOpen(false)}
-                      className="flex items-center gap-3 text-sm font-bold text-gray-700"
+                    <button 
+                      onClick={() => { setIsSheetOpen(false); handleAccountClick(); }}
+                      className="flex items-center gap-3 text-sm font-bold text-gray-700 w-full text-left"
                     >
                       <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400">
                         <User size={20} />
                       </div>
-                      Minha Conta
-                    </Link>
+                      {session ? 'Minha Conta' : 'Fazer Login'}
+                    </button>
                   </div>
                 </SheetContent>
               </Sheet>
             )}
 
             <div className="hidden md:flex items-center gap-2">
-              <Link to="/minha-conta">
-                <Button variant="ghost" size="icon" className="text-gray-700 hover:text-[#B89C6A] h-9 w-9">
-                  <User size={20} strokeWidth={1.5} />
-                </Button>
-              </Link>
+              <Button variant="ghost" size="icon" className="text-gray-700 hover:text-[#B89C6A] h-9 w-9" onClick={handleAccountClick}>
+                <User size={20} strokeWidth={1.5} />
+              </Button>
               
               <Link to="/carrinho" className="relative">
                 <Button variant="ghost" size="icon" className="text-gray-700 hover:text-[#B89C6A] h-9 w-9">
