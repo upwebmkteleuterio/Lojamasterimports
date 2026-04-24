@@ -3,12 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { IntegrityReport } from '@/utils/integrityDiagnostic';
 import { subscribeToLogs } from '@/utils/debug';
-import { AlertCircle, CheckCircle2, Database, Layout, Activity } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export const FlowDiagnostic = () => {
   const [reports, setReports] = useState<IntegrityReport[]>([]);
-  const [lastTrace, setLastTrace] = useState<any>(null);
 
   useEffect(() => {
     return subscribeToLogs((allLogs) => {
@@ -17,10 +16,7 @@ export const FlowDiagnostic = () => {
         .map(l => l.data as IntegrityReport)
         .filter(Boolean);
       
-      const traceLogs = allLogs.find(l => l.message.includes('[FLOW TRACE]'));
-      
       setReports(integrityLogs.slice(0, 5));
-      if (traceLogs) setLastTrace(traceLogs);
     });
   }, []);
 
@@ -32,8 +28,8 @@ export const FlowDiagnostic = () => {
         </h4>
 
         {reports.length === 0 && (
-          <div className="p-6 border border-dashed border-gray-800 rounded-2xl text-center">
-            <p className="text-[10px] text-gray-500 uppercase">Nenhuma divergência detectada até o momento.</p>
+          <div className="p-10 border border-dashed border-gray-800 rounded-2xl text-center">
+            <p className="text-[10px] text-gray-500 uppercase tracking-widest">Nenhuma divergência detectada.</p>
           </div>
         )}
 
@@ -63,15 +59,6 @@ export const FlowDiagnostic = () => {
           </div>
         ))}
       </div>
-
-      {lastTrace && (
-        <div className="bg-[#B89C6A]/10 border border-[#B89C6A]/20 rounded-2xl p-4">
-          <h4 className="text-[10px] font-bold text-[#B89C6A] uppercase tracking-widest mb-3">Último Rastro de Execução</h4>
-          <div className="bg-black/60 p-3 rounded-xl border border-gray-800 text-[9px] font-mono text-blue-300 max-h-32 overflow-y-auto">
-            <pre>{JSON.stringify(lastTrace.data, null, 2)}</pre>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

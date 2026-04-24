@@ -1,3 +1,5 @@
+"use client";
+
 type LogType = 'info' | 'error' | 'success';
 
 interface DebugLog {
@@ -10,6 +12,9 @@ interface DebugLog {
 const logs: DebugLog[] = [];
 const listeners: ((logs: DebugLog[]) => void)[] = [];
 
+/**
+ * Registra um evento no Monitor ADM.
+ */
 export const diamondDebug = (type: LogType, message: string, data?: any) => {
   const newLog: DebugLog = {
     time: new Date().toLocaleTimeString(),
@@ -19,9 +24,11 @@ export const diamondDebug = (type: LogType, message: string, data?: any) => {
   };
   
   logs.unshift(newLog);
-  if (logs.length > 100) logs.pop(); // Mantém os últimos 100
+  if (logs.length > 100) logs.pop(); // Mantém apenas os últimos 100
   
   listeners.forEach(listener => listener([...logs]));
+  
+  // Mantém no console também para debug padrão
   console.log(`[DIAMOND DEBUG] ${type.toUpperCase()}: ${message}`, data || '');
 };
 

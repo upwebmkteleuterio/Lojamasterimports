@@ -23,6 +23,9 @@ import NotFound from "./pages/NotFound";
 import SearchResults from "./pages/SearchResults";
 import Login from "./pages/Login";
 
+// Monitor e Diagnóstico
+import { DebugInspector } from "./components/admin/DebugInspector";
+
 // Admin Pages
 import Dashboard from "./pages/admin/Dashboard";
 import Variations from "./pages/admin/Variations";
@@ -51,7 +54,6 @@ const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.Re
   }
 
   if (!session) {
-    // Redireciona para login e salva a rota que o usuário tentou acessar
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
@@ -64,8 +66,9 @@ const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.Re
 
 const AppContent = () => {
   const location = useLocation();
-  const isAdmin = location.pathname.startsWith('/adm');
+  const isAdminPath = location.pathname.startsWith('/adm');
   const isLanding = location.pathname === '/';
+  const { profile } = useAuthStore();
 
   useEffect(() => {
     const fetchStoreName = async () => {
@@ -98,13 +101,8 @@ const AppContent = () => {
         <Route path="/:shopType/produto/:id" element={<StoreLayout><ProductDetail /></StoreLayout>} />
         <Route path="/:shopType/busca" element={<StoreLayout><SearchResults /></StoreLayout>} />
         <Route path="/carrinho" element={<StoreLayout><Cart /></StoreLayout>} />
-        
-        {/* Checkout Protegido */}
         <Route path="/checkout" element={<ProtectedRoute><StoreLayout><Checkout /></StoreLayout></ProtectedRoute>} />
-        
         <Route path="/login" element={<StoreLayout><Login /></StoreLayout>} />
-        
-        {/* Minha Conta Protegida */}
         <Route path="/minha-conta" element={<ProtectedRoute><StoreLayout><Account /></StoreLayout></ProtectedRoute>} />
         
         <Route path="/adm" element={<ProtectedRoute requireAdmin><Dashboard /></ProtectedRoute>} />
@@ -124,7 +122,11 @@ const AppContent = () => {
         
         <Route path="*" element={<NotFound />} />
       </Routes>
-      {!isAdmin && !isLanding && <MobileNavbar />}
+      
+      {!isAdminPath && !isLanding && <MobileNavbar />}
+      
+      {/* Exibe o Monitor ADM apenas para administradores logados para auditoria técnica */}
+      {profile?.role === 'adm' && <DebugInspector />}
     </>
   );
 };
