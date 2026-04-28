@@ -7,112 +7,69 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
-  }
-
-  const supabaseClient = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-  )
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
 
   try {
-    const { formData, orderId, customerData, total } = await req.json()
+    const { orderId, customerData, total, items } = await req.json()
     const accessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN')
 
-    console.log("[process-payment] Iniciando processamento forense", { orderId, method: formData.payment_method_id });
+    if (!accessToken) throw new Error("Token MP ausente");
 
-    if (!accessToken) {
-      console.error("[process-payment] ERRO CRÍTICO: Token de Acesso não configurado no Supabase.");
-      throw new Error("Token de Acesso do Mercado Pago ausente nas variáveis de ambiente.");
-    }
-
-    // Montando o payload para a API de PAGAMENTOS (Padrão Bricks)
-    const paymentPayload = {
-      transaction_amount: Number(total),
-      token: formData.token,
-      description: `Pedido #${orderId.split('-')[0]} - Diamond Store`,
-      installments: Number(formData.installments || 1),
-      payment_method_id: formData.payment_method_id,
-      issuer_id: formData.issuer_id,
+    // Criando a Preferência de Pagamento (Checkout Pro)
+    // Este método é o mais robusto e lida com Pix/Boleto automaticamente
+    const preferencePayload = {
+      items: items.map((item: any) => ({
+        id: item.id,
+        title: item.name,
+        quantity: Number(item.quantity),
+        unit_price: Number(item.price),
+        currency_id: 'BRL'
+      })),
       payer: {
+        name: customerData.fullName,
         email: customerData.email,
-        identification: {
-          type: "CPF",
-          number: customerData.cpf.replace(/\D/g, '')
-        },
-        first_name: customerData.fullName.split(' ')[0],
-        last_name: customerData.fullName.split(' ').slice(1).join(' ') || 'Cliente'
+        identification: { type: "CPF", number: customerData.cpf.replace(/\D/g, '') }
       },
       external_reference: orderId,
+      back_urls: {
+        success: "https://wild-binturong-sniff.dyad.app/minha-conta",
+        failure: "https://wild-binturong-sniff.dyad.app/checkout",
+        pending: "https://wild-binturong-sniff.dyad.app/minha-conta"
+      },
+      auto_return: "approved",
       notification_url: "https://esdhiurlyicjopjlxvba.supabase.co/functions/v1/mercadopago-webhook"
     };
 
-    console.log("[process-payment] Enviando requisição para Mercado Pago API /v1/payments");
-
-    const response = await fetch('https://api.mercadopago.com/v1/payments', {
+    const response = await fetch('https://api.mercadopago.com/checkout/preferences', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-        'X-Idempotency-Key': orderId
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify(paymentPayload)
+      body: JSON.stringify(preferencePayload)
     });
 
     const result = await response.json();
 
     if (!response.ok) {
-      console.error("[process-payment] Mercado Pago retornou erro:", result);
-      return new Response(JSON.stringify({ 
-        error: "Erro na API do Mercado Pago", 
-        details: result,
-        status: response.status 
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      return new Response(JSON.stringify({ error: "Erro MP", details: result }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    console.log("[process-payment] Sucesso! Status do pagamento:", result.status);
-
-    // Atualiza o pedido no banco com os dados reais do MP
-    const { error: dbError } = await supabaseClient
-      .from('orders')
-      .update({
-        mp_payment_id: result.id.toString(),
-        payment_method: result.payment_method_id,
-        payment_status: result.status,
-        payment_status_detail: result.status_detail,
-        status: mapStatus(result.status),
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', orderId);
-
-    if (dbError) console.error("[process-payment] Erro ao atualizar banco após pagamento:", dbError);
-
-    return new Response(JSON.stringify(result), {
+    // Retorna o link de pagamento (init_point)
+    return new Response(JSON.stringify({ 
+      id: result.id, 
+      init_point: result.sandbox_init_point // Usa sandbox para testes
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
 
   } catch (error) {
-    console.error("[process-payment] Erro excepcional:", error.message);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     });
   }
 })
-
-function mapStatus(mpStatus: string) {
-  const map: any = {
-    'approved': 'Pago',
-    'pending': 'Pagamento Pendente',
-    'in_process': 'Pagamento Pendente',
-    'rejected': 'Cancelado',
-    'cancelled': 'Cancelado',
-    'refunded': 'Pagamento Estornado'
-  };
-  return map[mpStatus] || 'Pendente';
-}
