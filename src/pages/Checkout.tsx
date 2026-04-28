@@ -67,13 +67,15 @@ const Checkout = () => {
       toast.error('Preencha todos os campos obrigatórios.');
       return false;
     }
-    return validateCPF(data.cpf);
+    const isValidCpf = validateCPF(data.cpf);
+    if (!isValidCpf) toast.error('CPF inválido.');
+    return isValidCpf;
   };
 
   const createInitialOrder = async () => {
     if (!validateForm()) return;
     setLoading(true);
-    diamondDebug('info', 'Iniciando criação de pedido inicial no checkout.');
+    diamondDebug('info', 'PASSO 1: Criando pedido no banco de dados...');
 
     try {
       const payload = {
@@ -85,8 +87,6 @@ const Checkout = () => {
         items: cart,
       };
 
-      traceSaveFlow('orders', payload);
-
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert(payload)
@@ -96,26 +96,33 @@ const Checkout = () => {
       if (orderError) throw orderError;
       
       setOrderCreated(orderData.id);
-      diamondDebug('success', `Pedido criado com ID: ${orderData.id}`);
-      
-      // Validação de integridade imediata
+      diamondDebug('success', `PASSO 1 OK: Pedido gerado ID ${orderData.id}`);
       checkIntegrity('orders', orderData.id, payload);
-      
-      toast.success('Dados salvos! Escolha o pagamento.');
     } catch (error: any) {
-      diamondDebug('error', 'Falha ao criar pedido no banco', error);
-      toast.error('Erro ao processar pedido.');
+      diamondDebug('error', 'FALHA NO PASSO 1: Banco recusou o pedido', error);
+      toast.error('Erro ao salvar pedido.');
     } finally {
       setLoading(false);
     }
   };
 
   const handlePaymentSubmit = async ({ formData }: any) => {
-    if (!orderCreated) return;
-    diamondDebug('info', 'Enviando payload para processamento de pagamento via Edge Function.', { formData });
+    if (!orderCreated) {
+      diamondDebug('error', 'FALHA NO PASSO 2: handlePaymentSubmit chamado sem ID de pedido.');
+      return;
+    }
+
+    diamondDebug('info', 'PASSO 2: Enviando Token do Cartão para o Backend (Edge Function)...', { 
+      orderId: orderCreated,
+      paymentMethod: formData.payment_method_id,
+      installments: formData.installments
+    });
 
     try {
-      const response = await fetch(`https://esdhiurlyicjopjlxvba.supabase.co/functions/v1/process-payment`, {
+      // Usando a URL absoluta conforme instrução do sistema
+      const functionUrl = `https://esdhiurlyicjopjlxvba.supabase.co/functions/v1/process-payment`;
+      
+      const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -125,24 +132,30 @@ const Checkout = () => {
           formData,
           orderId: orderCreated,
           customerData: data,
-          cart,
           total: cartTotal + shippingCost
         })
       });
 
       const result = await response.json();
-      diamondDebug('info', 'Resposta da Edge Function recebida', result);
 
-      if (!response.ok) throw new Error(result.error || 'Erro no pagamento');
+      if (!response.ok) {
+        diamondDebug('error', 'PASSO 2 FALHOU: Backend retornou erro', result);
+        throw new Error(result.error || 'Erro no processamento');
+      }
 
-      diamondDebug('success', 'Pagamento processado com sucesso!');
+      diamondDebug('success', 'PASSO 2 OK: Pagamento aprovado pelo Mercado Pago!', result);
+      
+      toast.success('Pagamento processado!');
       clearCart();
       limparDadosFormulario('checkout_form');
       navigate('/minha-conta');
       
     } catch (error: any) {
-      diamondDebug('error', 'Falha crítica no processamento de pagamento', error);
-      toast.error('Erro ao processar o pagamento.');
+      diamondDebug('error', 'ERRO CRÍTICO NA PONTE DE PAGAMENTO', {
+        mensagem: error.message,
+        instancia: error
+      });
+      toast.error('Ocorreu um erro no pagamento. Verifique o Monitor ADM.');
     }
   };
 
@@ -152,7 +165,7 @@ const Checkout = () => {
         <IntegrityBanner 
           entityId={orderCreated} 
           tableName="orders" 
-          uiCount={orderCreated ? 1 : 0} 
+          uiCount={1} 
         />
       )}
 
@@ -161,45 +174,28 @@ const Checkout = () => {
           <h1 className="text-3xl font-serif font-bold">Finalizar Compra</h1>
           
           <div className="space-y-6">
+            {/* ETAPA 1 E 2: DADOS PESSOAIS E ENTREGA */}
             <section className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100">
               <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                 <span className="w-8 h-8 rounded-full bg-[#B89C6A] text-white flex items-center justify-center text-sm">1</span>
-                Informações Pessoais
+                Seus Dados e Entrega
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="fullName">Nome Completo</Label>
-                  <Input id="fullName" value={data.fullName} onChange={(e) => updateField('fullName', e.target.value)} required disabled={!!orderCreated} className="rounded-2xl h-12 bg-gray-50" />
-                </div>
+                <div className="space-y-2 md:col-span-2"><Label>Nome Completo</Label><Input value={data.fullName} onChange={(e) => updateField('fullName', e.target.value)} disabled={!!orderCreated} className="rounded-2xl h-12 bg-gray-50" /></div>
+                <div className="space-y-2"><Label>E-mail</Label><Input value={data.email} onChange={(e) => updateField('email', e.target.value)} disabled={!!orderCreated} className="rounded-2xl h-12 bg-gray-50" /></div>
+                <div className="space-y-2"><Label>WhatsApp</Label><Input value={data.phone} onChange={(e) => updateField('phone', maskPhone(e.target.value))} disabled={!!orderCreated} className="rounded-2xl h-12 bg-gray-50" /></div>
+                <div className="space-y-2"><Label>CPF</Label><Input value={data.cpf} onChange={(e) => updateField('cpf', maskCPF(e.target.value))} disabled={!!orderCreated} className="rounded-2xl h-12 bg-gray-50" /></div>
+                <div className="space-y-2"><Label>CEP</Label><Input value={data.zipCode} onChange={(e) => updateField('zipCode', maskCEP(e.target.value))} disabled={!!orderCreated} className="rounded-2xl h-12 bg-gray-50" /></div>
+                <div className="space-y-2 md:col-span-1"><Label>Cidade</Label><Input value={data.city} onChange={(e) => updateField('city', e.target.value)} disabled={!!orderCreated} className="rounded-2xl h-12 bg-gray-50" /></div>
+                <div className="space-y-2 md:col-span-2"><Label>Endereço</Label><Input value={data.address} onChange={(e) => updateField('address', e.target.value)} disabled={!!orderCreated} className="rounded-2xl h-12 bg-gray-50" /></div>
+                <div className="space-y-2"><Label>Número</Label><Input value={data.number} onChange={(e) => updateField('number', e.target.value)} disabled={!!orderCreated} className="rounded-2xl h-12 bg-gray-50" /></div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">E-mail</Label>
-                  <Input id="email" type="email" value={data.email} onChange={(e) => updateField('email', e.target.value)} disabled={!!orderCreated} className="rounded-2xl h-12 bg-gray-50" />
+                  <Label>Estado</Label>
+                  <Select value={data.state} onValueChange={(val) => updateField('state', val)} disabled={!!orderCreated}>
+                    <SelectTrigger className="rounded-2xl h-12 bg-gray-50"><SelectValue placeholder="UF" /></SelectTrigger>
+                    <SelectContent className="rounded-2xl">{BRAZILIAN_STATES.map((st) => <SelectItem key={st.value} value={st.value}>{st.value}</SelectItem>)}</SelectContent>
+                  </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">WhatsApp</Label>
-                  <Input id="phone" value={data.phone} onChange={(e) => updateField('phone', maskPhone(e.target.value))} placeholder="(00) 00000-0000" disabled={!!orderCreated} className="rounded-2xl h-12 bg-gray-50" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cpf">CPF</Label>
-                  <Input id="cpf" value={data.cpf} onChange={(e) => updateField('cpf', maskCPF(e.target.value))} placeholder="000.000.000-00" disabled={!!orderCreated} className="rounded-2xl h-12 bg-gray-50" />
-                </div>
-              </div>
-            </section>
-
-            <section className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100">
-              <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-                <span className="w-8 h-8 rounded-full bg-[#B89C6A] text-white flex items-center justify-center text-sm">2</span>
-                Entrega
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Input id="zipCode" value={data.zipCode} onChange={(e) => updateField('zipCode', maskCEP(e.target.value))} placeholder="CEP" disabled={!!orderCreated} className="rounded-2xl h-12 bg-gray-50" />
-                <Input id="address" value={data.address} onChange={(e) => updateField('address', e.target.value)} placeholder="Endereço" disabled={!!orderCreated} className="rounded-2xl h-12 bg-gray-50 md:col-span-2" />
-                <Input id="number" value={data.number} onChange={(e) => updateField('number', e.target.value)} placeholder="Nº" disabled={!!orderCreated} className="rounded-2xl h-12 bg-gray-50" />
-                <Input id="city" value={data.city} onChange={(e) => updateField('city', e.target.value)} placeholder="Cidade" disabled={!!orderCreated} className="rounded-2xl h-12 bg-gray-50" />
-                <Select value={data.state} onValueChange={(val) => updateField('state', val)} disabled={!!orderCreated}>
-                  <SelectTrigger className="rounded-2xl h-12 bg-gray-50"><SelectValue placeholder="UF" /></SelectTrigger>
-                  <SelectContent className="rounded-2xl">{BRAZILIAN_STATES.map((st) => <SelectItem key={st.value} value={st.value}>{st.value}</SelectItem>)}</SelectContent>
-                </Select>
               </div>
               
               {!orderCreated && (
@@ -209,12 +205,17 @@ const Checkout = () => {
               )}
             </section>
 
+            {/* ETAPA 3: PAGAMENTO (BRICKS) */}
             {orderCreated && (
-              <section className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100">
+              <section className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100 animate-in fade-in">
                 <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-                  <span className="w-8 h-8 rounded-full bg-[#B89C6A] text-white flex items-center justify-center text-sm">3</span>
-                  Pagamento
+                  <span className="w-8 h-8 rounded-full bg-[#B89C6A] text-white flex items-center justify-center text-sm">2</span>
+                  Pagamento Seguro
                 </h2>
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-center gap-3 text-blue-700 text-xs">
+                   <Loader2 size={16} className="animate-spin" />
+                   <span>Aguardando preenchimento do formulário do Mercado Pago abaixo...</span>
+                </div>
                 <Payment
                   initialization={{ amount: cartTotal + shippingCost }}
                   customization={{
@@ -223,11 +224,13 @@ const Checkout = () => {
                   }}
                   onSubmit={handlePaymentSubmit}
                 />
+                <Button variant="ghost" onClick={() => setOrderCreated(null)} className="w-full mt-6 text-gray-400 text-[10px] uppercase font-bold tracking-widest">Alterar dados de entrega</Button>
               </section>
             )}
           </div>
         </div>
 
+        {/* RESUMO LATERAL */}
         <div className="lg:col-span-5">
           <div className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100 sticky top-24">
             <h2 className="text-xl font-bold mb-6">Resumo</h2>

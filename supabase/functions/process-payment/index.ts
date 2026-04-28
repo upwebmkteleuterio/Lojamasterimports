@@ -11,127 +11,108 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders })
   }
 
-  try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+  const supabaseClient = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  )
 
-    const { formData, orderId, customerData, cart, total } = await req.json()
+  try {
+    const { formData, orderId, customerData, total } = await req.json()
     const accessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN')
 
+    console.log("[process-payment] Iniciando processamento forense", { orderId, method: formData.payment_method_id });
+
     if (!accessToken) {
-      console.error("[process-payment] MERCADO_PAGO_ACCESS_TOKEN not found")
-      return new Response(JSON.stringify({ error: "Configuração do servidor incompleta" }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
+      console.error("[process-payment] ERRO CRÍTICO: Token de Acesso não configurado no Supabase.");
+      throw new Error("Token de Acesso do Mercado Pago ausente nas variáveis de ambiente.");
     }
 
-    console.log("[process-payment] Processing order", orderId)
-
-    // Prepare payload for Mercado Pago Orders API
-    // Documentation shows: /v1/orders
-    const mpPayload = {
-      type: "online",
-      processing_mode: "automatic",
-      total_amount: total.toFixed(2),
-      external_reference: orderId,
+    // Montando o payload para a API de PAGAMENTOS (Padrão Bricks)
+    const paymentPayload = {
+      transaction_amount: Number(total),
+      token: formData.token,
+      description: `Pedido #${orderId.split('-')[0]} - Diamond Store`,
+      installments: Number(formData.installments || 1),
+      payment_method_id: formData.payment_method_id,
+      issuer_id: formData.issuer_id,
       payer: {
         email: customerData.email,
-        first_name: customerData.fullName.split(' ')[0],
-        last_name: customerData.fullName.split(' ').slice(1).join(' ') || ' ',
         identification: {
           type: "CPF",
           number: customerData.cpf.replace(/\D/g, '')
         },
-        address: {
-          zip_code: customerData.zipCode.replace(/\D/g, ''),
-          street_name: customerData.address,
-          street_number: customerData.number,
-          city: customerData.city,
-          state: customerData.state
-        }
+        first_name: customerData.fullName.split(' ')[0],
+        last_name: customerData.fullName.split(' ').slice(1).join(' ') || 'Cliente'
       },
-      transactions: {
-        payments: [
-          {
-            amount: total.toFixed(2),
-            payment_method: {
-              id: formData.payment_method_id,
-              type: formData.payment_type_id || (formData.payment_method_id === 'pix' ? 'bank_transfer' : 'credit_card'),
-              token: formData.token,
-              installments: formData.installments || 1
-            }
-          }
-        ]
-      }
-    }
+      external_reference: orderId,
+      notification_url: "https://esdhiurlyicjopjlxvba.supabase.co/functions/v1/mercadopago-webhook"
+    };
 
-    const response = await fetch('https://api.mercadopago.com/v1/orders', {
+    console.log("[process-payment] Enviando requisição para Mercado Pago API /v1/payments");
+
+    const response = await fetch('https://api.mercadopago.com/v1/payments', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
         'X-Idempotency-Key': orderId
       },
-      body: JSON.stringify(mpPayload)
-    })
+      body: JSON.stringify(paymentPayload)
+    });
 
-    const mpResult = await response.json()
+    const result = await response.json();
 
     if (!response.ok) {
-      console.error("[process-payment] Mercado Pago Error", mpResult)
-      return new Response(JSON.stringify({ error: mpResult.message || "Erro no processamento do pagamento" }), {
-        status: response.status,
+      console.error("[process-payment] Mercado Pago retornou erro:", result);
+      return new Response(JSON.stringify({ 
+        error: "Erro na API do Mercado Pago", 
+        details: result,
+        status: response.status 
+      }), {
+        status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
+      });
     }
 
-    const payment = mpResult.transactions?.payments?.[0]
-    
-    // Update our order with MP info
-    await supabaseClient
+    console.log("[process-payment] Sucesso! Status do pagamento:", result.status);
+
+    // Atualiza o pedido no banco com os dados reais do MP
+    const { error: dbError } = await supabaseClient
       .from('orders')
       .update({
-        mp_order_id: mpResult.id,
-        mp_payment_id: payment?.id,
-        payment_method: formData.payment_method_id,
-        payment_status: mpResult.status,
-        payment_status_detail: mpResult.status_detail,
-        payment_details: payment?.payment_method || {},
-        status: mapStatus(mpResult.status)
+        mp_payment_id: result.id.toString(),
+        payment_method: result.payment_method_id,
+        payment_status: result.status,
+        payment_status_detail: result.status_detail,
+        status: mapStatus(result.status),
+        updated_at: new Date().toISOString()
       })
-      .eq('id', orderId)
+      .eq('id', orderId);
 
-    return new Response(JSON.stringify(mpResult), {
+    if (dbError) console.error("[process-payment] Erro ao atualizar banco após pagamento:", dbError);
+
+    return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
-    })
+    });
 
   } catch (error) {
-    console.error("[process-payment] Unexpected Error", error)
+    console.error("[process-payment] Erro excepcional:", error.message);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
-    })
+    });
   }
 })
 
-function mapStatus(mpStatus) {
-  switch (mpStatus) {
-    case 'processed':
-    case 'approved':
-      return 'Pago';
-    case 'action_required':
-      return 'Pagamento Pendente';
-    case 'rejected':
-      return 'Cancelado';
-    case 'cancelled':
-      return 'Cancelado';
-    case 'in_process':
-      return 'Em Processamento';
-    default:
-      return 'Pendente';
-  }
+function mapStatus(mpStatus: string) {
+  const map: any = {
+    'approved': 'Pago',
+    'pending': 'Pagamento Pendente',
+    'in_process': 'Pagamento Pendente',
+    'rejected': 'Cancelado',
+    'cancelled': 'Cancelado',
+    'refunded': 'Pagamento Estornado'
+  };
+  return map[mpStatus] || 'Pendente';
 }
