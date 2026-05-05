@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
-import { crypto } from "https://deno.land/std@0.190.0/crypto/mod.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,31 +16,25 @@ serve(async (req) => {
     )
 
     const bodyText = await req.text()
-    const signature = req.headers.get('x-abacatepay-signature') || req.headers.get('signature')
-    const webhookSecret = Deno.env.get('ABACATE_WEBHOOK_SECRET')
-
-    // Validar assinatura se o secret estiver configurado
-    if (webhookSecret && signature) {
-      // Implementação básica de validação HMAC SHA256 se necessário
-      // Por enquanto, vamos registrar para debug
-      console.log("[abacatepay-webhook] Validating signature...")
-    }
-
     const payload = JSON.parse(bodyText)
-    console.log("[abacatepay-webhook] Received payload:", payload)
-
-    // A estrutura comum da AbacatePay costuma ser { event: 'billing.paid', data: { externalId: '...', ... } }
+    
+    // De acordo com a doc, o header de assinatura é X-Webhook-Signature
+    const signature = req.headers.get('X-Webhook-Signature')
+    
+    console.log("[abacatepay-webhook] Evento:", payload.event);
+    
     const event = payload.event
-    const data = payload.data
+    const data = payload.data // Contém os dados da cobrança
     const orderId = data?.externalId
 
     if (!orderId) {
-      console.warn("[abacatepay-webhook] No externalId found in payload")
+      console.warn("[abacatepay-webhook] Payload sem externalId (pedido não rastreável)");
       return new Response(JSON.stringify({ received: true }), { status: 200 })
     }
 
-    if (event === 'billing.paid') {
-      console.log(`[abacatepay-webhook] Order ${orderId} marked as PAID`)
+    // Eventos oficiais da Doc: transparent.completed, transparent.refunded, etc.
+    if (event === 'transparent.completed' || event === 'checkout.completed') {
+      console.log(`[abacatepay-webhook] PAGO: Pedido ${orderId}`);
       
       const { error } = await supabaseClient
         .from('orders')
@@ -52,18 +45,13 @@ serve(async (req) => {
         })
         .eq('id', orderId)
 
-      if (error) {
-        console.error("[abacatepay-webhook] Error updating order:", error)
-        throw error
-      }
-    } else if (event === 'billing.expired' || event === 'billing.cancelled') {
-       console.log(`[abacatepay-webhook] Order ${orderId} marked as CANCELLED/EXPIRED`)
+      if (error) throw error;
+    } 
+    else if (event === 'transparent.refunded' || event === 'checkout.refunded') {
+       console.log(`[abacatepay-webhook] REEMBOLSADO: Pedido ${orderId}`);
        await supabaseClient
         .from('orders')
-        .update({ 
-          status: 'Cancelado',
-          updated_at: new Date().toISOString()
-        })
+        .update({ status: 'Pagamento Estornado' })
         .eq('id', orderId)
     }
 
@@ -73,7 +61,7 @@ serve(async (req) => {
     })
 
   } catch (error: any) {
-    console.error("[abacatepay-webhook] Error:", error)
+    console.error("[abacatepay-webhook] Erro no processamento:", error.message);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,

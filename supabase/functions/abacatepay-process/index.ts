@@ -10,6 +10,8 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
 
   try {
+    console.log("[abacatepay-process] Iniciando processamento de pagamento...");
+    
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -19,11 +21,11 @@ serve(async (req) => {
     const apiKey = Deno.env.get('ABACATE_API_KEY')
 
     if (!apiKey) {
-      console.error("[abacatepay-process] ABACATE_API_KEY is not set")
-      throw new Error("Configuração do AbacatePay ausente.");
+      console.error("[abacatepay-process] ABACATE_API_KEY não configurada nas Secrets.");
+      throw new Error("Configuração de pagamento ausente no servidor.");
     }
 
-    // 1. Criar pedido na tabela orders
+    // 1. Criar pedido no banco de dados
     const { data: order, error: orderError } = await supabaseClient.from('orders').insert({
       user_id: userId || null,
       total: total,
@@ -33,36 +35,29 @@ serve(async (req) => {
     }).select().single()
 
     if (orderError) {
-      console.error("[abacatepay-process] Error creating order:", orderError)
-      throw orderError
+      console.error("[abacatepay-process] Erro ao criar pedido no banco:", orderError);
+      throw orderError;
     }
 
-    console.log("[abacatepay-process] Order created:", order.id)
-
-    // 2. Chamar API da AbacatePay (Transparent PIX)
-    // Conforme instruções do usuário: https://api.abacatepay.com/v2/transparents/create
+    // 2. Preparar payload conforme DOCUMENTAÇÃO OFICIAL
+    // A doc exige: { method: "PIX", data: { amount: centavos, externalId: "...", customer: { ... } } }
     const abacatePayload = {
-      externalId: order.id,
-      amount: Math.round(total * 100), // Em centavos se for o padrão, mas vou seguir o que for mais comum se não especificado. Geralmente APIs brasileiras usam centavos.
-      // Se a API pedir em reais: amount: total,
-      // Como não tenho a doc completa, vou tentar o padrão de centavos ou o que for mais provável.
-      // Entretanto, a prompt diz "brCode" e "brCodeBase64" devem ser retornados.
-      customer: {
-        name: customerData.fullName,
-        cellphone: customerData.phone.replace(/\D/g, ''),
-        taxId: customerData.cpf.replace(/\D/g, ''),
-        email: customerData.email || `${customerData.phone.replace(/\D/g, '')}@noemail.com`
-      },
-      methods: ["PIX"],
-      products: items.map((item: any) => ({
-        externalId: item.id,
-        name: item.name,
-        quantity: item.quantity,
-        price: Math.round(item.price * 100)
-      }))
+      method: "PIX",
+      data: {
+        amount: Math.round(total * 100), // Converte para centavos
+        description: `Pedido #${order.id.split('-')[0]} na Loja`,
+        externalId: order.id,
+        customer: {
+          name: customerData.fullName,
+          email: customerData.email,
+          taxId: customerData.cpf.replace(/\D/g, ''), // API costuma preferir apenas números ou formato padrão
+          cellphone: customerData.phone.replace(/\D/g, '')
+        }
+      }
     }
 
-    console.log("[abacatepay-process] Calling AbacatePay API...")
+    console.log("[abacatepay-process] Chamando API AbacatePay...");
+    
     const response = await fetch('https://api.abacatepay.com/v2/transparents/create', {
       method: 'POST',
       headers: {
@@ -74,19 +69,20 @@ serve(async (req) => {
 
     const result = await response.json()
 
-    if (!response.ok) {
-      console.error("[abacatepay-process] AbacatePay API Error:", result)
-      // Se falhar na AbacatePay, talvez devêssemos marcar o pedido como falho ou remover?
-      // Por enquanto, apenas retornar o erro.
-      return new Response(JSON.stringify({ error: "Erro na AbacatePay", details: result }), {
+    if (!response.ok || !result.success) {
+      console.error("[abacatepay-process] Erro retornado pela AbacatePay:", result);
+      return new Response(JSON.stringify({ 
+        error: "Falha na comunicação com gateway", 
+        details: result.error || result 
+      }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
-    // De acordo com a prompt, esperamos brCode e brCodeBase64
-    // result.data.brCode e result.data.brCodeBase64 (assumindo estrutura comum de resposta)
-    // Vou retornar o que vier que pareça correto.
-    const pixData = result.data || result;
+    // De acordo com a doc, os dados estão em result.data
+    const pixData = result.data;
+
+    console.log("[abacatepay-process] Pagamento PIX gerado com sucesso:", pixData.id);
 
     return new Response(JSON.stringify({ 
       orderId: order.id,
@@ -99,7 +95,7 @@ serve(async (req) => {
     })
 
   } catch (error: any) {
-    console.error("[abacatepay-process] Unexpected Error:", error)
+    console.error("[abacatepay-process] Erro inesperado:", error.message);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
