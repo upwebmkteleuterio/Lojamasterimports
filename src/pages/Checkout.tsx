@@ -88,7 +88,7 @@ const Checkout = () => {
               <Button 
                 onClick={handleProcessPayment}
                 disabled={loading || cart.length === 0}
-                className="w-full md:w-auto min-w-[300px] h-20 rounded-full bg-black hover:bg-zinc-800 text-white text-lg font-bold uppercase tracking-[0.2em] shadow-2xl shadow-black/10 transition-all active:scale-95 group"
+                className="w-full md:w-auto min-w-[300px] px-16 h-20 rounded-full bg-black hover:bg-zinc-800 text-white text-lg font-bold uppercase tracking-[0.2em] shadow-2xl shadow-black/10 transition-all active:scale-95 group"
               >
                 {loading ? (
                   <Loader2 className="animate-spin w-8 h-8" />
