@@ -1,15 +1,16 @@
 "use client";
 
 import React from 'react';
-import { useCheckout } from '@/hooks/useCheckout';
+import { useCheckout, PaymentMethod } from '@/hooks/useCheckout';
 import { PersonalInfoSection } from '@/components/checkout/PersonalInfoSection';
 import { ShippingAddressSection } from '@/components/checkout/ShippingAddressSection';
 import { CheckoutSummary } from '@/components/checkout/CheckoutSummary';
 import { PIXPaymentModal } from '@/components/checkout/PIXPaymentModal';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowRight } from 'lucide-react';
+import { Loader2, ArrowRight, QrCode, FileText, CreditCard } from 'lucide-react';
 import { DebugInspector } from '@/components/admin/DebugInspector';
 import { IntegrityBanner } from '@/components/admin/IntegrityBanner';
+import { cn } from '@/lib/utils';
 
 const Checkout = () => {
   const {
@@ -18,11 +19,19 @@ const Checkout = () => {
     loading,
     cart,
     cartTotal,
+    paymentMethod,
+    setPaymentMethod,
     handleProcessPayment,
-    pixData,
-    showPIXModal,
-    setShowPIXModal
+    paymentResult,
+    showModal,
+    setShowModal
   } = useCheckout();
+
+  const methods = [
+    { id: 'PIX' as PaymentMethod, label: 'PIX', icon: QrCode },
+    { id: 'BOLETO' as PaymentMethod, label: 'Boleto', icon: FileText },
+    { id: 'CREDIT_CARD' as PaymentMethod, label: 'Cartão', icon: CreditCard, disabled: true },
+  ];
 
   return (
     <div className="min-h-screen bg-[#FDFDFD]">
@@ -32,10 +41,39 @@ const Checkout = () => {
         <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-12">Finalizar Compra</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-          {/* Lado Esquerdo: Formulário */}
           <div className="lg:col-span-7 space-y-8">
             <PersonalInfoSection data={data} updateField={updateField} />
             <ShippingAddressSection data={data} updateField={updateField} />
+            
+            {/* Seção 3: Forma de Pagamento */}
+            <div className="bg-white p-6 md:p-10 rounded-[32px] border border-gray-100 shadow-sm space-y-8">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-[#B89C6A] text-white flex items-center justify-center font-bold text-lg">3</div>
+                <h2 className="text-xl font-serif font-bold text-gray-900">Forma de Pagamento</h2>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {methods.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => !m.disabled && setPaymentMethod(m.id)}
+                    className={cn(
+                      "p-6 rounded-3xl border-2 flex flex-col items-center gap-3 transition-all relative overflow-hidden",
+                      paymentMethod === m.id 
+                        ? "border-[#B89C6A] bg-[#B89C6A]/5" 
+                        : "border-gray-50 bg-gray-50/50 hover:border-gray-200",
+                      m.disabled && "opacity-40 cursor-not-allowed grayscale"
+                    )}
+                  >
+                    <m.icon size={24} className={paymentMethod === m.id ? "text-[#B89C6A]" : "text-gray-400"} />
+                    <span className={cn("text-xs font-bold uppercase tracking-widest", paymentMethod === m.id ? "text-[#B89C6A]" : "text-gray-500")}>
+                      {m.label}
+                    </span>
+                    {m.disabled && <span className="absolute inset-0 flex items-center justify-center bg-white/60 text-[8px] font-black text-gray-400 uppercase tracking-tighter">Em breve</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
             
             <div className="pt-4">
               <Button 
@@ -51,25 +89,19 @@ const Checkout = () => {
                   </span>
                 )}
               </Button>
-              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-6 text-center md:text-left">
-                Ao clicar, você será direcionado para o pagamento instantâneo via PIX.
-              </p>
             </div>
           </div>
 
-          {/* Lado Direito: Resumo */}
           <div className="lg:col-span-5">
             <CheckoutSummary cart={cart} total={cartTotal} />
           </div>
         </div>
 
-        {pixData && (
+        {paymentResult && (
           <PIXPaymentModal
-            isOpen={showPIXModal}
-            onClose={() => setShowPIXModal(false)}
-            brCode={pixData.brCode}
-            brCodeBase64={pixData.brCodeBase64}
-            orderId={pixData.orderId}
+            isOpen={showModal}
+            onClose={() => setShowModal(false)}
+            data={paymentResult}
           />
         )}
       </main>

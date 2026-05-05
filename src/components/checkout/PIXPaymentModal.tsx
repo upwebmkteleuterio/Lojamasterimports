@@ -7,153 +7,127 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, QrCode, Clock, CheckCircle2, X } from "lucide-react";
+import { Copy, Check, QrCode, Clock, CheckCircle2, FileText, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 
-interface PIXPaymentModalProps {
+interface PaymentResultModalProps {
   isOpen: boolean;
   onClose: () => void;
-  brCode: string;
-  brCodeBase64: string;
-  orderId: string;
+  data: {
+    brCode?: string;
+    brCodeBase64?: string;
+    barCode?: string;
+    url?: string;
+    orderId: string;
+    method: 'PIX' | 'BOLETO' | 'CREDIT_CARD';
+  };
 }
 
-export const PIXPaymentModal = ({
-  isOpen,
-  onClose,
-  brCode,
-  brCodeBase64,
-  orderId
-}: PIXPaymentModalProps) => {
+export const PIXPaymentModal = ({ isOpen, onClose, data }: PaymentResultModalProps) => {
   const [copied, setCopied] = useState(false);
   const [isPaid, setIsPaid] = useState(false);
   const navigate = useNavigate();
 
-  // Garante que o src da imagem esteja correto (evita duplicidade de prefixo data:image)
-  const qrCodeSrc = brCodeBase64?.startsWith('data:') 
-    ? brCodeBase64 
-    : `data:image/png;base64,${brCodeBase64}`;
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(brCode);
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
     setCopied(true);
-    toast.success("Código PIX copiado!");
+    toast.success("Copiado!");
     setTimeout(() => setCopied(false), 2000);
   };
 
   useEffect(() => {
-    if (!orderId || !isOpen) return;
+    if (!data.orderId || !isOpen) return;
 
     const channel = supabase
-      .channel(`order-${orderId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'orders',
-          filter: `id=eq.${orderId}`
-        },
-        (payload) => {
-          if (payload.new.status === 'Pago') {
-            setIsPaid(true);
-            toast.success("Pagamento confirmado!");
-            setTimeout(() => {
-              onClose();
-              navigate('/minha-conta');
-            }, 3000);
-          }
+      .channel(`order-status-${data.orderId}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${data.orderId}` }, 
+      (payload) => {
+        if (payload.new.status === 'Pago') {
+          setIsPaid(true);
+          setTimeout(() => { onClose(); navigate('/minha-conta'); }, 3000);
         }
-      )
-      .subscribe();
+      }).subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [orderId, isOpen, navigate, onClose]);
+    return () => { supabase.removeChannel(channel); };
+  }, [data.orderId, isOpen, navigate, onClose]);
+
+  const qrCodeSrc = data.brCodeBase64?.startsWith('data:') ? data.brCodeBase64 : `data:image/png;base64,${data.brCodeBase64}`;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto rounded-[40px] border-none shadow-2xl p-0 scrollbar-hide">
+        {/* Header Visual */}
         <div className="bg-[#B89C6A] p-8 text-white text-center relative">
-          <button 
-            onClick={onClose}
-            className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors"
-          >
-            <X size={20} />
-          </button>
           <DialogHeader>
             <DialogTitle className="text-2xl font-serif text-white uppercase tracking-widest">
-              {isPaid ? "Sucesso!" : "Pagamento PIX"}
+              {isPaid ? "Sucesso!" : data.method === 'PIX' ? "Pagamento PIX" : "Seu Boleto"}
             </DialogTitle>
             <DialogDescription className="text-white/80 font-medium">
-              {isPaid 
-                ? "Seu pagamento foi aprovado."
-                : "Escaneie o código abaixo no app do seu banco."}
+              {isPaid ? "Pagamento aprovado." : "Siga as instruções abaixo para concluir."}
             </DialogDescription>
           </DialogHeader>
         </div>
 
-        <div className="p-8 flex flex-col items-center gap-8">
+        <div className="p-8 flex flex-col items-center gap-6">
           {isPaid ? (
-            <div className="flex flex-col items-center gap-6 py-10 animate-in zoom-in duration-500">
-              <div className="w-24 h-24 rounded-full bg-green-50 flex items-center justify-center border-2 border-green-100">
-                <CheckCircle2 className="w-12 h-12 text-green-600" />
-              </div>
-              <p className="text-center text-gray-600 font-bold uppercase tracking-widest text-xs">
-                Aguarde... Redirecionando para seus pedidos
-              </p>
+            <div className="py-10 text-center space-y-4">
+              <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto" />
+              <p className="font-bold text-gray-600 uppercase tracking-widest text-xs">Redirecionando...</p>
             </div>
           ) : (
             <>
-              {brCodeBase64 && (
-                <div className="bg-white p-6 rounded-[32px] shadow-sm border-4 border-gray-50">
-                  <img 
-                    src={qrCodeSrc} 
-                    alt="QR Code PIX"
-                    className="w-56 h-56 object-contain"
-                  />
+              {/* VISUALIZAÇÃO PIX */}
+              {data.method === 'PIX' && (
+                <div className="w-full flex flex-col items-center gap-6">
+                  <div className="bg-white p-4 rounded-3xl border-4 border-gray-50">
+                    <img src={qrCodeSrc} alt="QR Code" className="w-48 h-48" />
+                  </div>
+                  <div className="w-full space-y-4">
+                    <div className="bg-gray-50 rounded-2xl p-4 text-[10px] font-mono text-gray-500 break-all border border-gray-100 relative">
+                      {data.brCode}
+                      <Button size="icon" variant="ghost" className="absolute right-2 top-2 h-8 w-8" onClick={() => handleCopy(data.brCode!)}>
+                        {copied ? <Check size={14}/> : <Copy size={14}/>}
+                      </Button>
+                    </div>
+                    <Button onClick={() => handleCopy(data.brCode!)} className="w-full h-14 rounded-full bg-black text-white font-bold uppercase tracking-widest text-xs">
+                      {copied ? "COPIADO!" : "COPIAR CÓDIGO PIX"}
+                    </Button>
+                  </div>
                 </div>
               )}
 
-              <div className="w-full space-y-6">
-                <div className="flex items-center justify-between text-[10px] text-gray-400 font-black uppercase tracking-widest px-2">
-                  <span className="flex items-center gap-2">
-                    <Clock size={14} className="text-[#B89C6A]" /> Expira em 30 min
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <QrCode size={14} className="text-[#B89C6A]" /> PIX Copia e Cola
-                  </span>
-                </div>
-
-                <div className="relative">
-                  <div className="bg-gray-50 rounded-2xl p-5 pr-14 text-[11px] font-mono text-gray-500 break-all border border-gray-100 leading-relaxed">
-                    {brCode}
+              {/* VISUALIZAÇÃO BOLETO */}
+              {data.method === 'BOLETO' && (
+                <div className="w-full space-y-6">
+                  <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 flex flex-col items-center gap-4 text-center">
+                    <FileText size={40} className="text-[#B89C6A]" />
+                    <div>
+                      <p className="text-xs font-bold text-gray-700 uppercase">Linha Digitável</p>
+                      <p className="text-[11px] font-mono text-gray-400 mt-1">{data.barCode}</p>
+                    </div>
                   </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 hover:bg-white text-[#B89C6A]"
-                    onClick={handleCopy}
-                  >
-                    {copied ? <Check size={20} /> : <Copy size={20} />}
-                  </Button>
-                </div>
+                  
+                  <div className="grid grid-cols-1 gap-3">
+                    <Button onClick={() => handleCopy(data.barCode!)} variant="outline" className="h-14 rounded-full border-gray-200 font-bold uppercase text-[10px] tracking-widest">
+                       <Copy size={14} className="mr-2" /> Copiar Código de Barras
+                    </Button>
+                    <Button onClick={() => window.open(data.url, '_blank')} className="h-14 rounded-full bg-black text-white font-bold uppercase text-[10px] tracking-widest">
+                       <ExternalLink size={14} className="mr-2" /> Abrir Boleto para Impressão
+                    </Button>
+                  </div>
 
-                <Button 
-                  onClick={handleCopy}
-                  className="w-full h-16 rounded-full bg-black hover:bg-zinc-800 text-white font-bold uppercase tracking-[0.2em] text-xs shadow-xl transition-all active:scale-95"
-                >
-                  {copied ? "CÓDIGO COPIADO!" : "COPIAR CÓDIGO PIX"}
-                </Button>
-              </div>
+                  <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
+                    <p className="text-[9px] text-amber-700 font-bold uppercase text-center leading-relaxed">
+                      O boleto pode levar até 30 minutos para ser registrado no seu banco.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="pt-4 border-t border-gray-50 w-full text-center">
-                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-[0.3em]">
-                  Transação protegida por criptografia de ponta
-                </p>
+                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-[0.2em]">Pagamento Seguro & Criptografado</p>
               </div>
             </>
           )}

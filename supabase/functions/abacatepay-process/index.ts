@@ -10,54 +10,42 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
 
   try {
-    console.log("[abacatepay-process] Iniciando processamento de pagamento...");
-    
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { customerData, total, items, userId } = await req.json()
+    const { customerData, total, items, userId, method = "PIX" } = await req.json()
     const apiKey = Deno.env.get('ABACATE_API_KEY')
 
-    if (!apiKey) {
-      console.error("[abacatepay-process] ABACATE_API_KEY não configurada nas Secrets.");
-      throw new Error("Configuração de pagamento ausente no servidor.");
-    }
-
-    // 1. Criar pedido no banco de dados
+    // 1. Criar pedido
     const { data: order, error: orderError } = await supabaseClient.from('orders').insert({
       user_id: userId || null,
       total: total,
       customer_data: customerData,
       items: items,
-      status: 'Pendente'
+      status: 'Pendente',
+      payment_method: method
     }).select().single()
 
-    if (orderError) {
-      console.error("[abacatepay-process] Erro ao criar pedido no banco:", orderError);
-      throw orderError;
-    }
+    if (orderError) throw orderError;
 
-    // 2. Preparar payload conforme DOCUMENTAÇÃO OFICIAL
-    // A doc exige: { method: "PIX", data: { amount: centavos, externalId: "...", customer: { ... } } }
+    // 2. Payload dinâmico
     const abacatePayload = {
-      method: "PIX",
+      method: method, // PIX ou BOLETO
       data: {
-        amount: Math.round(total * 100), // Converte para centavos
-        description: `Pedido #${order.id.split('-')[0]} na Loja`,
+        amount: Math.round(total * 100),
+        description: `Pedido #${order.id.split('-')[0]}`,
         externalId: order.id,
         customer: {
           name: customerData.fullName,
           email: customerData.email,
-          taxId: customerData.cpf.replace(/\D/g, ''), // API costuma preferir apenas números ou formato padrão
+          taxId: customerData.cpf.replace(/\D/g, ''),
           cellphone: customerData.phone.replace(/\D/g, '')
         }
       }
     }
 
-    console.log("[abacatepay-process] Chamando API AbacatePay...");
-    
     const response = await fetch('https://api.abacatepay.com/v2/transparents/create', {
       method: 'POST',
       headers: {
@@ -68,37 +56,25 @@ serve(async (req) => {
     })
 
     const result = await response.json()
-
     if (!response.ok || !result.success) {
-      console.error("[abacatepay-process] Erro retornado pela AbacatePay:", result);
-      return new Response(JSON.stringify({ 
-        error: "Falha na comunicação com gateway", 
-        details: result.error || result 
-      }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
+      return new Response(JSON.stringify({ error: "Erro API Abacate", details: result }), { status: 400, headers: corsHeaders })
     }
 
-    // De acordo com a doc, os dados estão em result.data
-    const pixData = result.data;
-
-    console.log("[abacatepay-process] Pagamento PIX gerado com sucesso:", pixData.id);
+    const resData = result.data;
 
     return new Response(JSON.stringify({ 
       orderId: order.id,
-      brCode: pixData.brCode,
-      brCodeBase64: pixData.brCodeBase64,
-      expiresAt: pixData.expiresAt
+      brCode: resData.brCode,
+      brCodeBase64: resData.brCodeBase64,
+      barCode: resData.barCode,
+      url: resData.url,
+      expiresAt: resData.expiresAt
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
 
   } catch (error: any) {
-    console.error("[abacatepay-process] Erro inesperado:", error.message);
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500,
-    })
+    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders })
   }
 })

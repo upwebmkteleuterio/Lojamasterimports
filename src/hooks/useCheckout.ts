@@ -13,15 +13,26 @@ const initialCustomerData: CustomerData = {
   zipCode: '', address: '', number: '', city: '', state: '',
 };
 
+export type PaymentMethod = 'PIX' | 'BOLETO' | 'CREDIT_CARD';
+
 export const useCheckout = () => {
   const { cart, cartTotal } = useCart();
   const { user, profile } = useAuth();
   const { data, updateField, setData } = usePersistence<CustomerData>('checkout_form', initialCustomerData);
   const [loading, setLoading] = useState(false);
-  const [pixData, setPixData] = useState<{ brCode: string; brCodeBase64: string; orderId: string; } | null>(null);
-  const [showPIXModal, setShowPIXModal] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('PIX');
+  
+  const [paymentResult, setPaymentResult] = useState<{
+    brCode?: string;
+    brCodeBase64?: string;
+    barCode?: string;
+    url?: string;
+    orderId: string;
+    method: PaymentMethod;
+  } | null>(null);
+  
+  const [showModal, setShowModal] = useState(false);
 
-  // Sincroniza dados do perfil autenticado
   useEffect(() => {
     if (profile) {
       setData(prev => ({
@@ -41,11 +52,11 @@ export const useCheckout = () => {
 
   const handleProcessPayment = async () => {
     if (!validateCPF(data.cpf)) return toast.error('CPF inválido.');
-    if (!data.fullName || !data.phone || !data.zipCode || !data.address) return toast.error('Preencha todos os campos obrigatórios.');
+    if (!data.fullName || !data.phone) return toast.error('Preencha nome e telefone.');
 
     setLoading(true);
-    diamondDebug('info', 'Processando checkout via AbacatePay...');
-    traceSaveFlow('abacatepay-call', { customer: data.email, total: cartTotal });
+    diamondDebug('info', `Iniciando pagamento via ${paymentMethod}...`);
+    traceSaveFlow('abacatepay-process-call', { method: paymentMethod, total: cartTotal });
 
     try {
       const response = await fetch(`https://esdhiurlyicjopjlxvba.supabase.co/functions/v1/abacatepay-process`, {
@@ -55,22 +66,21 @@ export const useCheckout = () => {
           customerData: data,
           total: cartTotal,
           items: cart,
-          userId: user?.id
+          userId: user?.id,
+          method: paymentMethod
         })
       });
 
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Falha no processamento.');
 
-      diamondDebug('success', 'PIX Gerado', { orderId: result.orderId });
-      checkIntegrity('orders', result.orderId, { status: 'Pendente' });
-
-      setPixData({
-        brCode: result.brCode,
-        brCodeBase64: result.brCodeBase64,
-        orderId: result.orderId
+      setPaymentResult({
+        ...result,
+        method: paymentMethod
       });
-      setShowPIXModal(true);
+      setShowModal(true);
+      diamondDebug('success', 'Cobrança gerada.', { orderId: result.orderId });
+
     } catch (error: any) {
       diamondDebug('error', 'Erro no Checkout', error);
       toast.error(error.message);
@@ -85,9 +95,11 @@ export const useCheckout = () => {
     loading,
     cart,
     cartTotal,
+    paymentMethod,
+    setPaymentMethod,
     handleProcessPayment,
-    pixData,
-    showPIXModal,
-    setShowPIXModal
+    paymentResult,
+    showModal,
+    setShowModal
   };
 };
