@@ -30,7 +30,7 @@ const Checkout = () => {
   const methods = [
     { id: 'PIX' as PaymentMethod, label: 'PIX', icon: QrCode },
     { id: 'BOLETO' as PaymentMethod, label: 'Boleto', icon: FileText },
-    { id: 'CREDIT_CARD' as PaymentMethod, label: 'Cartão', icon: CreditCard },
+    { id: 'CREDIT_CARD' as PaymentMethod, label: 'Cartão', icon: CreditCard, disabled: true },
   ];
 
   return (

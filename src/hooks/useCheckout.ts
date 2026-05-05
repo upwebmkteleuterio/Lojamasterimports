@@ -74,13 +74,6 @@ export const useCheckout = () => {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Falha no processamento.');
 
-      // Se for Cartão de Crédito, redirecionamos para a URL de checkout da AbacatePay
-      if (paymentMethod === 'CREDIT_CARD' && result.url) {
-        diamondDebug('success', 'Redirecionando para checkout seguro...');
-        window.location.href = result.url;
-        return;
-      }
-
       setPaymentResult({
         ...result,
         method: paymentMethod
