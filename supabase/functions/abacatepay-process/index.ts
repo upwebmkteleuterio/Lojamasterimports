@@ -18,7 +18,7 @@ serve(async (req) => {
     const { customerData, total, items, userId, method = "PIX" } = await req.json()
     const apiKey = Deno.env.get('ABACATE_API_KEY')
 
-    // 1. Criar pedido
+    // 1. Criar pedido no banco
     const { data: order, error: orderError } = await supabaseClient.from('orders').insert({
       user_id: userId || null,
       total: total,
@@ -30,9 +30,47 @@ serve(async (req) => {
 
     if (orderError) throw orderError;
 
-    // 2. Payload dinâmico
+    // 2. Se for Cartão, usamos o endpoint de Checkout (Redirecionamento)
+    if (method === 'CREDIT_CARD') {
+      const checkoutPayload = {
+        methods: ["CARD"],
+        externalId: order.id,
+        customerId: userId, // Opcional
+        returnUrl: "https://wild-binturong-sniff.dyad.app/minha-conta",
+        completionUrl: "https://wild-binturong-sniff.dyad.app/minha-conta",
+        items: items.map((item: any) => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: Math.round(item.price * 100) // Centavos
+        })),
+        card: {
+          maxInstallments: 12
+        }
+      }
+
+      const response = await fetch('https://api.abacatepay.com/v2/checkouts/create', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(checkoutPayload)
+      })
+
+      const result = await response.json()
+      if (!response.ok || !result.success) {
+        return new Response(JSON.stringify({ error: "Erro Cartão", details: result }), { status: 400, headers: corsHeaders })
+      }
+
+      return new Response(JSON.stringify({ 
+        orderId: order.id,
+        url: result.data.url // URL para redirecionar o cliente
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 })
+    }
+
+    // 3. Se for PIX ou BOLETO, mantemos o Transparent (Mesmo código anterior)
     const abacatePayload = {
-      method: method, // PIX ou BOLETO
+      method: method, 
       data: {
         amount: Math.round(total * 100),
         description: `Pedido #${order.id.split('-')[0]}`,
@@ -60,19 +98,13 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Erro API Abacate", details: result }), { status: 400, headers: corsHeaders })
     }
 
-    const resData = result.data;
-
     return new Response(JSON.stringify({ 
       orderId: order.id,
-      brCode: resData.brCode,
-      brCodeBase64: resData.brCodeBase64,
-      barCode: resData.barCode,
-      url: resData.url,
-      expiresAt: resData.expiresAt
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
-    })
+      brCode: result.data.brCode,
+      brCodeBase64: result.data.brCodeBase64,
+      barCode: result.data.barCode,
+      url: result.data.url
+    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 })
 
   } catch (error: any) {
     return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders })
