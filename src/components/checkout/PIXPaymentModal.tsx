@@ -7,7 +7,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, QrCode, Clock, CheckCircle2 } from "lucide-react";
+import { Copy, Check, QrCode, Clock, CheckCircle2, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -31,6 +31,11 @@ export const PIXPaymentModal = ({
   const [isPaid, setIsPaid] = useState(false);
   const navigate = useNavigate();
 
+  // Garante que o src da imagem esteja correto (evita duplicidade de prefixo data:image)
+  const qrCodeSrc = brCodeBase64?.startsWith('data:') 
+    ? brCodeBase64 
+    : `data:image/png;base64,${brCodeBase64}`;
+
   const handleCopy = () => {
     navigator.clipboard.writeText(brCode);
     setCopied(true);
@@ -41,7 +46,6 @@ export const PIXPaymentModal = ({
   useEffect(() => {
     if (!orderId || !isOpen) return;
 
-    // Monitorar status do pedido via Realtime
     const channel = supabase
       .channel(`order-${orderId}`)
       .on(
@@ -53,7 +57,6 @@ export const PIXPaymentModal = ({
           filter: `id=eq.${orderId}`
         },
         (payload) => {
-          console.log('Status do pedido atualizado:', payload.new.status);
           if (payload.new.status === 'Pago') {
             setIsPaid(true);
             toast.success("Pagamento confirmado!");
@@ -73,83 +76,84 @@ export const PIXPaymentModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md rounded-[32px] border-none shadow-2xl p-0 overflow-hidden">
-        <div className="bg-[#B89C6A] p-6 text-white text-center">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto rounded-[40px] border-none shadow-2xl p-0 scrollbar-hide">
+        <div className="bg-[#B89C6A] p-8 text-white text-center relative">
+          <button 
+            onClick={onClose}
+            className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors"
+          >
+            <X size={20} />
+          </button>
           <DialogHeader>
-            <DialogTitle className="text-2xl font-serif text-white">
-              {isPaid ? "Pagamento Confirmado!" : "Quase lá! Pague com PIX"}
+            <DialogTitle className="text-2xl font-serif text-white uppercase tracking-widest">
+              {isPaid ? "Sucesso!" : "Pagamento PIX"}
             </DialogTitle>
-            <DialogDescription className="text-white/80">
+            <DialogDescription className="text-white/80 font-medium">
               {isPaid 
-                ? "Seu pedido foi processado com sucesso."
-                : "Escaneie o QR Code ou copie o código abaixo para finalizar."}
+                ? "Seu pagamento foi aprovado."
+                : "Escaneie o código abaixo no app do seu banco."}
             </DialogDescription>
           </DialogHeader>
         </div>
 
-        <div className="p-8 flex flex-col items-center gap-6">
+        <div className="p-8 flex flex-col items-center gap-8">
           {isPaid ? (
-            <div className="flex flex-col items-center gap-4 py-8 animate-in zoom-in duration-300">
-              <div className="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-6 py-10 animate-in zoom-in duration-500">
+              <div className="w-24 h-24 rounded-full bg-green-50 flex items-center justify-center border-2 border-green-100">
                 <CheckCircle2 className="w-12 h-12 text-green-600" />
               </div>
-              <p className="text-center text-gray-600 font-medium">
-                Redirecionando para seus pedidos...
+              <p className="text-center text-gray-600 font-bold uppercase tracking-widest text-xs">
+                Aguarde... Redirecionando para seus pedidos
               </p>
             </div>
           ) : (
             <>
               {brCodeBase64 && (
-                <div className="bg-white p-4 rounded-3xl shadow-inner border border-gray-100">
+                <div className="bg-white p-6 rounded-[32px] shadow-sm border-4 border-gray-50">
                   <img 
-                    src={`data:image/png;base64,${brCodeBase64}`} 
+                    src={qrCodeSrc} 
                     alt="QR Code PIX"
-                    className="w-48 h-48"
+                    className="w-56 h-56 object-contain"
                   />
                 </div>
               )}
 
-              <div className="w-full space-y-4">
-                <div className="flex items-center justify-between text-sm text-gray-500 font-medium">
+              <div className="w-full space-y-6">
+                <div className="flex items-center justify-between text-[10px] text-gray-400 font-black uppercase tracking-widest px-2">
                   <span className="flex items-center gap-2">
-                    <Clock size={16} /> Expira em 30 minutos
+                    <Clock size={14} className="text-[#B89C6A]" /> Expira em 30 min
                   </span>
                   <span className="flex items-center gap-2">
-                    <QrCode size={16} /> PIX Copia e Cola
+                    <QrCode size={14} className="text-[#B89C6A]" /> PIX Copia e Cola
                   </span>
                 </div>
 
-                <div className="relative group">
-                  <div className="bg-gray-50 rounded-2xl p-4 pr-12 text-xs font-mono text-gray-600 break-all border border-gray-100 group-hover:border-[#B89C6A] transition-colors">
+                <div className="relative">
+                  <div className="bg-gray-50 rounded-2xl p-5 pr-14 text-[11px] font-mono text-gray-500 break-all border border-gray-100 leading-relaxed">
                     {brCode}
                   </div>
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 hover:bg-white text-[#B89C6A]"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 hover:bg-white text-[#B89C6A]"
                     onClick={handleCopy}
                   >
-                    {copied ? <Check size={18} /> : <Copy size={18} />}
+                    {copied ? <Check size={20} /> : <Copy size={20} />}
                   </Button>
                 </div>
 
                 <Button 
                   onClick={handleCopy}
-                  className="w-full h-14 rounded-full bg-[#B89C6A] hover:bg-black text-white font-bold uppercase tracking-widest transition-all"
+                  className="w-full h-16 rounded-full bg-black hover:bg-zinc-800 text-white font-bold uppercase tracking-[0.2em] text-xs shadow-xl transition-all active:scale-95"
                 >
-                  {copied ? "COPIADO!" : "COPIAR CÓDIGO PIX"}
+                  {copied ? "CÓDIGO COPIADO!" : "COPIAR CÓDIGO PIX"}
                 </Button>
               </div>
 
-              <div className="text-center space-y-2">
-                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">
-                  Pagamento Seguro via
+              <div className="pt-4 border-t border-gray-50 w-full text-center">
+                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-[0.3em]">
+                  Transação protegida por criptografia de ponta
                 </p>
-                <div className="flex items-center justify-center gap-2">
-                  <span className="text-lg font-black tracking-tight text-[#B89C6A]">
-                    Abacate<span className="text-black">Pay</span>
-                  </span>
-                </div>
               </div>
             </>
           )}

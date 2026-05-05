@@ -18,23 +18,22 @@ serve(async (req) => {
     const bodyText = await req.text()
     const payload = JSON.parse(bodyText)
     
-    // De acordo com a doc, o header de assinatura é X-Webhook-Signature
-    const signature = req.headers.get('X-Webhook-Signature')
+    console.log(`[abacatepay-webhook] Evento: ${payload.event}`);
     
-    console.log("[abacatepay-webhook] Evento:", payload.event);
-    
+    // De acordo com a doc de Checkout Transparente:
+    // O externalId está em data.transparent.externalId
     const event = payload.event
-    const data = payload.data // Contém os dados da cobrança
-    const orderId = data?.externalId
+    const data = payload.data
+    const orderId = data?.transparent?.externalId || data?.externalId
 
     if (!orderId) {
-      console.warn("[abacatepay-webhook] Payload sem externalId (pedido não rastreável)");
+      console.warn("[abacatepay-webhook] Identificador de pedido não encontrado no payload");
       return new Response(JSON.stringify({ received: true }), { status: 200 })
     }
 
-    // Eventos oficiais da Doc: transparent.completed, transparent.refunded, etc.
+    // Status conforme documentação: transparent.completed
     if (event === 'transparent.completed' || event === 'checkout.completed') {
-      console.log(`[abacatepay-webhook] PAGO: Pedido ${orderId}`);
+      console.log(`[abacatepay-webhook] SUCESSO: Pedido ${orderId} marcado como PAGO`);
       
       const { error } = await supabaseClient
         .from('orders')
@@ -47,8 +46,8 @@ serve(async (req) => {
 
       if (error) throw error;
     } 
-    else if (event === 'transparent.refunded' || event === 'checkout.refunded') {
-       console.log(`[abacatepay-webhook] REEMBOLSADO: Pedido ${orderId}`);
+    else if (event === 'transparent.refunded') {
+       console.log(`[abacatepay-webhook] REEMBOLSO: Pedido ${orderId}`);
        await supabaseClient
         .from('orders')
         .update({ status: 'Pagamento Estornado' })
@@ -61,7 +60,7 @@ serve(async (req) => {
     })
 
   } catch (error: any) {
-    console.error("[abacatepay-webhook] Erro no processamento:", error.message);
+    console.error("[abacatepay-webhook] Falha no processamento:", error.message);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
