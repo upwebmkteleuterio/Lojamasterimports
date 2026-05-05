@@ -7,7 +7,7 @@ import { ShippingAddressSection } from '@/components/checkout/ShippingAddressSec
 import { CheckoutSummary } from '@/components/checkout/CheckoutSummary';
 import { PIXPaymentModal } from '@/components/checkout/PIXPaymentModal';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowRight, QrCode, FileText, CreditCard } from 'lucide-react';
+import { Loader2, ArrowRight, QrCode, FileText, CreditCard, ShieldCheck } from 'lucide-react';
 import { DebugInspector } from '@/components/admin/DebugInspector';
 import { IntegrityBanner } from '@/components/admin/IntegrityBanner';
 import { cn } from '@/lib/utils';
@@ -30,7 +30,7 @@ const Checkout = () => {
   const methods = [
     { id: 'PIX' as PaymentMethod, label: 'PIX', icon: QrCode },
     { id: 'BOLETO' as PaymentMethod, label: 'Boleto', icon: FileText },
-    { id: 'CREDIT_CARD' as PaymentMethod, label: 'Cartão', icon: CreditCard, disabled: true },
+    { id: 'CREDIT_CARD' as PaymentMethod, label: 'Cartão', icon: CreditCard },
   ];
 
   return (
@@ -56,20 +56,18 @@ const Checkout = () => {
                 {methods.map((m) => (
                   <button
                     key={m.id}
-                    onClick={() => !m.disabled && setPaymentMethod(m.id)}
+                    onClick={() => setPaymentMethod(m.id)}
                     className={cn(
                       "p-6 rounded-3xl border-2 flex flex-col items-center gap-3 transition-all relative overflow-hidden",
                       paymentMethod === m.id 
                         ? "border-[#B89C6A] bg-[#B89C6A]/5" 
-                        : "border-gray-50 bg-gray-50/50 hover:border-gray-200",
-                      m.disabled && "opacity-40 cursor-not-allowed grayscale"
+                        : "border-gray-50 bg-gray-50/50 hover:border-gray-200"
                     )}
                   >
                     <m.icon size={24} className={paymentMethod === m.id ? "text-[#B89C6A]" : "text-gray-400"} />
                     <span className={cn("text-xs font-bold uppercase tracking-widest", paymentMethod === m.id ? "text-[#B89C6A]" : "text-gray-500")}>
                       {m.label}
                     </span>
-                    {m.disabled && <span className="absolute inset-0 flex items-center justify-center bg-white/60 text-[8px] font-black text-gray-400 uppercase tracking-tighter">Em breve</span>}
                   </button>
                 ))}
               </div>
@@ -89,6 +87,13 @@ const Checkout = () => {
                   </span>
                 )}
               </Button>
+            </div>
+
+            <div className="mt-8 flex flex-col items-center md:items-start gap-4">
+               <div className="flex items-center gap-2 text-gray-400">
+                  <ShieldCheck size={18} className="text-green-500" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Pagamento 100% Seguro & Criptografado</span>
+               </div>
             </div>
           </div>
 
