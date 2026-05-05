@@ -58,14 +58,25 @@ const Checkout = () => {
                     key={m.id}
                     onClick={() => setPaymentMethod(m.id)}
                     className={cn(
-                      "p-6 rounded-3xl border-2 flex flex-col items-center gap-3 transition-all relative overflow-hidden",
+                      "p-6 rounded-3xl border-2 flex flex-col items-center gap-3 transition-all relative overflow-hidden h-32 justify-center",
                       paymentMethod === m.id 
-                        ? "border-[#B89C6A] bg-[#B89C6A]/5" 
+                        ? "bg-black border-black shadow-xl" 
                         : "border-gray-50 bg-gray-50/50 hover:border-gray-200"
                     )}
                   >
-                    <m.icon size={24} className={paymentMethod === m.id ? "text-[#B89C6A]" : "text-gray-400"} />
-                    <span className={cn("text-xs font-bold uppercase tracking-widest", paymentMethod === m.id ? "text-[#B89C6A]" : "text-gray-500")}>
+                    <m.icon 
+                      size={28} 
+                      className={cn(
+                        "transition-colors",
+                        paymentMethod === m.id ? "text-[#B89C6A]" : "text-gray-400"
+                      )} 
+                    />
+                    <span 
+                      className={cn(
+                        "text-xs font-bold uppercase tracking-widest transition-colors",
+                        paymentMethod === m.id ? "text-[#B89C6A]" : "text-gray-500"
+                      )}
+                    >
                       {m.label}
                     </span>
                   </button>
