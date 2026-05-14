@@ -61,7 +61,7 @@ const Landing = () => {
             <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-8">
               <h2 className="text-4xl md:text-6xl font-serif font-bold mb-4 drop-shadow-lg uppercase text-center">{niche.name}</h2>
               <p className="text-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500 text-center italic">
-                {niche.id === 'pet' ? "Tudo para o seu melhor amigo" : "Beleza e bem-estar para você"}
+                {niche.description || (niche.id === 'pet' ? "Tudo para o seu melhor amigo" : "Beleza e bem-estar para você")}
               </p>
               <div className="mt-8 border-2 border-white px-8 py-3 rounded-full font-bold hover:bg-white hover:text-black transition-all uppercase tracking-widest text-xs">
                 ENTRAR NO MUNDO {niche.name.split(' ')[0]}

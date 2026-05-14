@@ -115,11 +115,21 @@ const CategoryForm = () => {
               <div className="grid grid-cols-1 gap-6">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase text-gray-400 ml-4">Nome Exibido</Label>
-                  <Input 
-                    value={formData.name} 
-                    onChange={e => handleNameChange(e.target.value)} 
+                  <Input
+                    value={formData.name}
+                    onChange={e => handleNameChange(e.target.value)}
                     placeholder="Ex: Pet Shop"
-                    className="rounded-2xl h-14 bg-gray-50 border-gray-100 px-6 font-bold" 
+                    className="rounded-2xl h-14 bg-gray-50 border-gray-100 px-6 font-bold"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase text-gray-400 ml-4">Breve Descrição (Slogan)</Label>
+                  <Input
+                    value={formData.description || ''}
+                    onChange={e => setFormData({...formData, description: e.target.value})}
+                    placeholder="Ex: Elegância e sofisticação em cada detalhe."
+                    className="rounded-2xl h-14 bg-gray-50 border-gray-100 px-6"
                   />
                 </div>
 

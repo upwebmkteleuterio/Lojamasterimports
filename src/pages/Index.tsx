@@ -86,7 +86,7 @@ const Index = () => {
                {nicheData?.name || "BEM-VINDO"}
             </h2>
             <p className="text-sm md:text-2xl text-white font-light mb-6 md:mb-10 tracking-wide italic drop-shadow-sm">
-              {shopType === 'pet' ? "O luxo que seu melhor amigo merece." : "Elegância e sofisticação em cada detalhe."}
+              {nicheData?.description || (shopType === 'pet' ? "O luxo que seu melhor amigo merece." : "Elegância e sofisticação em cada detalhe.")}
             </p>
             <Button 
               variant="default" 

@@ -7,7 +7,7 @@ import { Subcategory } from '@/types/store';
 export const useCategoryForm = (motherId: string | undefined) => {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [formData, setFormData] = useState({ id: '', name: '', is_active: true, landing_banner: '', home_hero_banner: '' });
+  const [formData, setFormData] = useState({ id: '', name: '', description: '', is_active: true, landing_banner: '', home_hero_banner: '' });
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
 
   useEffect(() => {
