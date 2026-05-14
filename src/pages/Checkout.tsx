@@ -8,8 +8,6 @@ import { CheckoutSummary } from '@/components/checkout/CheckoutSummary';
 import { PIXPaymentModal } from '@/components/checkout/PIXPaymentModal';
 import { Button } from '@/components/ui/button';
 import { Loader2, ArrowRight, QrCode, FileText, CreditCard, ShieldCheck } from 'lucide-react';
-import { DebugInspector } from '@/components/admin/DebugInspector';
-import { IntegrityBanner } from '@/components/admin/IntegrityBanner';
 import { cn } from '@/lib/utils';
 
 const Checkout = () => {
@@ -35,8 +33,6 @@ const Checkout = () => {
 
   return (
     <div className="min-h-screen bg-[#FDFDFD]">
-      <IntegrityBanner />
-      
       <main className="container mx-auto px-4 py-12 md:py-20">
         <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-12">Finalizar Compra</h1>
 
@@ -121,8 +117,6 @@ const Checkout = () => {
           />
         )}
       </main>
-
-      <DebugInspector />
     </div>
   );
 };

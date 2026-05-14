@@ -23,9 +23,6 @@ import NotFound from "./pages/NotFound";
 import SearchResults from "./pages/SearchResults";
 import Login from "./pages/Login";
 
-// Monitor e Diagnóstico
-import { DebugInspector } from "./components/admin/DebugInspector";
-
 // Admin Pages
 import Dashboard from "./pages/admin/Dashboard";
 import Variations from "./pages/admin/Variations";
@@ -68,8 +65,6 @@ const AppContent = () => {
   const location = useLocation();
   const isAdminPath = location.pathname.startsWith('/adm');
   const isLanding = location.pathname === '/';
-  const isCheckout = location.pathname === '/checkout';
-  const { profile } = useAuthStore();
 
   useEffect(() => {
     const fetchStoreName = async () => {
@@ -125,9 +120,6 @@ const AppContent = () => {
       </Routes>
       
       {!isAdminPath && !isLanding && <MobileNavbar />}
-      
-      {/* Exibe o Monitor ADM se for administrador OU se estiver na página de Checkout */}
-      {(profile?.role === 'adm' || isCheckout) && <DebugInspector />}
     </>
   );
 };
