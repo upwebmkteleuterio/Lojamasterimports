@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Trash2, Save, Star, Image as ImageIcon, Link as LinkIcon } from 'lucide-react';
+import { Plus, Trash2, Save, Star, Image as ImageIcon, Link as LinkIcon, Globe } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useCategoryForm } from '@/hooks/useCategoryForm';
 import { toast } from 'sonner';
@@ -17,6 +17,7 @@ const CategoryForm = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [newSub, setNewSub] = useState({ name: '', image_url: '' });
+  const [isIdManual, setIsIdManual] = useState(false);
   
   const { 
     formData, setFormData, 
@@ -25,12 +26,35 @@ const CategoryForm = () => {
     handleSave, deleteSubcategoryManual 
   } = useCategoryForm(id);
 
+  // Função para transformar texto em ID (URL amigável)
+  const slugify = (text: string) => {
+    return text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // Remove acentos
+      .replace(/\s+/g, '-')           // Troca espaços por -
+      .replace(/[^a-z0-9-]/g, '');    // Remove caracteres especiais
+  };
+
+  const handleNameChange = (val: string) => {
+    setFormData({ ...formData, name: val });
+    // Se for novo e o usuário não editou o ID manualmente, gera o ID
+    if (!id && !isIdManual) {
+      setFormData(prev => ({ ...prev, name: val, id: slugify(val) }));
+    }
+  };
+
   const addSub = () => {
     if (!newSub.name.trim()) {
       toast.error("Dê um nome para a categoria.");
       return;
     }
-    const slug = newSub.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''); 
+    if (!formData.id) {
+      toast.error("Defina primeiro o ID do nicho.");
+      return;
+    }
+
+    const slug = slugify(newSub.name.trim()); 
     const fullId = `${formData.id}-${slug}`;
     
     if (subcategories.find(s => s.id === fullId)) {
@@ -69,7 +93,11 @@ const CategoryForm = () => {
       actions={
         <div className="flex gap-2">
            <Button variant="ghost" onClick={() => navigate('/adm/categorias')} className="rounded-full px-6 uppercase text-[10px] font-bold tracking-widest text-gray-400">Cancelar</Button>
-           <Button onClick={() => handleSave(() => navigate('/adm/categorias'))} disabled={saving} className="bg-black hover:bg-gray-800 rounded-full px-10 h-11 font-bold uppercase text-[10px] tracking-widest text-white shadow-lg">
+           <Button 
+            onClick={() => handleSave(() => navigate('/adm/categorias'))} 
+            disabled={saving || !formData.id} 
+            className="bg-black hover:bg-gray-800 rounded-full px-10 h-11 font-bold uppercase text-[10px] tracking-widest text-white shadow-lg"
+          >
             <Save size={16} className="mr-2" /> {saving ? 'GRAVANDO...' : 'SALVAR NO BANCO'}
           </Button>
         </div>
@@ -87,10 +115,41 @@ const CategoryForm = () => {
               <div className="grid grid-cols-1 gap-6">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase text-gray-400 ml-4">Nome Exibido</Label>
-                  <Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="rounded-2xl h-14 bg-gray-50 border-gray-100 px-6 font-bold" />
+                  <Input 
+                    value={formData.name} 
+                    onChange={e => handleNameChange(e.target.value)} 
+                    placeholder="Ex: Pet Shop"
+                    className="rounded-2xl h-14 bg-gray-50 border-gray-100 px-6 font-bold" 
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase text-gray-400 ml-4 flex items-center gap-2">
+                    URL do Nicho (ID Único) <Globe size={12} className="text-blue-400" />
+                  </Label>
+                  <div className="relative">
+                    <Input 
+                      value={formData.id} 
+                      onChange={e => {
+                        setFormData({ ...formData, id: slugify(e.target.value) });
+                        setIsIdManual(true);
+                      }} 
+                      disabled={!!id} // Bloqueia edição se o nicho já existir no banco
+                      placeholder="nicho-exemplo"
+                      className={cn(
+                        "rounded-2xl h-14 bg-gray-50 border-gray-100 px-6 font-mono text-xs",
+                        id && "opacity-50 cursor-not-allowed"
+                      )} 
+                    />
+                    {!id && (
+                      <p className="mt-2 text-[9px] text-gray-400 ml-4 italic">
+                        Este será o link da loja (ex: sualoja.com/<strong>{formData.id || '...'}</strong>)
+                      </p>
+                    )}
+                  </div>
                 </div>
                 
-                <div className="space-y-2">
+                <div className="space-y-2 pt-4 border-t">
                   <Label className="text-[10px] font-bold uppercase text-gray-400 ml-4">Banner da Home (URL)</Label>
                   <Input value={formData.home_hero_banner} onChange={e => setFormData({...formData, home_hero_banner: e.target.value})} placeholder="Link da imagem 1920x650..." className="rounded-2xl h-14 bg-gray-50 border-gray-100 px-6" />
                 </div>
