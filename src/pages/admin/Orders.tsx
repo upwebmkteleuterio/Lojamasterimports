@@ -423,20 +423,20 @@ const Orders = () => {
                   <div className="md:col-span-2 space-y-4">
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2"><MapPin size={14} /> Entrega</h3>
                     <div className="bg-gray-50 rounded-3xl p-6">
-                      <p className="text-xs text-gray-700 leading-relaxed">
-                        {selectedOrder.customer_data.address}, {selectedOrder.customer_data.number}
-                        {selectedOrder.customer_data.apartment && ` - ${selectedOrder.customer_data.apartment}`}
-                        <br />
-                        {selectedOrder.customer_data.city} - {selectedOrder.customer_data.state}
-                        <br />
-                        CEP: {selectedOrder.customer_data.zipCode}
-                        {selectedOrder.customer_data.observations && (
-                          <>
-                            <br />
-                            <span className="text-[10px] text-gray-400 font-bold">Obs: {selectedOrder.customer_data.observations}</span>
-                          </>
+                      <div className="text-xs text-gray-700 leading-relaxed space-y-1">
+                        <p><span className="font-bold text-gray-400 uppercase text-[9px] tracking-wider block">Endereço</span> {selectedOrder.customer_data.address}, nº {selectedOrder.customer_data.number}</p>
+                        {selectedOrder.customer_data.apartment && (
+                          <p><span className="font-bold text-gray-400 uppercase text-[9px] tracking-wider block">Apartamento / Complemento</span> {selectedOrder.customer_data.apartment}</p>
                         )}
-                      </p>
+                        <p><span className="font-bold text-gray-400 uppercase text-[9px] tracking-wider block">Cidade / Estado</span> {selectedOrder.customer_data.city} - {selectedOrder.customer_data.state}</p>
+                        <p><span className="font-bold text-gray-400 uppercase text-[9px] tracking-wider block">CEP</span> {selectedOrder.customer_data.zipCode}</p>
+                        {selectedOrder.customer_data.observations && (
+                          <div className="bg-white/80 p-3 rounded-2xl border border-gray-100 mt-2">
+                            <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-wider mb-1">Ponto de Referência / Observações</span>
+                            <span className="text-gray-600">{selectedOrder.customer_data.observations}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -161,15 +161,18 @@ export const OrdersSection = () => {
                 </h3>
                 <div className="bg-gray-50/50 p-6 rounded-3xl border border-gray-100 space-y-3">
                   <p className="font-bold text-gray-900 text-sm">{order.customer_data.fullName}</p>
-                  <div className="text-xs text-gray-500 leading-relaxed space-y-1">
-                    <p>
-                      {order.customer_data.address}, {order.customer_data.number}
-                      {order.customer_data.apartment && ` - ${order.customer_data.apartment}`}
-                    </p>
-                    <p>{order.customer_data.city} - {order.customer_data.state}</p>
-                    <p className="font-mono">CEP: {order.customer_data.zipCode}</p>
+                  <div className="text-xs text-gray-500 leading-relaxed space-y-2">
+                    <p><span className="font-bold text-gray-400 text-[10px] uppercase tracking-wider block">Endereço</span>{order.customer_data.address}, nº {order.customer_data.number}</p>
+                    {order.customer_data.apartment && (
+                      <p><span className="font-bold text-gray-400 text-[10px] uppercase tracking-wider block">Apartamento / Complemento</span>{order.customer_data.apartment}</p>
+                    )}
+                    <p><span className="font-bold text-gray-400 text-[10px] uppercase tracking-wider block">Cidade / UF</span>{order.customer_data.city} - {order.customer_data.state}</p>
+                    <p className="font-mono"><span className="font-bold text-gray-400 text-[10px] uppercase tracking-wider block">CEP</span>{order.customer_data.zipCode}</p>
                     {order.customer_data.observations && (
-                      <p className="text-[10px] text-gray-400 font-bold mt-1">Obs: {order.customer_data.observations}</p>
+                      <div className="bg-white/80 p-3 rounded-2xl border border-gray-100/50 mt-2">
+                        <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-wider mb-1">Observações</span>
+                        <span className="text-gray-600">{order.customer_data.observations}</span>
+                      </div>
                     )}
                   </div>
                 </div>
