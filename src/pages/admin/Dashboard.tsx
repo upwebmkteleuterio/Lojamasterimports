@@ -7,9 +7,10 @@ import { ShoppingBag, Users, DollarSign, Clock, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
-import { startOfDay, endOfDay, formatDistanceToNow } from 'date-fns';
+import { startOfDay, endOfDay, formatDistanceToNow, subDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
+import { DashboardChart } from '@/components/admin/DashboardChart';
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -20,6 +21,7 @@ const Dashboard = () => {
     faturamentoHoje: 0
   });
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [chartData, setChartData] = useState<any[]>([]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -41,7 +43,7 @@ const Dashboard = () => {
 
       const totalValue = salesToday?.reduce((acc, curr) => acc + Number(curr.total), 0) || 0;
 
-      // 2. Pedidos Pendentes HOJE - Ajuste cirúrgico com filtro de data para coincidir com o selo 'HOJE'
+      // 2. Pedidos Pendentes HOJE
       const { count: pendingCount } = await supabase
         .from('orders')
         .select('*', { count: 'exact', head: true })
@@ -63,6 +65,36 @@ const Dashboard = () => {
         .lte('created_at', todayEnd)
         .order('created_at', { ascending: false })
         .limit(10);
+
+      // 5. Histórico de faturamento semanal para o Gráfico
+      const sevenDaysAgo = subDays(new Date(), 6);
+      const { data: weeklySales } = await supabase
+        .from('orders')
+        .select('created_at, total')
+        .gte('created_at', startOfDay(sevenDaysAgo).toISOString())
+        .in('status', ['Pago', 'Preparando Pedido', 'Enviado', 'Entregue']);
+
+      // Consolidar faturamento por dia da semana
+      const daysArray = Array.from({ length: 7 }).map((_, i) => {
+        const d = subDays(new Date(), 6 - i);
+        return {
+          dateStr: format(d, 'yyyy-MM-dd'),
+          name: format(d, 'dd/MM'),
+          vendas: 0,
+          valor: 0
+        };
+      });
+
+      weeklySales?.forEach(order => {
+        const orderDateStr = format(new Date(order.created_at), 'yyyy-MM-dd');
+        const dayObj = daysArray.find(day => day.dateStr === orderDateStr);
+        if (dayObj) {
+          dayObj.vendas += 1;
+          dayObj.valor += Number(order.total);
+        }
+      });
+
+      setChartData(daysArray);
 
       setStats({
         vendasHoje: salesToday?.length || 0,
@@ -136,17 +168,17 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Gráfico (Placeholder) */}
+        {/* Gráfico de Desempenho Real Semanal */}
         <Card className="lg:col-span-2 border-none shadow-sm rounded-[40px] bg-white">
-          <CardHeader className="p-8 pb-0">
+          <CardHeader className="p-8 pb-4">
             <CardTitle className="text-xl font-serif">Desempenho Semanal</CardTitle>
           </CardHeader>
-          <CardContent className="h-96 flex flex-col items-center justify-center p-8">
+          <CardContent className="p-8 pt-0">
             {loading ? (
-              <Skeleton className="w-full h-full rounded-3xl" />
+              <Skeleton className="w-full h-80 rounded-3xl" />
             ) : (
-              <div className="w-full h-full border-2 border-dashed border-gray-100 rounded-[32px] flex items-center justify-center">
-                 <p className="text-gray-300 font-serif italic text-lg">Gráfico de evolução será renderizado aqui</p>
+              <div className="w-full h-80">
+                <DashboardChart data={chartData} />
               </div>
             )}
           </CardContent>
