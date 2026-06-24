@@ -27,11 +27,12 @@ export const ShippingSection = ({ weight, width, height, length, onChange }: Shi
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-600">Peso</Label>
               <div className="relative flex items-center">
-                <Input 
-                  type="number" 
-                  value={weight} 
-                  onChange={e => onChange('weight', Number(e.target.value))} 
-                  className="pr-12 rounded-xl h-12 bg-gray-50/50 border-gray-100" 
+                <Input
+                  type="number"
+                  step="any"
+                  value={weight}
+                  onChange={e => onChange('weight', Number(e.target.value))}
+                  className="pr-12 rounded-xl h-12 bg-gray-50/50 border-gray-100"
                 />
                 <div className="absolute right-4 font-bold text-gray-900 text-sm">Kg</div>
               </div>
@@ -39,11 +40,12 @@ export const ShippingSection = ({ weight, width, height, length, onChange }: Shi
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-600">Largura</Label>
               <div className="relative flex items-center">
-                <Input 
-                  type="number" 
-                  value={width} 
-                  onChange={e => onChange('width', Number(e.target.value))} 
-                  className="pr-12 rounded-xl h-12 bg-gray-50/50 border-gray-100" 
+                <Input
+                  type="number"
+                  step="any"
+                  value={width}
+                  onChange={e => onChange('width', Number(e.target.value))}
+                  className="pr-12 rounded-xl h-12 bg-gray-50/50 border-gray-100"
                 />
                 <div className="absolute right-4 font-bold text-gray-900 text-sm">cm</div>
               </div>
@@ -51,11 +53,12 @@ export const ShippingSection = ({ weight, width, height, length, onChange }: Shi
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-600">Altura</Label>
               <div className="relative flex items-center">
-                <Input 
-                  type="number" 
-                  value={height} 
-                  onChange={e => onChange('height', Number(e.target.value))} 
-                  className="pr-12 rounded-xl h-12 bg-gray-50/50 border-gray-100" 
+                <Input
+                  type="number"
+                  step="any"
+                  value={height}
+                  onChange={e => onChange('height', Number(e.target.value))}
+                  className="pr-12 rounded-xl h-12 bg-gray-50/50 border-gray-100"
                 />
                 <div className="absolute right-4 font-bold text-gray-900 text-sm">cm</div>
               </div>
@@ -63,11 +66,12 @@ export const ShippingSection = ({ weight, width, height, length, onChange }: Shi
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-600">Comprimento</Label>
               <div className="relative flex items-center">
-                <Input 
-                  type="number" 
-                  value={length} 
-                  onChange={e => onChange('length', Number(e.target.value))} 
-                  className="pr-12 rounded-xl h-12 bg-gray-50/50 border-gray-100" 
+                <Input
+                  type="number"
+                  step="any"
+                  value={length}
+                  onChange={e => onChange('length', Number(e.target.value))}
+                  className="pr-12 rounded-xl h-12 bg-gray-50/50 border-gray-100"
                 />
                 <div className="absolute right-4 font-bold text-gray-900 text-sm">cm</div>
               </div>
