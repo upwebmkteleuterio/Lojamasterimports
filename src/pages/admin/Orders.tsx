@@ -423,7 +423,20 @@ const Orders = () => {
                   <div className="md:col-span-2 space-y-4">
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2"><MapPin size={14} /> Entrega</h3>
                     <div className="bg-gray-50 rounded-3xl p-6">
-                      <p className="text-xs text-gray-700 leading-relaxed">{selectedOrder.customer_data.address}, {selectedOrder.customer_data.number}<br />{selectedOrder.customer_data.city} - {selectedOrder.customer_data.state}<br />CEP: {selectedOrder.customer_data.zipCode}</p>
+                      <p className="text-xs text-gray-700 leading-relaxed">
+                        {selectedOrder.customer_data.address}, {selectedOrder.customer_data.number}
+                        {selectedOrder.customer_data.apartment && ` - ${selectedOrder.customer_data.apartment}`}
+                        <br />
+                        {selectedOrder.customer_data.city} - {selectedOrder.customer_data.state}
+                        <br />
+                        CEP: {selectedOrder.customer_data.zipCode}
+                        {selectedOrder.customer_data.observations && (
+                          <>
+                            <br />
+                            <span className="text-[10px] text-gray-400 font-bold">Obs: {selectedOrder.customer_data.observations}</span>
+                          </>
+                        )}
+                      </p>
                     </div>
                   </div>
                 </div>

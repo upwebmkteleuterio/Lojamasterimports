@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 const initialCustomerData: CustomerData = {
   fullName: '', email: '', phone: '', cpf: '',
   zipCode: '', address: '', number: '', city: '', state: '',
+  apartment: '', observations: '',
 };
 
 export type PaymentMethod = 'PIX' | 'BOLETO' | 'CREDIT_CARD';
@@ -108,6 +109,8 @@ export const useCheckout = () => {
         number: prev.number || profile.number || '',
         city: prev.city || profile.city || '',
         state: prev.state || profile.state || '',
+        apartment: prev.apartment || '',
+        observations: prev.observations || '',
       }));
     }
   }, [profile, setData]);

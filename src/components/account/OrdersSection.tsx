@@ -162,9 +162,15 @@ export const OrdersSection = () => {
                 <div className="bg-gray-50/50 p-6 rounded-3xl border border-gray-100 space-y-3">
                   <p className="font-bold text-gray-900 text-sm">{order.customer_data.fullName}</p>
                   <div className="text-xs text-gray-500 leading-relaxed space-y-1">
-                    <p>{order.customer_data.address}, {order.customer_data.number}</p>
+                    <p>
+                      {order.customer_data.address}, {order.customer_data.number}
+                      {order.customer_data.apartment && ` - ${order.customer_data.apartment}`}
+                    </p>
                     <p>{order.customer_data.city} - {order.customer_data.state}</p>
                     <p className="font-mono">CEP: {order.customer_data.zipCode}</p>
+                    {order.customer_data.observations && (
+                      <p className="text-[10px] text-gray-400 font-bold mt-1">Obs: {order.customer_data.observations}</p>
+                    )}
                   </div>
                 </div>
               </div>

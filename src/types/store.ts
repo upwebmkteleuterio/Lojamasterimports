@@ -70,6 +70,8 @@ export interface CustomerData {
   number: string;
   city: string;
   state: string;
+  apartment?: string;
+  observations?: string;
 }
 
 export type OrderStatus =
@@ -91,4 +93,5 @@ export interface Order {
   customer_data: CustomerData;
   user_id?: string;
   created_at: string;
+  updated_at?: string;
 }

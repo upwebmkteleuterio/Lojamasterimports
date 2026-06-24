@@ -73,6 +73,26 @@ export const ShippingAddressSection = ({ data, updateField }: ShippingAddressSec
             </SelectContent>
           </Select>
         </div>
+
+        <div className="md:col-span-3 space-y-2">
+          <Label className="text-xs font-bold uppercase tracking-widest text-gray-400 ml-1">Apartamento / Bloco / Complemento <span className="text-[10px] text-gray-400 font-normal lowercase">(opcional)</span></Label>
+          <Input
+            value={data.apartment || ''}
+            onChange={(e) => updateField('apartment', e.target.value)}
+            placeholder="Ex: Apto 42, Bloco B"
+            className="rounded-2xl h-14 bg-gray-50 border-transparent focus:bg-white"
+          />
+        </div>
+
+        <div className="md:col-span-3 space-y-2">
+          <Label className="text-xs font-bold uppercase tracking-widest text-gray-400 ml-1">Observações / Ponto de Referência <span className="text-[10px] text-gray-400 font-normal lowercase">(opcional)</span></Label>
+          <Input
+            value={data.observations || ''}
+            onChange={(e) => updateField('observations', e.target.value)}
+            placeholder="Ex: Próximo à padaria central"
+            className="rounded-2xl h-14 bg-gray-50 border-transparent focus:bg-white"
+          />
+        </div>
       </div>
     </div>
   );

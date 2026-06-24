@@ -46,7 +46,20 @@ export const FinanceReceiptModal = ({ isOpen, onClose, order, formatCurrency, ha
             <div className="space-y-3">
                <div className="flex items-center gap-2 text-[9px] font-black uppercase text-[#B89C6A]"><MapPin size={12} /> Entrega</div>
                <div className="bg-white p-4 border border-gray-100 rounded-xl">
-                  <p className="text-xs font-medium text-gray-600 leading-relaxed">{order.customer_data.address}, {order.customer_data.number}<br />{order.customer_data.city} - {order.customer_data.state}<br />CEP: {order.customer_data.zipCode}</p>
+                  <p className="text-xs font-medium text-gray-600 leading-relaxed">
+                    {order.customer_data.address}, {order.customer_data.number}
+                    {order.customer_data.apartment && ` - ${order.customer_data.apartment}`}
+                    <br />
+                    {order.customer_data.city} - {order.customer_data.state}
+                    <br />
+                    CEP: {order.customer_data.zipCode}
+                    {order.customer_data.observations && (
+                      <>
+                        <br />
+                        <span className="text-[10px] text-gray-400 font-bold">Obs: {order.customer_data.observations}</span>
+                      </>
+                    )}
+                  </p>
                </div>
             </div>
 
