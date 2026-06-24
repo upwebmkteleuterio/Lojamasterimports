@@ -19,8 +19,19 @@ const steps = [
   { id: 'Entregue', label: 'Entregue', icon: CheckCircle2 },
 ];
 
+/**
+ * Normaliza o status do pedido para bater com as etapas definidas no Stepper.
+ * Mapeia 'Pendente' para 'Pagamento Pendente' e 'Em Processamento' para 'Preparando Pedido'.
+ */
+const normalizeStatus = (status: string): OrderStatus => {
+  if (status === 'Pendente') return 'Pagamento Pendente';
+  if (status === 'Em Processamento') return 'Preparando Pedido';
+  return status as OrderStatus;
+};
+
 export const OrderStepper = ({ status, updatedAt, createdAt }: OrderStepperProps) => {
-  const currentStepIndex = steps.findIndex(s => s.id === status);
+  const normalizedStatus = normalizeStatus(status);
+  const currentStepIndex = steps.findIndex(s => s.id === normalizedStatus);
   const isCanceled = status === 'Cancelado' || status === 'Pagamento Estornado';
 
   const labelStyle = "text-[10px] font-black uppercase tracking-[0.2em]";
@@ -34,11 +45,22 @@ export const OrderStepper = ({ status, updatedAt, createdAt }: OrderStepperProps
     );
   }
 
+  // Calcula a largura da linha de progresso
+  const progressPercent = currentStepIndex >= 0 
+    ? `${(currentStepIndex / (steps.length - 1)) * 100}%`
+    : '0%';
+
   return (
     <div className="py-8">
       {/* Versão Desktop */}
       <div className="hidden md:flex items-start justify-between relative">
-        <div className="absolute top-5 left-0 w-full h-0.5 bg-gray-100 -z-10" />
+        {/* Linha de Progresso Dinâmica */}
+        <div className="absolute top-5 left-0 w-full h-0.5 bg-gray-100 -z-10">
+          <div 
+            className="h-full bg-[#B89C6A] transition-all duration-500" 
+            style={{ width: progressPercent }} 
+          />
+        </div>
         
         {steps.map((step, index) => {
           const isCompleted = index < currentStepIndex;
@@ -50,7 +72,7 @@ export const OrderStepper = ({ status, updatedAt, createdAt }: OrderStepperProps
               <div className={cn(
                 "w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-500 bg-white",
                 isCompleted ? "bg-[#B89C6A] border-[#B89C6A] text-white" : 
-                isActive ? "border-[#B89C6A] text-[#B89C6A] ring-4 ring-[#B89C6A]/10" : 
+                isActive ? "border-[#B89C6A] text-[#B89C6A] ring-4 ring-[#B89C6A]/10 font-bold" : 
                 "border-gray-200 text-gray-300"
               )}>
                 {isCompleted ? <Check size={20} /> : <Icon size={20} />}
