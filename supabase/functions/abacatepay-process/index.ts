@@ -15,7 +15,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { customerData, total, items, userId, method = "PIX" } = await req.json()
+    const { customerData, total, items, userId, method = "PIX", shippingCost = 0 } = await req.json()
     const apiKey = Deno.env.get('ABACATE_API_KEY')
 
     // 1. Criar pedido
@@ -25,7 +25,8 @@ serve(async (req) => {
       customer_data: customerData,
       items: items,
       status: 'Pendente',
-      payment_method: method
+      payment_method: method,
+      shipping_cost: shippingCost
     }).select().single()
 
     if (orderError) throw orderError;

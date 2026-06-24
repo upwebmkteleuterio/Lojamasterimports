@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Save, Store, Phone, Mail, MapPin, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Save, Store, Phone, Mail, MapPin, Image as ImageIcon, Loader2, Truck, Key } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { diamondDebug } from '@/utils/debug';
@@ -20,7 +20,9 @@ const Settings = () => {
     logo_url: '',
     support_phone: '',
     support_email: '',
-    address_full: ''
+    address_full: '',
+    seller_cep: '',
+    frenet_token: ''
   });
 
   useEffect(() => {
@@ -38,7 +40,11 @@ const Settings = () => {
       if (error) throw error;
       
       if (data && data.length > 0) {
-        setConfig(data[0]);
+        setConfig({
+          ...data[0],
+          seller_cep: data[0].seller_cep || '',
+          frenet_token: data[0].frenet_token || ''
+        });
       }
     } catch (error: any) {
       toast.error("Erro ao carregar configurações.");
@@ -147,11 +153,48 @@ const Settings = () => {
               <Label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
                 <MapPin size={14} /> Endereço Sede
               </Label>
-              <Input 
+              <Input
                 value={config.address_full}
                 onChange={(e) => setConfig({...config, address_full: e.target.value})}
                 className="rounded-2xl border-gray-100 bg-gray-50 h-12"
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white col-span-1 lg:col-span-2">
+          <CardHeader className="bg-gray-50/50 border-b">
+            <CardTitle className="text-sm font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2">
+              <Truck size={16} /> Configuração de Frete (Frenet)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-8 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
+                  <MapPin size={14} /> CEP de Origem (Seller CEP)
+                </Label>
+                <Input
+                  value={config.seller_cep}
+                  onChange={(e) => setConfig({...config, seller_cep: e.target.value})}
+                  placeholder="Ex: 01310-100"
+                  className="rounded-2xl border-gray-100 bg-gray-50 h-12"
+                />
+                <p className="text-[11px] text-gray-400">CEP de onde as mercadorias são despachadas.</p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
+                  <Key size={14} /> Token de Acesso Frenet
+                </Label>
+                <Input
+                  type="password"
+                  value={config.frenet_token}
+                  onChange={(e) => setConfig({...config, frenet_token: e.target.value})}
+                  placeholder="Insira seu Token Frenet"
+                  className="rounded-2xl border-gray-100 bg-gray-50 h-12"
+                />
+                <p className="text-[11px] text-gray-400">Obtenha o Token no painel da Frenet em Dados Cadastrais.</p>
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Minus, Plus, Truck, Check, AlertCircle } from 'lucide-react';
+import { Minus, Plus, Truck, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { Product, ProductVariant } from '@/types/store';
 import { cn } from '@/lib/utils';
 
@@ -17,6 +17,69 @@ interface ProductSidebarProps {
 export const ProductSidebar = ({ product, onAddToCart, onVariantSelect, onRequestSelection }: ProductSidebarProps) => {
   const [quantity, setQuantity] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  
+  const [cep, setCep] = useState('');
+  const [shippingOptions, setShippingOptions] = useState<any[]>([]);
+  const [loadingShipping, setLoadingShipping] = useState(false);
+  const [shippingError, setShippingError] = useState('');
+
+  const formatCEP = (value: string) => {
+    return value
+      .replace(/\D/g, '')
+      .replace(/^(\d{5})(\d)/, '$1-$2')
+      .substring(0, 9);
+  };
+
+  const handleCalculateShipping = async () => {
+    const cleanCep = cep.replace(/\D/g, '');
+    if (cleanCep.length !== 8) {
+      setShippingError("CEP inválido. Deve conter 8 dígitos.");
+      return;
+    }
+    setLoadingShipping(true);
+    setShippingError('');
+    setShippingOptions([]);
+
+    try {
+      const response = await fetch('https://esdhiurlyicjopjlxvba.supabase.co/functions/v1/frenet-shipping', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          recipientCep: cleanCep,
+          items: [
+            {
+              id: product.id,
+              name: product.name,
+              price: product.price,
+              promo_price: product.promotionalPrice,
+              weight: product.weight || 0.3,
+              width: product.width || 15,
+              height: product.height || 5,
+              length: product.length || 15,
+              quantity: quantity,
+            }
+          ]
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Erro ao calcular o frete.");
+      }
+
+      setShippingOptions(data.services || []);
+      if (data.services && data.services.length === 0) {
+        setShippingError("Nenhuma opção de entrega encontrada para este CEP.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      setShippingError(err.message || "Erro na conexão. Tente novamente.");
+    } finally {
+      setLoadingShipping(false);
+    }
+  };
 
   // Sorteia um número entre 15 e 20 para o gatilho de escassez
   const simulatedStock = useMemo(() => Math.floor(Math.random() * (20 - 15 + 1)) + 15, []);
@@ -139,9 +202,44 @@ export const ProductSidebar = ({ product, onAddToCart, onVariantSelect, onReques
           <span>Simular frete</span>
         </div>
         <div className="flex gap-2 max-w-sm">
-          <Input placeholder="00000-000" className="rounded-none h-11 border-gray-200" />
-          <Button variant="outline" className="rounded-none h-11 border-gray-200 px-6 font-serif uppercase text-xs tracking-widest">OK</Button>
+          <Input
+            value={cep}
+            onChange={(e) => setCep(formatCEP(e.target.value))}
+            placeholder="00000-000"
+            className="rounded-none h-11 border-gray-200"
+          />
+          <Button
+            onClick={handleCalculateShipping}
+            disabled={loadingShipping}
+            variant="outline"
+            className="rounded-none h-11 border-gray-200 px-6 font-serif uppercase text-xs tracking-widest flex items-center justify-center gap-2"
+          >
+            {loadingShipping ? <Loader2 size={14} className="animate-spin" /> : "OK"}
+          </Button>
         </div>
+
+        {shippingError && (
+          <p className="text-xs text-red-500 font-sans">{shippingError}</p>
+        )}
+
+        {shippingOptions.length > 0 && (
+          <div className="bg-gray-50/50 p-4 border border-gray-100 space-y-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Opções disponíveis:</p>
+            <ul className="space-y-2 text-sm text-gray-600">
+              {shippingOptions.map((opt, idx) => (
+                <li key={idx} className="flex justify-between items-center border-b border-gray-100/50 pb-2 last:border-none last:pb-0">
+                  <div className="flex flex-col">
+                    <span className="font-serif font-medium text-gray-800">{opt.name}</span>
+                    <span className="text-[10px] text-gray-400 font-sans">Chega em até {opt.deliveryTime} {opt.deliveryTime === 1 ? 'dia útil' : 'dias úteis'}</span>
+                  </div>
+                  <span className="font-bold text-gray-900">
+                    {opt.price === 0 ? "Grátis" : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(opt.price)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );

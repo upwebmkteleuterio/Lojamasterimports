@@ -4,11 +4,15 @@ import { getSafeProductImage } from '@/utils/imageHandler';
 interface CheckoutSummaryProps {
   cart: any[];
   total: number;
+  selectedShipping?: any | null;
 }
 
-export const CheckoutSummary = ({ cart, total }: CheckoutSummaryProps) => {
-  const formatCurrency = (val: number) => 
+export const CheckoutSummary = ({ cart, total, selectedShipping }: CheckoutSummaryProps) => {
+  const formatCurrency = (val: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+
+  const shippingPrice = selectedShipping ? selectedShipping.price : 0;
+  const grandTotal = total + shippingPrice;
 
   return (
     <aside className="bg-white p-8 md:p-10 rounded-[40px] border border-gray-100 shadow-sm h-fit sticky top-24">
@@ -37,19 +41,25 @@ export const CheckoutSummary = ({ cart, total }: CheckoutSummaryProps) => {
           <span className="font-bold text-gray-700">{formatCurrency(total)}</span>
         </div>
         <div className="flex justify-between items-center text-sm">
-          <span className="text-gray-400 font-medium">Frete</span>
-          <span className="text-green-600 font-bold uppercase text-xs">Grátis</span>
+          <span className="text-gray-400 font-medium">Frete {selectedShipping ? `(${selectedShipping.name})` : ''}</span>
+          {selectedShipping ? (
+            <span className="font-bold text-gray-700">
+              {shippingPrice === 0 ? "Grátis" : formatCurrency(shippingPrice)}
+            </span>
+          ) : (
+            <span className="text-gray-400 italic text-xs">A calcular</span>
+          )}
         </div>
         <div className="flex justify-between items-end pt-4">
           <span className="text-lg font-serif font-bold text-gray-900 leading-none">Total</span>
-          <span className="text-3xl font-bold text-[#B89C6A] leading-none">{formatCurrency(total)}</span>
+          <span className="text-3xl font-bold text-[#B89C6A] leading-none">{formatCurrency(grandTotal)}</span>
         </div>
       </div>
 
       <div className="mt-8 pt-8 border-t border-gray-50 flex flex-col items-center gap-4">
         <div className="flex items-center gap-2 text-gray-400">
            <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-           <span className="text-[10px] font-bold uppercase tracking-widest">Entrega Grátis para todo Brasil</span>
+           <span className="text-[10px] font-bold uppercase tracking-widest">Entrega Segura com Seguro Frenet</span>
         </div>
       </div>
     </aside>
