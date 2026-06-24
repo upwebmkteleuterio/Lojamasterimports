@@ -115,14 +115,45 @@ serve(async (req) => {
         abacateItems.push({ id: freightId, quantity: 1 });
       }
 
+      // Cadastrar o cliente na AbacatePay para autocompletar o checkout
+      let abacateCustomerId = null;
+      try {
+        const custRes = await fetch('https://api.abacatepay.com/v2/customers/create', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: customerData.fullName,
+            email: customerData.email,
+            taxId: customerData.cpf, // Máscara mantida conforme PIX
+            cellphone: customerData.phone // Máscara mantida conforme PIX
+          })
+        });
+        const custData = await custRes.json();
+        if (custRes.ok && custData.success) {
+          abacateCustomerId = custData.data.id;
+        } else {
+          console.warn("[abacatepay-process] Falha ao pré-cadastrar cliente:", custData);
+        }
+      } catch (err) {
+        console.warn("[abacatepay-process] Erro na requisição de customer:", err);
+      }
+
       // Gerar a URL do Checkout de Cartão
-      const checkoutPayload = {
+      const checkoutPayload: any = {
         methods: ["CARD"],
         externalId: order.id,
         returnUrl: `${origin}/minha-conta`,
         completionUrl: `${origin}/minha-conta`,
         items: abacateItems,
         card: { maxInstallments: 12 }
+      }
+
+      // Se o cliente foi criado com sucesso, vincula ao checkout
+      if (abacateCustomerId) {
+        checkoutPayload.customerId = abacateCustomerId;
       }
 
       const response = await fetch('https://api.abacatepay.com/v2/checkouts/create', {
