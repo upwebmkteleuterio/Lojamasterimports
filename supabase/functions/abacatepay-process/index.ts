@@ -38,33 +38,67 @@ serve(async (req) => {
     if (method === 'CREDIT_CARD') {
       const abacateItems = [];
       
-      // Criar cada produto na AbacatePay antes de gerar o checkout
+      // Função auxiliar para resolver o produto na AbacatePay
+      const resolveAbacateProduct = async (payload: any) => {
+        let prodId = null;
+        
+        // 1. Tenta criar o produto normalmente
+        const resCreate = await fetch('https://api.abacatepay.com/v2/products/create', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const dataCreate = await resCreate.json();
+
+        if (resCreate.ok && dataCreate.success) {
+          prodId = dataCreate.data.id;
+        }
+        // 2. Se falhar porque já existe, tentamos buscar na lista
+        else if (dataCreate.error && dataCreate.error.includes("already exists")) {
+          const resList = await fetch('https://api.abacatepay.com/v2/products/list', {
+            headers: { 'Authorization': `Bearer ${apiKey}` }
+          });
+          const dataList = await resList.json();
+          
+          if (resList.ok && dataList.success && Array.isArray(dataList.data)) {
+            const existing = dataList.data.find((p: any) => p.externalId === payload.externalId);
+            if (existing) prodId = existing.id;
+          }
+
+          // 3. Fallback: Se não achar na lista (ex: paginação), cria com um ID dinâmico único
+          if (!prodId) {
+            const fallbackPayload = { ...payload, externalId: `${payload.externalId}_${Date.now()}` };
+            const resFallback = await fetch('https://api.abacatepay.com/v2/products/create', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify(fallbackPayload)
+            });
+            const dataFallback = await resFallback.json();
+            if (resFallback.ok && dataFallback.success) {
+              prodId = dataFallback.data.id;
+            }
+          }
+        }
+
+        if (!prodId) {
+          throw new Error(`Falha ao resolver produto no gateway: ${dataCreate.error || 'Desconhecido'}`);
+        }
+        return prodId;
+      };
+      
+      // Resolver cada produto do carrinho
       for (const item of items) {
          const prodPayload = {
-            externalId: String(item.variant_id || item.product_id || item.id), 
-            name: String(item.name).substring(0, 100), 
-            price: Math.round(item.price * 100), 
+            externalId: String(item.variant_id || item.product_id || item.id),
+            name: String(item.name).substring(0, 100),
+            price: Math.round(item.price * 100),
             currency: "BRL"
          };
          
-         const prodRes = await fetch('https://api.abacatepay.com/v2/products/create', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${apiKey}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(prodPayload)
-         });
-         
-         const prodData = await prodRes.json();
-         
-         if (!prodRes.ok || !prodData.success) {
-            console.error("[abacatepay-process] Erro ao criar produto AbacatePay", prodData);
-            throw new Error(`Falha ao registrar produto no gateway de pagamento.`);
-         }
+         const abacateProductId = await resolveAbacateProduct(prodPayload);
          
          abacateItems.push({
-            id: prodData.data.id,
+            id: abacateProductId,
             quantity: item.quantity
          });
       }
@@ -77,15 +111,8 @@ serve(async (req) => {
           price: Math.round(shippingCost * 100),
           currency: "BRL"
         };
-        const freightRes = await fetch('https://api.abacatepay.com/v2/products/create', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify(freightPayload)
-        });
-        const freightData = await freightRes.json();
-        if (freightRes.ok && freightData.success) {
-          abacateItems.push({ id: freightData.data.id, quantity: 1 });
-        }
+        const freightId = await resolveAbacateProduct(freightPayload);
+        abacateItems.push({ id: freightId, quantity: 1 });
       }
 
       // Gerar a URL do Checkout de Cartão
