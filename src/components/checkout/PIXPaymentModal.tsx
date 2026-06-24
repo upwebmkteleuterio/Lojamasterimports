@@ -69,10 +69,10 @@ export const PIXPaymentModal = ({ isOpen, onClose, data }: PaymentResultModalPro
         <div className="bg-[#B89C6A] p-8 text-white text-center relative">
           <DialogHeader>
             <DialogTitle className="text-2xl font-serif text-white uppercase tracking-widest">
-              {isPaid ? "Sucesso!" : data.method === 'PIX' ? "Pagamento PIX" : "Seu Boleto"}
+              {isPaid ? "Sucesso!" : data.method === 'PIX' ? "Pagamento PIX" : data.method === 'CREDIT_CARD' ? "Redirecionando..." : "Seu Boleto"}
             </DialogTitle>
             <DialogDescription className="text-white/80 font-medium">
-              {isPaid ? "Pagamento aprovado." : "Siga as instruções para concluir."}
+              {isPaid ? "Pagamento aprovado." : data.method === 'CREDIT_CARD' ? "Você será redirecionado para o ambiente seguro." : "Siga as instruções para concluir."}
             </DialogDescription>
           </DialogHeader>
         </div>
