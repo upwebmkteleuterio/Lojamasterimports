@@ -7,7 +7,7 @@ import { ShoppingBag, Users, DollarSign, Clock, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
-import { startOfDay, endOfDay, formatDistanceToNow, subDays, format } from 'date-fns';
+import { startOfDay, endOfDay, formatDistanceToNow, startOfWeek, endOfWeek, eachDayOfInterval, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 import { DashboardChart } from '@/components/admin/DashboardChart';
@@ -66,25 +66,32 @@ const Dashboard = () => {
         .order('created_at', { ascending: false })
         .limit(10);
 
-      // 5. Histórico de faturamento semanal para o Gráfico
-      const sevenDaysAgo = subDays(new Date(), 6);
+      // 5. Histórico de faturamento semanal (Domingo a Sábado da semana atual)
+      const sunday = startOfWeek(new Date(), { weekStartsOn: 0 }); // 0 = Domingo
+      const saturday = endOfWeek(new Date(), { weekStartsOn: 0 }); // Sábado
+
       const { data: weeklySales } = await supabase
         .from('orders')
         .select('created_at, total')
-        .gte('created_at', startOfDay(sevenDaysAgo).toISOString())
+        .gte('created_at', startOfDay(sunday).toISOString())
+        .lte('created_at', endOfDay(saturday).toISOString())
         .in('status', ['Pago', 'Preparando Pedido', 'Enviado', 'Entregue']);
 
-      // Consolidar faturamento por dia da semana
-      const daysArray = Array.from({ length: 7 }).map((_, i) => {
-        const d = subDays(new Date(), 6 - i);
+      // Estrutura o array com os dias exatos de Domingo a Sábado
+      const daysArray = eachDayOfInterval({ start: sunday, end: saturday }).map((d) => {
+        const rawDayName = format(d, 'eee', { locale: ptBR });
+        // Capitaliza o nome abreviado do dia e remove o ponto final gerado pelo locale pt-BR (ex: "dom." -> "Dom")
+        const formattedName = rawDayName.charAt(0).toUpperCase() + rawDayName.slice(1).replace('.', '');
+        
         return {
           dateStr: format(d, 'yyyy-MM-dd'),
-          name: format(d, 'dd/MM'),
+          name: formattedName,
           vendas: 0,
           valor: 0
         };
       });
 
+      // Consolida as vendas correspondentes em cada dia do intervalo
       weeklySales?.forEach(order => {
         const orderDateStr = format(new Date(order.created_at), 'yyyy-MM-dd');
         const dayObj = daysArray.find(day => day.dateStr === orderDateStr);
