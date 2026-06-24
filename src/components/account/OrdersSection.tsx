@@ -185,7 +185,7 @@ export const OrdersSection = () => {
                     </h3>
                     <div className="bg-[#B89C6A]/5 border border-[#B89C6A]/20 p-5 rounded-3xl flex items-center justify-between gap-4">
                       <div className="min-w-0">
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Código de Rastreio</p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Código de rastreio Correios</p>
                         <p className="font-mono text-sm font-bold text-gray-800 truncate">{order.tracking_code}</p>
                       </div>
                       <button
@@ -198,6 +198,16 @@ export const OrdersSection = () => {
                       >
                         <Copy size={16} />
                       </button>
+                    </div>
+                    <div className="pl-1">
+                      <a
+                        href="https://rastreamento.correios.com.br/app/index.php"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] font-bold uppercase tracking-widest text-[#B89C6A] hover:text-[#A68B5B] underline transition-colors"
+                      >
+                        Acompanhar pedido
+                      </a>
                     </div>
                   </div>
                 )}
