@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, Calendar, MapPin, ShoppingBag, Loader2, Tag } from 'lucide-react';
+import { Package, Calendar, MapPin, ShoppingBag, Loader2, Tag, Copy, Truck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Order } from '@/types/store';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { getSafeProductImage } from '@/utils/imageHandler';
 import { OrderStepper } from './OrderStepper';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export const OrdersSection = () => {
   const { user } = useAuth();
@@ -176,6 +177,30 @@ export const OrdersSection = () => {
                     )}
                   </div>
                 </div>
+
+                {order.tracking_code && (
+                  <div className="space-y-3 mt-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <h3 className={cn(labelStyle, "text-gray-900 flex items-center gap-2")}>
+                      <Truck size={14} className="text-[#B89C6A]" /> Rastreamento de Envio
+                    </h3>
+                    <div className="bg-[#B89C6A]/5 border border-[#B89C6A]/20 p-5 rounded-3xl flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Código de Rastreio</p>
+                        <p className="font-mono text-sm font-bold text-gray-800 truncate">{order.tracking_code}</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(order.tracking_code || '');
+                          toast.success('Código de rastreio copiado!');
+                        }}
+                        className="flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-100 hover:border-[#B89C6A] hover:bg-[#B89C6A]/10 text-[#B89C6A] transition-all shrink-0 shadow-sm"
+                        title="Copiar código de rastreamento"
+                      >
+                        <Copy size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
