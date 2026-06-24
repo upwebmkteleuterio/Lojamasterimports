@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
+import { Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { ProductVariation, ProductVariant } from '@/types/store';
 import { toast } from 'sonner';
@@ -199,7 +200,14 @@ const ProductForm = () => {
       diamondDebug('success', 'Produto e variações salvos com êxito.');
       toast.success("Produto atualizado!");
       localStorage.removeItem(`form_data_${persistenceKey}`);
-      navigate('/adm/produtos');
+      
+      // Se for um novo produto criado, redirecionamos para o modo edição dele
+      if (!id && savedProd) {
+        navigate(`/adm/produtos/editar/${savedProd.id}`);
+      } else {
+        // Se já for edição, apenas recarrega as informações atualizadas do banco para garantir consistência
+        fetchProduct();
+      }
     } catch (error: any) {
       diamondDebug('error', 'Falha no processo de persistência', error);
       toast.error("Erro ao salvar: " + error.message);
@@ -209,10 +217,20 @@ const ProductForm = () => {
   };
 
   return (
-    <AdminLayout 
+    <AdminLayout
       title={id ? "Editar Produto" : "Novo Produto"}
       actions={
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+           {id && (
+             <Link
+               to={`/${formData.category_mother_id || 'feminine'}/produto/${id}`}
+               target="_blank"
+               className="inline-flex items-center justify-center w-11 h-11 rounded-full border border-gray-200 text-gray-400 hover:text-[#B89C6A] hover:border-[#B89C6A] transition-all"
+               title="Ver Produto na Loja"
+             >
+               <Eye size={18} />
+             </Link>
+           )}
            <Button variant="ghost" onClick={() => navigate('/adm/produtos')} className="rounded-full px-6 uppercase text-[10px] font-bold tracking-widest text-gray-400">Cancelar</Button>
            <Button onClick={handleSave} disabled={saving} className="bg-black hover:bg-gray-800 rounded-full px-12 h-11 font-bold uppercase text-[10px] tracking-widest text-white shadow-lg">
             {saving ? 'Gravando...' : 'Salvar Alterações'}
