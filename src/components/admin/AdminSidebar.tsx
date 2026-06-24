@@ -44,12 +44,15 @@ interface AdminSidebarProps {
 export const AdminSidebar = ({ onItemClick, className }: AdminSidebarProps) => {
   const location = useLocation();
   const { signOut, profile } = useAuth();
-  const [storeName, setStoreName] = useState("DIAMOND ADM");
+  
+  // Sincroniza instantaneamente com o cache local do navegador para evitar o "flash" de carregamento
+  const [storeName, setStoreName] = useState<string>(() => {
+    return localStorage.getItem("diamond-admin-store-name") || "";
+  });
 
   useEffect(() => {
     const fetchStoreName = async () => {
       try {
-        // Usamos select().limit(1) para evitar erro PGRST116 caso existam várias linhas
         const { data } = await supabase
           .from('store_configs')
           .select('store_name')
@@ -57,7 +60,9 @@ export const AdminSidebar = ({ onItemClick, className }: AdminSidebarProps) => {
           .limit(1);
         
         if (data && data.length > 0 && data[0].store_name) {
-          setStoreName(data[0].store_name.toUpperCase());
+          const name = data[0].store_name.toUpperCase();
+          setStoreName(name);
+          localStorage.setItem("diamond-admin-store-name", name);
         }
       } catch (e) {
         console.error("Erro ao carregar nome da loja no menu:", e);
@@ -71,11 +76,15 @@ export const AdminSidebar = ({ onItemClick, className }: AdminSidebarProps) => {
       <div className="p-6 border-b border-gray-50">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-[#B89C6A] rounded-lg flex items-center justify-center text-white font-bold shrink-0">
-            {storeName.charAt(0)}
+            {storeName ? storeName.charAt(0) : "M"}
           </div>
-          <span className="font-serif font-bold tracking-widest text-[#B89C6A] text-xs truncate">
-            {storeName}
-          </span>
+          {storeName ? (
+            <span className="font-serif font-bold tracking-widest text-[#B89C6A] text-xs truncate">
+              {storeName}
+            </span>
+          ) : (
+            <div className="h-4 w-24 bg-gray-100 animate-pulse rounded" />
+          )}
         </div>
       </div>
 
