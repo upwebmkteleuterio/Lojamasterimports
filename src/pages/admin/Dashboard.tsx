@@ -41,11 +41,11 @@ const Dashboard = () => {
 
       const totalValue = salesToday?.reduce((acc, curr) => acc + Number(curr.total), 0) || 0;
 
-      // 2. Pedidos Pendentes (Independente da data)
+      // 2. Pedidos Pendentes (Independente da data) - Ajuste cirúrgico para incluir 'Pendente' e 'Pagamento Pendente'
       const { count: pendingCount } = await supabase
         .from('orders')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'Pagamento Pendente');
+        .in('status', ['Pendente', 'Pagamento Pendente']);
 
       // 3. Novos Clientes de Hoje
       const { count: newCustomersCount } = await supabase
