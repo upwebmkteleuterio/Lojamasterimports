@@ -78,9 +78,12 @@ const AppContent = () => {
         
         if (data?.store_name) {
           document.title = data.store_name;
+        } else {
+          document.title = "Master Imports Três Marias";
         }
       } catch (e) {
         console.error("Erro ao atualizar título da aba:", e);
+        document.title = "Master Imports Três Marias";
       }
     };
     fetchStoreName();
