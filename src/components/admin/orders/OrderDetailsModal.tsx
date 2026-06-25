@@ -55,27 +55,28 @@ export const OrderDetailsModal = ({
         <DialogContent 
           onInteractOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
-          // A classe [&>button]:hidden esconde o botão X padrão do Radix/Shadcn
+          // Esconde APENAS o botão X padrão que é filho direto
           className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-[32px] border-none shadow-2xl p-0 [&>button]:hidden"
         >
-          {/* Botão X Manual e Exclusivo */}
-          <button 
-            onClick={handleAttemptClose} 
-            className="absolute top-6 right-6 w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors z-50 shadow-sm"
-            title="Fechar"
-          >
-            <X size={20} />
-          </button>
-
-          <DialogHeader className="p-8 border-b sticky top-0 bg-white z-10 pr-20">
+          <DialogHeader className="p-8 border-b sticky top-0 bg-white z-10">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <DialogTitle className="text-2xl font-serif pr-8">Detalhes do Pedido #{selectedOrder.id.split('-')[0].toUpperCase()}</DialogTitle>
+                <DialogTitle className="text-2xl font-serif">Detalhes do Pedido #{selectedOrder.id.split('-')[0].toUpperCase()}</DialogTitle>
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Realizado em {format(new Date(selectedOrder.created_at), "dd/MM/yyyy HH:mm")}</p>
               </div>
-              <Badge className={cn("rounded-full px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest border-none w-fit", statusColors[selectedOrder.status])}>
-                {selectedOrder.status}
-              </Badge>
+              <div className="flex items-center gap-4">
+                <Badge className={cn("rounded-full px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest border-none w-fit", statusColors[selectedOrder.status])}>
+                  {selectedOrder.status}
+                </Badge>
+                {/* Botão X Manual e Exclusivo - Posicionado ao lado da Badge */}
+                <button 
+                  onClick={handleAttemptClose} 
+                  className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors shadow-sm shrink-0"
+                  title="Fechar"
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
           </DialogHeader>
 
@@ -133,7 +134,6 @@ export const OrderDetailsModal = ({
                   <div key={idx} className="flex gap-4 items-center bg-gray-50/50 p-4 rounded-2xl border border-gray-100/50">
                     <div className="w-12 h-16 rounded-xl bg-white border overflow-hidden flex-shrink-0"><img src={item.selectedVariant?.main_image || item.image} className="w-full h-full object-cover" /></div>
                     <div className="flex-1 min-w-0 pr-4">
-                      {/* Removemos a limitação "truncate" para que o nome quebre a linha, evitando overflow */}
                       <p className="font-bold text-sm text-gray-900 break-words leading-snug mb-1">{item.name}</p>
                       <p className="text-[10px] text-gray-400 uppercase font-black">{item.quantity} UN. | {formatCurrency(item.price)}</p>
                     </div>
