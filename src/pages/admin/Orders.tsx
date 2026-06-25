@@ -47,6 +47,16 @@ import {
   DialogTitle,
   DialogFooter
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   Select, 
   SelectContent, 
@@ -108,6 +118,9 @@ const Orders = () => {
   const [customRange, setCustomRange] = useState({ start: '', end: '' });
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [trackingCode, setTrackingCode] = useState('');
+  
+  // Alerta de alterações não salvas
+  const [showUnsavedPrompt, setShowUnsavedPrompt] = useState(false);
 
   useEffect(() => {
     fetchOrders();
@@ -174,6 +187,25 @@ const Orders = () => {
     }
   };
 
+  const hasUnsavedChanges = () => {
+    if (!selectedOrder) return false;
+    const original = orders.find(o => o.id === selectedOrder.id);
+    if (!original) return false;
+    
+    const statusChanged = original.status !== selectedOrder.status;
+    const trackingChanged = (original.tracking_code || '') !== trackingCode;
+    
+    return statusChanged || trackingChanged;
+  };
+
+  const handleAttemptClose = () => {
+    if (hasUnsavedChanges()) {
+      setShowUnsavedPrompt(true);
+    } else {
+      setIsDetailsOpen(false);
+    }
+  };
+
   const handleUpdateOrder = async () => {
     if (!selectedOrder) return;
     setUpdatingStatus(true);
@@ -199,7 +231,7 @@ const Orders = () => {
   };
 
   const openDetails = (order: Order) => {
-    setSelectedOrder(order);
+    setSelectedOrder({...order});
     setTrackingCode(order.tracking_code || '');
     setIsDetailsOpen(true);
   };
@@ -211,7 +243,7 @@ const Orders = () => {
   const handleCopyAddress = () => {
     if (!selectedOrder) return;
     const data = selectedOrder.customer_data;
-    const addressString = `${data.fullName}\n${data.address}, nº ${data.number}${data.apartment ? ' - ' + data.apartment : ''}\n${data.city} - ${data.state}\nCEP: ${data.zipCode}${data.observations ? '\nObs: ' + data.observations : ''}`;
+    const addressString = `${data.fullName}\n${data.address}, nº ${data.number}${data.apartment ? '\nComplemento: ' + data.apartment : ''}\n${data.city} - ${data.state}\nCEP: ${data.zipCode}${data.observations ? '\nObs: ' + data.observations : ''}`;
     navigator.clipboard.writeText(addressString);
     toast.success('Endereço copiado!');
   };
@@ -406,15 +438,21 @@ const Orders = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Modal Detalhes */}
-      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-[32px] border-none shadow-2xl p-0">
+      {/* Modal Detalhes do Pedido */}
+      <Dialog open={isDetailsOpen} onOpenChange={(open) => {
+        if (!open) handleAttemptClose();
+      }}>
+        <DialogContent 
+          onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+          className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-[32px] border-none shadow-2xl p-0"
+        >
           {selectedOrder && (
             <>
               <DialogHeader className="p-8 border-b sticky top-0 bg-white z-10">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
-                    <DialogTitle className="text-2xl font-serif">Detalhes do Pedido #{selectedOrder.id.split('-')[0].toUpperCase()}</DialogTitle>
+                    <DialogTitle className="text-2xl font-serif pr-8">Detalhes do Pedido #{selectedOrder.id.split('-')[0].toUpperCase()}</DialogTitle>
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Realizado em {format(new Date(selectedOrder.created_at), "dd/MM/yyyy HH:mm")}</p>
                   </div>
                   <Badge className={cn("rounded-full px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest border-none w-fit", statusColors[selectedOrder.status])}>{selectedOrder.status}</Badge>
@@ -517,6 +555,33 @@ const Orders = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Modal Confirmação Fechamento */}
+      <AlertDialog open={showUnsavedPrompt} onOpenChange={setShowUnsavedPrompt}>
+        <AlertDialogContent className="rounded-[32px] border-none shadow-2xl p-8">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-serif text-2xl">Alterações não salvas</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-500 text-base">
+              As alterações não foram salvas, deseja salvar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-8 gap-3">
+            <AlertDialogCancel 
+              onClick={() => { setShowUnsavedPrompt(false); setIsDetailsOpen(false); }} 
+              className="rounded-full h-12 px-8 border-gray-200"
+            >
+              Não
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => { setShowUnsavedPrompt(false); handleUpdateOrder(); }} 
+              className="bg-[#B89C6A] hover:bg-[#A68B5B] text-white rounded-full h-12 px-8 font-bold text-xs uppercase tracking-widest"
+            >
+              Sim, Salvar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </AdminLayout>
   );
 };
