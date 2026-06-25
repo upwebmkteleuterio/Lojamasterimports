@@ -56,39 +56,42 @@ const Products = () => {
       const from = (currentPage - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
 
-      // Inicia a query básica com contagem exata
-      let query = supabase
+      // 1. QUERY DE CONTAGEM (Ultrarrápida, sem carregar dados ou cruzamentos)
+      let countQuery = supabase.from('products').select('id', { count: 'exact', head: true });
+      
+      if (searchTerm) countQuery = countQuery.ilike('name', `%${searchTerm}%`);
+      if (nicheFilter !== "all") countQuery = countQuery.eq('category_mother_id', nicheFilter);
+      if (statusFilter !== "all") countQuery = countQuery.eq('is_active', statusFilter === "active");
+
+      // 2. QUERY DE DADOS (Trazendo APENAS as colunas necessárias para a tabela)
+      let dataQuery = supabase
         .from('products')
         .select(`
-          *, 
+          id,
+          name,
+          sku,
+          price,
+          main_image,
+          is_active,
+          category_mother_id,
           category_mothers (name),
           product_variants (id)
-        `, { count: 'exact' });
-
-      // Aplica Filtro de Nome (Busca)
-      if (searchTerm) {
-        query = query.ilike('name', `%${searchTerm}%`);
-      }
-
-      // Aplica Filtro de Nicho
-      if (nicheFilter !== "all") {
-        query = query.eq('category_mother_id', nicheFilter);
-      }
-
-      // Aplica Filtro de Status
-      if (statusFilter !== "all") {
-        query = query.eq('is_active', statusFilter === "active");
-      }
-
-      // Ordenação e Range (Paginação)
-      const { data, error, count } = await query
+        `)
         .order('created_at', { ascending: false })
         .range(from, to);
+
+      if (searchTerm) dataQuery = dataQuery.ilike('name', `%${searchTerm}%`);
+      if (nicheFilter !== "all") dataQuery = dataQuery.eq('category_mother_id', nicheFilter);
+      if (statusFilter !== "all") dataQuery = dataQuery.eq('is_active', statusFilter === "active");
+
+      // 3. Executamos as duas queries em paralelo para máxima velocidade
+      const [countResult, dataResult] = await Promise.all([countQuery, dataQuery]);
       
-      if (error) throw error;
+      if (countResult.error) throw countResult.error;
+      if (dataResult.error) throw dataResult.error;
       
-      setProducts(data || []);
-      setTotalCount(count || 0);
+      setProducts(dataResult.data || []);
+      setTotalCount(countResult.count || 0);
       
     } catch (error: any) {
       toast.error("Erro ao carregar catálogo: " + error.message);
