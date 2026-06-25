@@ -1,11 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Order } from '@/types/store';
-import { 
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
+} from "@/components/ui/alert-dialog";
+import { MoreHorizontal, ChevronLeft, ChevronRight, Clock, Trash2, Undo2 } from 'lucide-react';
 import { formatCurrency } from '@/utils/currency';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -17,14 +23,25 @@ interface OrdersTableProps {
   loading: boolean;
   currentPage: number;
   totalCount: number;
+  viewMode: 'active' | 'trash';
   setCurrentPage: (page: number) => void;
   openDetails: (order: Order) => void;
+  moveToTrash: (orderId: string) => void;
+  restoreFromTrash: (orderId: string) => void;
 }
 
 export const OrdersTable = ({
-  orders, loading, currentPage, totalCount, setCurrentPage, openDetails
+  orders, loading, currentPage, totalCount, viewMode, setCurrentPage, openDetails, moveToTrash, restoreFromTrash
 }: OrdersTableProps) => {
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+  const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
+
+  const confirmTrash = () => {
+    if (orderToDelete) {
+      moveToTrash(orderToDelete);
+      setOrderToDelete(null);
+    }
+  };
 
   return (
     <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden">
@@ -78,7 +95,41 @@ export const OrdersTable = ({
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right px-6">
-                    <Button variant="ghost" className="h-8 w-8 p-0 rounded-full hover:bg-white"><MoreHorizontal size={16} /></Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          className="h-8 w-8 p-0 rounded-full hover:bg-gray-100"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreHorizontal size={16} />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="rounded-2xl shadow-xl border-gray-100">
+                        {viewMode === 'active' ? (
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOrderToDelete(order.id);
+                            }}
+                            disabled={!['Pendente', 'Pagamento Pendente', 'Cancelado'].includes(order.status)}
+                            className="text-red-600 focus:text-red-600 focus:bg-red-50 gap-2 cursor-pointer"
+                          >
+                            <Trash2 size={14} /> Excluir pedido
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              restoreFromTrash(order.id);
+                            }}
+                            className="text-green-600 focus:text-green-600 focus:bg-green-50 gap-2 cursor-pointer"
+                          >
+                            <Undo2 size={14} /> Restaurar pedido
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               );
@@ -90,11 +141,34 @@ export const OrdersTable = ({
       {/* Paginação */}
       {totalPages > 1 && (
         <div className="p-6 border-t border-gray-50 bg-gray-50/20 flex items-center justify-center gap-4">
-          <Button variant="outline" size="icon" disabled={currentPage === 1 || loading} onClick={() => setCurrentPage(prev => prev - 1)} className="rounded-xl bg-white"><ChevronLeft size={18} /></Button>
+          <Button variant="outline" size="icon" disabled={currentPage === 1 || loading} onClick={() => setCurrentPage(currentPage - 1)} className="rounded-xl bg-white"><ChevronLeft size={18} /></Button>
           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Página {currentPage} de {totalPages}</span>
-          <Button variant="outline" size="icon" disabled={currentPage === totalPages || loading} onClick={() => setCurrentPage(prev => prev + 1)} className="rounded-xl bg-white"><ChevronRight size={18} /></Button>
+          <Button variant="outline" size="icon" disabled={currentPage === totalPages || loading} onClick={() => setCurrentPage(currentPage + 1)} className="rounded-xl bg-white"><ChevronRight size={18} /></Button>
         </div>
       )}
+
+      {/* Alerta de Lixeira */}
+      <AlertDialog open={!!orderToDelete} onOpenChange={(open) => !open && setOrderToDelete(null)}>
+        <AlertDialogContent className="rounded-[32px] border-none shadow-2xl p-8">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-serif text-2xl">Deseja adicionar esse pedido à Lixeira?</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-500 text-base">
+              Ele não será mais contabilizado nas suas KPIs e sairá da lista principal.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-8 gap-3">
+            <AlertDialogCancel className="rounded-full h-12 px-8 border-gray-200">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmTrash}
+              className="bg-red-600 hover:bg-red-700 text-white rounded-full h-12 px-8 font-bold text-xs uppercase tracking-widest"
+            >
+              Sim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -9,12 +9,14 @@ import { OrdersTable } from '@/components/admin/orders/OrdersTable';
 import { OrderDetailsModal } from '@/components/admin/orders/OrderDetailsModal';
 
 // UI Compartilhada
-import { 
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter 
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Trash2, ShoppingBag } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const Orders = () => {
   const {
@@ -22,17 +24,45 @@ const Orders = () => {
     orders, loading, totalCount, kpis,
     // Filtros
     searchTerm, setSearchTerm, statusFilter, setStatusFilter, dateFilter, setDateFilter,
+    viewMode, setViewMode,
     // Paginação
     currentPage, setCurrentPage,
     // Modais e Lógica
     selectedOrder, setSelectedOrder, isDetailsOpen, updatingStatus,
     trackingCode, setTrackingCode, openDetails, handleUpdateOrder,
     handleAttemptClose, handleCopyAddress, showUnsavedPrompt, setShowUnsavedPrompt,
-    isCustomDateOpen, setIsCustomDateOpen, customRange, setCustomRange
+    isCustomDateOpen, setIsCustomDateOpen, customRange, setCustomRange,
+    moveToTrash, restoreFromTrash
   } = useOrdersAdmin();
 
   return (
     <AdminLayout title="Gestão de Pedidos">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 -mt-2">
+        <h2 className="text-xl font-serif text-gray-800">
+          {viewMode === 'active' ? 'Pedidos Ativos' : 'Lixeira'}
+        </h2>
+        <div className="flex bg-white rounded-full p-1 border border-gray-200 shadow-sm w-fit">
+          <button
+            onClick={() => { setViewMode('active'); setCurrentPage(1); }}
+            className={cn(
+              "flex items-center gap-2 px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all",
+              viewMode === 'active' ? "bg-black text-white shadow-md" : "text-gray-500 hover:text-black hover:bg-gray-50"
+            )}
+          >
+            <ShoppingBag size={14} /> Pedidos
+          </button>
+          <button
+            onClick={() => { setViewMode('trash'); setCurrentPage(1); }}
+            className={cn(
+              "flex items-center gap-2 px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all",
+              viewMode === 'trash' ? "bg-red-600 text-white shadow-md" : "text-gray-500 hover:text-red-600 hover:bg-red-50"
+            )}
+          >
+            <Trash2 size={14} /> Lixeira
+          </button>
+        </div>
+      </div>
+
       <div className="space-y-6">
         
         {/* Painéis */}
@@ -48,9 +78,10 @@ const Orders = () => {
         />
 
         {/* Tabela de Pedidos */}
-        <OrdersTable 
+        <OrdersTable
           orders={orders} loading={loading} currentPage={currentPage}
-          totalCount={totalCount} setCurrentPage={setCurrentPage} openDetails={openDetails}
+          totalCount={totalCount} viewMode={viewMode} setCurrentPage={setCurrentPage} openDetails={openDetails}
+          moveToTrash={moveToTrash} restoreFromTrash={restoreFromTrash}
         />
 
       </div>

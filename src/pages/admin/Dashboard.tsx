@@ -39,6 +39,7 @@ const Dashboard = () => {
         .select('total')
         .gte('created_at', todayStart)
         .lte('created_at', todayEnd)
+        .eq('in_trash', false)
         .in('status', ['Pago', 'Preparando Pedido', 'Enviado', 'Entregue']);
 
       const totalValue = salesToday?.reduce((acc, curr) => acc + Number(curr.total), 0) || 0;
@@ -49,6 +50,7 @@ const Dashboard = () => {
         .select('*', { count: 'exact', head: true })
         .gte('created_at', todayStart)
         .lte('created_at', todayEnd)
+        .eq('in_trash', false)
         .in('status', ['Pendente', 'Pagamento Pendente']);
 
       // 3. Novos Clientes de Hoje
@@ -63,6 +65,7 @@ const Dashboard = () => {
         .select('id, created_at, total, status, customer_data')
         .gte('created_at', todayStart)
         .lte('created_at', todayEnd)
+        .eq('in_trash', false)
         .order('created_at', { ascending: false })
         .limit(10);
 
@@ -75,6 +78,7 @@ const Dashboard = () => {
         .select('created_at, total')
         .gte('created_at', startOfDay(sunday).toISOString())
         .lte('created_at', endOfDay(saturday).toISOString())
+        .eq('in_trash', false)
         .in('status', ['Pago', 'Preparando Pedido', 'Enviado', 'Entregue']);
 
       // Estrutura o array com os dias exatos de Domingo a Sábado

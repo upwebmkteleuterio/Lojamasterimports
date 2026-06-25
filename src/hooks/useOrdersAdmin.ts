@@ -14,6 +14,7 @@ export const useOrdersAdmin = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<string>('7d');
+  const [viewMode, setViewMode] = useState<'active' | 'trash'>('active');
   
   // Paginação e Totais
   const [currentPage, setCurrentPage] = useState(1);
@@ -33,7 +34,7 @@ export const useOrdersAdmin = () => {
 
   useEffect(() => {
     fetchOrders();
-  }, [currentPage, statusFilter, searchTerm, dateFilter]);
+  }, [currentPage, statusFilter, searchTerm, dateFilter, viewMode]);
 
   const getDateRange = () => {
     const now = new Date();
@@ -56,6 +57,8 @@ export const useOrdersAdmin = () => {
 
       let query = supabase.from('orders').select('*', { count: 'exact' });
 
+      query = query.eq('in_trash', viewMode === 'trash');
+
       if (statusFilter !== 'all') query = query.eq('status', statusFilter);
       if (searchTerm) query = query.or(`id.ilike.%${searchTerm}%,customer_data->>fullName.ilike.%${searchTerm}%,customer_data->>email.ilike.%${searchTerm}%`);
       if (start) query = query.gte('created_at', start);
@@ -69,8 +72,8 @@ export const useOrdersAdmin = () => {
       setOrders((data as any[]) || []);
       setTotalCount(count || 0);
 
-      // Agregação de KPIs
-      let statsQuery = supabase.from('orders').select('total, items');
+      // Agregação de KPIs - Sempre ignorando os excluídos
+      let statsQuery = supabase.from('orders').select('total, items').eq('in_trash', false);
       if (statusFilter !== 'all') statsQuery = statsQuery.eq('status', statusFilter);
       if (searchTerm) statsQuery = statsQuery.or(`id.ilike.%${searchTerm}%,customer_data->>fullName.ilike.%${searchTerm}%,customer_data->>email.ilike.%${searchTerm}%`);
       if (start) statsQuery = statsQuery.gte('created_at', start);
@@ -120,7 +123,7 @@ export const useOrdersAdmin = () => {
     try {
       const { error } = await supabase
         .from('orders')
-        .update({ 
+        .update({
           status: selectedOrder.status,
           tracking_code: trackingCode,
           updated_at: new Date().toISOString()
@@ -136,6 +139,36 @@ export const useOrdersAdmin = () => {
     } finally {
       setUpdatingStatus(false);
       setShowUnsavedPrompt(false);
+    }
+  };
+
+  const moveToTrash = async (orderId: string) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ in_trash: true })
+        .eq('id', orderId);
+
+      if (error) throw error;
+      toast.success('Pedido movido para a lixeira!');
+      await fetchOrders();
+    } catch (error: any) {
+      toast.error('Erro ao excluir pedido: ' + error.message);
+    }
+  };
+
+  const restoreFromTrash = async (orderId: string) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ in_trash: false })
+        .eq('id', orderId);
+
+      if (error) throw error;
+      toast.success('Pedido restaurado!');
+      await fetchOrders();
+    } catch (error: any) {
+      toast.error('Erro ao restaurar pedido: ' + error.message);
     }
   };
 
@@ -164,6 +197,7 @@ export const useOrdersAdmin = () => {
     searchTerm, setSearchTerm,
     statusFilter, setStatusFilter,
     dateFilter, setDateFilter,
+    viewMode, setViewMode,
     
     // Paginação
     currentPage, setCurrentPage,
@@ -177,6 +211,8 @@ export const useOrdersAdmin = () => {
     handleUpdateOrder,
     handleAttemptClose,
     handleCopyAddress,
+    moveToTrash,
+    restoreFromTrash,
     
     // Alertas de fechamento
     showUnsavedPrompt, setShowUnsavedPrompt,
