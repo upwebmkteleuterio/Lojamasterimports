@@ -101,14 +101,17 @@ export const Navbar = () => {
       {/* Top Bar - Desktop */}
       <div className="hidden md:block bg-[#f8f8f8] border-b text-[10px] md:text-xs py-2">
         <div className="container mx-auto px-4 flex justify-between items-center text-gray-500 font-medium">
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1"><Phone size={12} /> Atendimento: (99) 9999-9999</span>
-          </div>
-          <p>Master Imports - Qualidade e Confiança.</p>
-          <div className="flex items-center gap-4">
-             <button onClick={handleAccountClick} className="flex items-center gap-1 hover:text-[#B89C6A] transition-colors">
+          <div className="flex-1"></div>
+          <p className="flex-1 text-center">Master Imports - Qualidade e Confiança.</p>
+          <div className="flex-1 flex justify-end items-center gap-4">
+             <a
+               href="https://rastreamento.correios.com.br/app/index.php"
+               target="_blank"
+               rel="noopener noreferrer"
+               className="flex items-center gap-1 hover:text-[#B89C6A] transition-colors"
+             >
                <MapPin size={12} /> Rastreie seu pedido
-             </button>
+             </a>
           </div>
         </div>
       </div>
