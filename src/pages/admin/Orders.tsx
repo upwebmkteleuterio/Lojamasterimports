@@ -20,7 +20,8 @@ import {
   ChevronLeft,
   ChevronRight,
   TrendingUp,
-  DollarSign
+  DollarSign,
+  Copy
 } from 'lucide-react';
 import { 
   Table, 
@@ -62,24 +63,28 @@ import { format, subDays, startOfDay, endOfDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { OrderStepper } from '@/components/account/OrderStepper';
 
-const statusColors: Record<OrderStatus, string> = {
+const statusColors: Record<string, string> = {
   'Pago': 'bg-green-100 text-green-700',
   'Pagamento Pendente': 'bg-yellow-100 text-yellow-700',
+  'Pendente': 'bg-yellow-100 text-yellow-700',
   'Cancelado': 'bg-red-100 text-red-700',
   'Pagamento Estornado': 'bg-orange-100 text-orange-700',
   'Enviado': 'bg-blue-100 text-blue-700',
   'Entregue': 'bg-emerald-100 text-emerald-700',
   'Preparando Pedido': 'bg-purple-100 text-purple-700',
+  'Em Processamento': 'bg-purple-100 text-purple-700',
 };
 
-const statusIcons: Record<OrderStatus, any> = {
+const statusIcons: Record<string, any> = {
   'Pago': CheckCircle2,
   'Pagamento Pendente': Clock,
+  'Pendente': Clock,
   'Cancelado': XCircle,
   'Pagamento Estornado': Undo2,
   'Enviado': Truck,
   'Entregue': CheckCircle2,
   'Preparando Pedido': Package,
+  'Em Processamento': Package,
 };
 
 const ITEMS_PER_PAGE = 50;
@@ -144,7 +149,6 @@ const Orders = () => {
       setTotalCount(count || 0);
 
       // Busca KPIs (Agregação via banco)
-      // Para o total de produtos e valor total, precisamos de todos os pedidos do período sem limite de range
       let statsQuery = supabase.from('orders').select('total, items');
       if (statusFilter !== 'all') statsQuery = statsQuery.eq('status', statusFilter);
       if (searchTerm) statsQuery = statsQuery.or(`id.ilike.%${searchTerm}%,customer_data->>fullName.ilike.%${searchTerm}%,customer_data->>email.ilike.%${searchTerm}%`);
@@ -202,6 +206,14 @@ const Orders = () => {
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  };
+
+  const handleCopyAddress = () => {
+    if (!selectedOrder) return;
+    const data = selectedOrder.customer_data;
+    const addressString = `${data.fullName}\n${data.address}, nº ${data.number}${data.apartment ? ' - ' + data.apartment : ''}\n${data.city} - ${data.state}\nCEP: ${data.zipCode}${data.observations ? '\nObs: ' + data.observations : ''}`;
+    navigator.clipboard.writeText(addressString);
+    toast.success('Endereço copiado!');
   };
 
   return (
@@ -287,8 +299,10 @@ const Orders = () => {
               </SelectTrigger>
               <SelectContent className="rounded-2xl">
                 <SelectItem value="all">Todos Status</SelectItem>
-                <SelectItem value="Pagamento Pendente">Pendente</SelectItem>
+                <SelectItem value="Pendente">Pendente</SelectItem>
+                <SelectItem value="Pagamento Pendente">Pagamento Pendente</SelectItem>
                 <SelectItem value="Pago">Pago</SelectItem>
+                <SelectItem value="Em Processamento">Em Processamento</SelectItem>
                 <SelectItem value="Preparando Pedido">Preparando</SelectItem>
                 <SelectItem value="Enviado">Enviado</SelectItem>
                 <SelectItem value="Entregue">Entregue</SelectItem>
@@ -392,7 +406,7 @@ const Orders = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Modal Detalhes (Mantido e atualizado com Stepper) */}
+      {/* Modal Detalhes */}
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-[32px] border-none shadow-2xl p-0">
           {selectedOrder && (
@@ -414,15 +428,25 @@ const Orders = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   <div className="space-y-4">
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2"><User size={14} /> Cliente</h3>
-                    <div className="bg-gray-50 rounded-3xl p-6 space-y-2">
+                    <div className="bg-gray-50 rounded-3xl p-6 space-y-2 h-full">
                       <p className="font-bold text-gray-900 text-sm">{selectedOrder.customer_data.fullName}</p>
-                      <p className="text-xs text-gray-500">{selectedOrder.customer_data.email}</p>
+                      <p className="text-xs text-gray-500 break-all">{selectedOrder.customer_data.email}</p>
                       <p className="text-xs text-gray-500">{selectedOrder.customer_data.phone}</p>
                     </div>
                   </div>
                   <div className="md:col-span-2 space-y-4">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2"><MapPin size={14} /> Entrega</h3>
-                    <div className="bg-gray-50 rounded-3xl p-6">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                        <MapPin size={14} /> Entrega
+                      </h3>
+                      <button 
+                        onClick={handleCopyAddress} 
+                        className="flex items-center gap-1.5 text-[9px] font-bold text-[#B89C6A] hover:text-[#A68B5B] uppercase tracking-widest transition-colors bg-[#B89C6A]/10 hover:bg-[#B89C6A]/20 px-3 py-1.5 rounded-full"
+                      >
+                        <Copy size={12} /> Copiar Endereço
+                      </button>
+                    </div>
+                    <div className="bg-gray-50 rounded-3xl p-6 h-full">
                       <div className="text-xs text-gray-700 leading-relaxed space-y-1">
                         <p><span className="font-bold text-gray-400 uppercase text-[9px] tracking-wider block">Endereço</span> {selectedOrder.customer_data.address}, nº {selectedOrder.customer_data.number}</p>
                         {selectedOrder.customer_data.apartment && (
@@ -446,11 +470,11 @@ const Orders = () => {
                     {selectedOrder.items.map((item, idx) => (
                       <div key={idx} className="flex gap-4 items-center bg-gray-50/50 p-4 rounded-2xl">
                         <div className="w-12 h-16 rounded-xl bg-white border overflow-hidden flex-shrink-0"><img src={item.selectedVariant?.main_image || item.image} className="w-full h-full object-cover" /></div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-sm text-gray-900 truncate">{item.name}</p>
+                        <div className="flex-1 min-w-0 pr-4">
+                          <p className="font-bold text-sm text-gray-900 break-words leading-snug mb-1">{item.name}</p>
                           <p className="text-[10px] text-gray-400 uppercase font-black">{item.quantity} UN. | {formatCurrency(item.price)}</p>
                         </div>
-                        <p className="font-bold text-sm">{formatCurrency(item.price * item.quantity)}</p>
+                        <p className="font-bold text-sm flex-shrink-0">{formatCurrency(item.price * item.quantity)}</p>
                       </div>
                     ))}
                   </div>
@@ -467,8 +491,10 @@ const Orders = () => {
                       <Select value={selectedOrder.status} onValueChange={(val) => setSelectedOrder({...selectedOrder, status: val as OrderStatus})}>
                         <SelectTrigger className="h-12 rounded-2xl bg-gray-50 border-gray-100"><SelectValue /></SelectTrigger>
                         <SelectContent className="rounded-2xl">
-                          <SelectItem value="Pagamento Pendente">Pendente</SelectItem>
+                          <SelectItem value="Pendente">Pendente</SelectItem>
+                          <SelectItem value="Pagamento Pendente">Pagamento Pendente</SelectItem>
                           <SelectItem value="Pago">Pago</SelectItem>
+                          <SelectItem value="Em Processamento">Em Processamento</SelectItem>
                           <SelectItem value="Preparando Pedido">Preparando</SelectItem>
                           <SelectItem value="Enviado">Enviado</SelectItem>
                           <SelectItem value="Entregue">Entregue</SelectItem>
